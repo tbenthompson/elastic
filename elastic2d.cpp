@@ -38,7 +38,6 @@ int main(int argc, char* argv[]) {
     double shear_modulus = 30e9;
     double poisson_ratio = 0.25;
 
-    //TODO: template on dimension for the elastic kernels.
     //TODO: finish the plane strain elastic kernels
     ElasticKernels<2> ek(shear_modulus, poisson_ratio);
 

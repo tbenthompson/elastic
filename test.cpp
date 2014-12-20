@@ -1,6 +1,7 @@
 #include "UnitTest++.h"
 #include <iostream>
 #include "elastic.h"
+#include "3bem/util.h"
 
 using namespace tbem;
 
@@ -28,6 +29,13 @@ TEST(LoadElements) {
     CHECK_EQUAL(elements[1].bc[1], (Vec2<double>{1.0,1.0}));
 }
 
+TEST(RapidJSONBigFile) {
+    TIC
+    auto doc = parse_json(load_file("test_data/reallybig.in"));
+    auto elements = collect_elements(doc);
+    TOC("Parsing " + std::to_string(elements.size()) + " elements.");
+}
+
 TEST(BuildProblem) {
     auto doc = parse_json(load_file("test_data/one.in"));
     auto elements = collect_elements(doc);
@@ -39,6 +47,7 @@ TEST(BuildProblem) {
     CHECK_EQUAL(elast_prob.slip_mesh.facets[0].vertices[0],
                 (Vec2<double>{-2.0, -2.0}));
 }
+
 
 int main() {
     return UnitTest::RunAllTests();
