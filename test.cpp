@@ -1,7 +1,8 @@
 #include "UnitTest++.h"
 #include <iostream>
-#include "vec.h"
 #include "elastic.h"
+
+using namespace tbem;
 
 TEST(SimpleLoadGood) {
     auto doc = parse_json(load_file("test_data/good.in"));
@@ -15,8 +16,8 @@ TEST(SimpleLoadBad) {
 TEST(LoadElements) {
     auto doc = parse_json(load_file("test_data/one.in"));
     auto elements = collect_elements(doc);
-    CHECK_EQUAL(elements[0].pts[0], (Vec2<double>{-1.0,0.0}));
-    CHECK_EQUAL(elements[0].pts[1], (Vec2<double>{1.0,0.0}));
+    CHECK_EQUAL(elements[0].pts[0], (Vec2<double>{-20.0,0.0}));
+    CHECK_EQUAL(elements[0].pts[1], (Vec2<double>{20.0,0.0}));
     CHECK_EQUAL(elements[0].bc_type, TRACTION);
     CHECK_EQUAL(elements[0].bc[0], (Vec2<double>{0.0,0.0}));
     CHECK_EQUAL(elements[0].bc[1], (Vec2<double>{0.0,0.0}));
@@ -33,7 +34,7 @@ TEST(BuildProblem) {
     auto elast_prob = build_problem(doc, elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 1);
     CHECK_EQUAL(elast_prob.traction_mesh.facets[0].vertices[0],
-                (Vec2<double>{-1.0, 0.0}));
+                (Vec2<double>{-20.0, 0.0}));
     CHECK_EQUAL(elast_prob.slip_mesh.facets.size(), 1);
     CHECK_EQUAL(elast_prob.slip_mesh.facets[0].vertices[0],
                 (Vec2<double>{-2.0, -2.0}));

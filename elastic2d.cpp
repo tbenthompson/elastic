@@ -1,9 +1,11 @@
 #include "elastic.h"
-#include "kernels.h"
-#include "quadrature.h"
-#include "bem.h"
-#include "petsc_interface.h"
-#include "util.h"
+#include "3bem/kernels.h"
+#include "3bem/quadrature.h"
+#include "3bem/bem.h"
+#include "3bem/petsc_interface.h"
+#include "3bem/util.h"
+
+using namespace tbem;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {

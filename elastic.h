@@ -2,32 +2,33 @@
 #define __QWENMBBBZBLAHEWJPQ_ELASTIC_H
 
 #include "rapidjson/document.h"
-#include "constraint.h"
-#include "mesh.h"
+#include "3bem/constraint.h"
+#include "3bem/mesh.h"
 
 template <int dim>
 struct ElasticProblem {
+
     // The mesh on which the displacement is known
-    Mesh<dim> displacement_mesh;
+    tbem::Mesh<dim> displacement_mesh;
 
     // The mesh on which the traction is known
-    Mesh<dim> traction_mesh;
+    tbem::Mesh<dim> traction_mesh;
 
     // The mesh on which the slip is known
-    Mesh<dim> slip_mesh;
+    tbem::Mesh<dim> slip_mesh;
 
-    std::vector<Vec<Vec<double,dim>,dim>> displacement_bcs;
-    std::vector<Vec<Vec<double,dim>,dim>> traction_bcs;
-    std::vector<Vec<Vec<double,dim>,dim>> slip_bcs;
+    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> displacement_bcs;
+    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> traction_bcs;
+    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> slip_bcs;
 };
 
 enum BCType {DISPLACEMENT, TRACTION, SLIP, CRACK};
 
 template <int dim>
 struct Element {
-    Vec<Vec<double,dim>,dim> pts; 
+    tbem::Vec<tbem::Vec<double,dim>,dim> pts; 
     BCType bc_type;
-    Vec<Vec<double,dim>,dim> bc;
+    tbem::Vec<tbem::Vec<double,dim>,dim> bc;
 };
 
 std::string load_file(std::string filename);

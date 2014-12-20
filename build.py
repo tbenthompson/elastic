@@ -5,7 +5,7 @@ run_sources = ['elastic2d', 'elastic']
 
 cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
 cpp_flags.extend([
-    '-I../3bem_stable/src',
+    '-I../3bem_stable',
     '-I../lib/unittest-cpp/src',
     '-I../lib/rapidjson/include',
     '-fopenmp'

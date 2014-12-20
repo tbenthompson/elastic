@@ -1,16 +1,11 @@
-// #include "bem.h"
-// #include "mesh_gen.h"
-// #include "quadrature.h"
-// #include "kernels.h"
-// #include "petsc_interface.h"
-// #include "util.h"
-#include "vec.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include "elastic.h"
+#include "3bem/vec.h"
 
+using namespace tbem;
 std::string load_file(std::string filename) {
     std::ifstream file;
     file.open(filename);
