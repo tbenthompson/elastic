@@ -30,10 +30,19 @@ TEST(LoadElements) {
 }
 
 TEST(RapidJSONBigFile) {
+    UNITTEST_TIME_CONSTRAINT(100);
     TIC
-    auto doc = parse_json(load_file("test_data/reallybig.in"));
+    auto file = load_file("test_data/reallybig.in");
+    TOC("Loading file");
+    TIC2
+    auto doc = parse_json(file);
+    TOC("Parsing file");
+    TIC2
     auto elements = collect_elements(doc);
-    TOC("Parsing " + std::to_string(elements.size()) + " elements.");
+    TOC("Collecting " + std::to_string(elements.size()) + " elements");
+    TIC2
+    auto prob = build_problem(doc, elements);
+    TOC("Meshing " + std::to_string(elements.size()) + " elements");
 }
 
 TEST(BuildProblem) {
@@ -48,6 +57,16 @@ TEST(BuildProblem) {
                 (Vec2<double>{-2.0, -2.0}));
 }
 
+TEST(Refinement) {
+    auto doc = parse_json(load_file("test_data/refine.in"));
+    auto elements = collect_elements(doc);
+    auto elast_prob = build_problem(doc, elements);
+    CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 8);
+    for (int i = 0; i < 8; i++) {
+        CHECK_EQUAL(elast_prob.traction_mesh.facets[0].vertices[0],
+                    (Vec2<double>{(double)i, -(double)i}));
+    }
+}
 
 int main() {
     return UnitTest::RunAllTests();

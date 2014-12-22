@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
     auto elements = collect_elements(doc);
     auto elastic_prob = build_problem(doc, elements);
 
-    Mesh<2> traction_mesh = elastic_prob.traction_mesh.refine_repeatedly(8);
-    Mesh<2> slip_mesh = elastic_prob.slip_mesh.refine_repeatedly(0);
+    auto traction_mesh = elastic_prob.traction_mesh;
+    auto slip_mesh = elastic_prob.slip_mesh;
 
     // Gather the imposed boundary conditions
     auto displacement_continuity = ConstraintMatrix::from_constraints(
@@ -48,6 +48,8 @@ int main(int argc, char* argv[]) {
     int n_trac_dofs = 2 * traction_mesh.facets.size();
     int n_slip_dofs = 2 * slip_mesh.facets.size();
 
+    //TODO: This will be unnecessary when Vec2 can be passed into problem
+    // BEGIN UNNCESSARY
     std::array<std::vector<double>,2> slip_bcs = {
         std::vector<double>(n_slip_dofs),   
         std::vector<double>(n_slip_dofs)
@@ -58,6 +60,18 @@ int main(int argc, char* argv[]) {
             slip_bcs[1][i * 2 + c] = elastic_prob.slip_bcs[i][c][1];
         }
     }
+
+    std::array<std::vector<double>,2> trac_bcs = {
+        std::vector<double>(n_trac_dofs),   
+        std::vector<double>(n_trac_dofs)
+    };
+    for (std::size_t i = 0; i < traction_mesh.facets.size(); i++) {
+        for (int c = 0; c < 2; c++) {
+            trac_bcs[0][i * 2 + c] = elastic_prob.traction_bcs[i][c][0];
+            trac_bcs[1][i * 2 + c] = elastic_prob.traction_bcs[i][c][1];
+        }
+    }
+    //END UNNECESSARY
     
     // Build the RHS for the traction_mesh DOFs 
     std::array<std::vector<double>,2> all_trac_rhs = {
@@ -66,12 +80,22 @@ int main(int argc, char* argv[]) {
     };
 
     for (int k = 0; k < 2; k++) {
+        Problem<2> p_mass = {traction_mesh, traction_mesh,
+                             one<2>, trac_bcs[k]};
+        auto rhs_mass = mass_term(p_mass, qs);
+        for (unsigned int i = 0; i < rhs_mass.size(); i++) {
+            all_trac_rhs[k][i] += rhs_mass[i];
+        }
+
         for (int j = 0; j < 2; j++) {
-            Problem<2> p = {slip_mesh, traction_mesh,
-                            ek.hypersingular_mat[k][j], slip_bcs[j]};
-            auto res = direct_interact(p, qs);
-            for (unsigned int i = 0; i < res.size(); i++) {
-                all_trac_rhs[k][i] += res[i];
+            Problem<2> p_slip_trac = {slip_mesh, traction_mesh,
+                                      ek.hypersingular_mat[k][j], slip_bcs[j]};
+            auto int0 = direct_interact(p_slip_trac, qs);
+            Problem<2> p_trac_trac = {traction_mesh, traction_mesh,
+                                      ek.adjoint_traction_mat[k][j], trac_bcs[j]};
+            auto int1 = direct_interact(p_trac_trac, qs);
+            for (unsigned int i = 0; i < int0.size(); i++) {
+                all_trac_rhs[k][i] += int0[i] + int1[i];
             }
         }
     }

@@ -65,7 +65,9 @@ std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
             {bc_element[0][0].GetDouble(), bc_element[0][1].GetDouble()},
             {bc_element[1][0].GetDouble(), bc_element[1][1].GetDouble()}
         }};
-        Element<2> e{corners, bc_type, bc};
+
+        int n_refines = element_list[i]["refine"].GetInt();
+        Element<2> e{corners, bc_type, bc, n_refines};
         out.push_back(e);
     }
     return out;
@@ -76,6 +78,8 @@ ElasticProblem<2> build_problem(const rapidjson::Document& doc,
     //One facet list per BC type.
     std::vector<Facet<2>> facet_lists[4]; 
     std::vector<Vec<Vec<double,2>,2>> bc_lists[4];
+
+    //TODO: handle n_refines
     for (auto e: elements) {
         facet_lists[e.bc_type].push_back(Facet<2>{e.pts});
         bc_lists[e.bc_type].push_back(e.bc);
