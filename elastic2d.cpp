@@ -21,10 +21,16 @@ int main(int argc, char* argv[]) {
     auto traction_mesh = elastic_prob.traction_mesh;
     auto slip_mesh = elastic_prob.slip_mesh;
 
+    int n_trac_dofs = 2 * traction_mesh.facets.size();
+    std::cout << n_trac_dofs << std::endl;
+    int n_slip_dofs = 2 * slip_mesh.facets.size();
+
     // Gather the imposed boundary conditions
-    auto displacement_continuity = ConstraintMatrix::from_constraints(
-        mesh_continuity<2>(traction_mesh)
-    );
+    auto displacement_continuity = 
+        ConstraintMatrix::from_constraints(mesh_continuity<2>(traction_mesh));
+
+    //Average constraint.
+    // Constraint
 
     // Remove continuity constraints at the intersection of the fault and the 
     // surface mesh.
@@ -32,22 +38,18 @@ int main(int argc, char* argv[]) {
     //       should allow the vertices not to match up.
     auto constraints = apply_discontinuities<2>(
         traction_mesh, slip_mesh, displacement_continuity
-    );
+    );//.add_constraints({average_constraint});
+
     
     // Setup the kernels that are necessary.
     //TODO: Make these a parameter in the input file/ElasticProblem
     double shear_modulus = 30e9;
     double poisson_ratio = 0.25;
-
-    //TODO: finish the plane strain elastic kernels
     ElasticKernels<2> ek(shear_modulus, poisson_ratio);
 
     // Setup the quadrature
     // TODO: Parameters for the file/ElasticProblem!
     QuadStrategy<2> qs(2);
-
-    int n_trac_dofs = 2 * traction_mesh.facets.size();
-    int n_slip_dofs = 2 * slip_mesh.facets.size();
 
     //TODO: This will be unnecessary when Vec2 can be passed into problem
     // BEGIN UNNCESSARY
@@ -97,6 +99,7 @@ int main(int argc, char* argv[]) {
             auto int1 = direct_interact(p_trac_trac, qs);
             for (unsigned int i = 0; i < int0.size(); i++) {
                 all_trac_rhs[k][i] += int0[i] + int1[i];
+                std::cout << int1[i] << std::endl;
             }
         }
     }
@@ -129,6 +132,7 @@ int main(int argc, char* argv[]) {
     // Build the LHS matrix for the displacement_mesh DOFs.
 
     // Solve the linear system.
+    // return 0;
     int count = 0;
     auto surface_disp = solve_system(vector_trac_rhs, 1e-5,
         [&] (std::vector<double>& x, std::vector<double>& y) {
@@ -171,5 +175,7 @@ int main(int argc, char* argv[]) {
                   reduced_soln.begin());
         soln[i] = constraints.get_all(reduced_soln, n_trac_dofs);
     }
+
+    //TODO: Strip the ".in" from the filename
     hdf_out_surface<2>(std::string(filename) + ".out", traction_mesh, {soln[0], soln[1]});
 }
