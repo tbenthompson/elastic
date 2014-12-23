@@ -31,6 +31,23 @@ rapidjson::Document parse_json(std::string json) {
     return doc;
 }
 
+BCType parse_bc_type(std::string bc_type_str) {
+    BCType bc_type = DISPLACEMENT;
+    if (bc_type_str == "displacement") {
+        bc_type = DISPLACEMENT;
+    } else if (bc_type_str == "traction") {
+        bc_type = TRACTION;
+    } else if (bc_type_str == "slip") {
+        bc_type = SLIP;
+    } else if (bc_type_str == "crack") {
+        bc_type = CRACK;
+    } else {
+        throw std::invalid_argument("bc_type must be one of \
+                                     (displacement, traction, slip, crack)");
+    }
+    return bc_type;
+}
+
 std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
     const auto& element_list = doc["elements"];
 
@@ -46,19 +63,7 @@ std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
         }};
 
         std::string bc_type_str = element_list[i]["bc_type"].GetString();
-        BCType bc_type = DISPLACEMENT;
-        if (bc_type_str == "displacement") {
-            bc_type = DISPLACEMENT;
-        } else if (bc_type_str == "traction") {
-            bc_type = TRACTION;
-        } else if (bc_type_str == "slip") {
-            bc_type = SLIP;
-        } else if (bc_type_str == "crack") {
-            bc_type = CRACK;
-        } else {
-            throw std::invalid_argument("bc_type must be one of \
-                                         (displacement, traction, slip, crack)");
-        }
+        BCType bc_type = parse_bc_type(bc_type_str);
 
         const auto& bc_element = element_list[i]["bc"];
         Vec2<Vec2<double>> bc = {{
@@ -76,21 +81,25 @@ std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
 ElasticProblem<2> build_problem(const rapidjson::Document& doc, 
                                 const std::vector<Element<2>>& elements) {
     //One facet list per BC type.
-    std::vector<Facet<2>> facet_lists[4]; 
-    std::vector<Vec<Vec<double,2>,2>> bc_lists[4];
+    std::vector<Mesh<2>> facet_lists[4]; 
+    std::vector<Mesh<2>> bc_lists[4];
 
-    //TODO: handle n_refines
     for (auto e: elements) {
-        facet_lists[e.bc_type].push_back(Facet<2>{e.pts});
-        bc_lists[e.bc_type].push_back(e.bc);
+        auto facet = Mesh<2>{{Facet<2>{e.pts}}, false, nullptr};
+        auto refined_facet = facet.refine_repeatedly(e.n_refines);
+        facet_lists[e.bc_type].push_back(refined_facet);
+
+        auto bc = Mesh<2>{{Facet<2>{e.bc}}, false, nullptr};
+        auto refined_bc = bc.refine_repeatedly(e.n_refines);
+        bc_lists[e.bc_type].push_back(refined_bc);
     }
 
     return {
-        Mesh<2>{facet_lists[DISPLACEMENT], false, nullptr},
-        Mesh<2>{facet_lists[TRACTION], false, nullptr},
-        Mesh<2>{facet_lists[SLIP], false, nullptr},
-        bc_lists[DISPLACEMENT],
-        bc_lists[TRACTION],
-        bc_lists[SLIP]
+        Mesh<2>::form_union(facet_lists[DISPLACEMENT]),
+        Mesh<2>::form_union(facet_lists[TRACTION]),
+        Mesh<2>::form_union(facet_lists[SLIP]),
+        Mesh<2>::form_union(bc_lists[DISPLACEMENT]),
+        Mesh<2>::form_union(bc_lists[TRACTION]),
+        Mesh<2>::form_union(bc_lists[SLIP])
     };
 }

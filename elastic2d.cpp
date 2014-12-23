@@ -12,8 +12,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage is 'elastic_process filename'" << std::endl;
         return 1;
     }
-
-    auto doc = parse_json(load_file(argv[1]));
+    
+    auto filename = argv[1];
+    auto doc = parse_json(load_file(filename));
     auto elements = collect_elements(doc);
     auto elastic_prob = build_problem(doc, elements);
 
@@ -22,14 +23,14 @@ int main(int argc, char* argv[]) {
 
     // Gather the imposed boundary conditions
     auto displacement_continuity = ConstraintMatrix::from_constraints(
-        mesh_continuity(traction_mesh)
+        mesh_continuity<2>(traction_mesh)
     );
 
     // Remove continuity constraints at the intersection of the fault and the 
     // surface mesh.
     // TODO: Here, the problem is more complex than in the past because I 
     //       should allow the vertices not to match up.
-    auto constraints = apply_discontinuities(
+    auto constraints = apply_discontinuities<2>(
         traction_mesh, slip_mesh, displacement_continuity
     );
     
@@ -56,8 +57,8 @@ int main(int argc, char* argv[]) {
     };
     for (std::size_t i = 0; i < slip_mesh.facets.size(); i++) {
         for (int c = 0; c < 2; c++) {
-            slip_bcs[0][i * 2 + c] = elastic_prob.slip_bcs[i][c][0];
-            slip_bcs[1][i * 2 + c] = elastic_prob.slip_bcs[i][c][1];
+            slip_bcs[0][i * 2 + c] = elastic_prob.slip_bcs.facets[i].vertices[c][0];
+            slip_bcs[1][i * 2 + c] = elastic_prob.slip_bcs.facets[i].vertices[c][1];
         }
     }
 
@@ -67,8 +68,8 @@ int main(int argc, char* argv[]) {
     };
     for (std::size_t i = 0; i < traction_mesh.facets.size(); i++) {
         for (int c = 0; c < 2; c++) {
-            trac_bcs[0][i * 2 + c] = elastic_prob.traction_bcs[i][c][0];
-            trac_bcs[1][i * 2 + c] = elastic_prob.traction_bcs[i][c][1];
+            trac_bcs[0][i * 2 + c] = elastic_prob.traction_bcs.facets[i].vertices[c][0];
+            trac_bcs[1][i * 2 + c] = elastic_prob.traction_bcs.facets[i].vertices[c][1];
         }
     }
     //END UNNECESSARY
@@ -170,5 +171,5 @@ int main(int argc, char* argv[]) {
                   reduced_soln.begin());
         soln[i] = constraints.get_all(reduced_soln, n_trac_dofs);
     }
-    hdf_out_surface("2dthrust0.hdf5", traction_mesh, {soln[0], soln[1]});
+    hdf_out_surface<2>(std::string(filename) + ".out", traction_mesh, {soln[0], soln[1]});
 }

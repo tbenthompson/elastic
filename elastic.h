@@ -17,9 +17,10 @@ struct ElasticProblem {
     // The mesh on which the slip is known
     tbem::Mesh<dim> slip_mesh;
 
-    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> displacement_bcs;
-    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> traction_bcs;
-    std::vector<tbem::Vec<tbem::Vec<double,dim>,dim>> slip_bcs;
+    // Boundary conditions can also be defined by points on a mesh.
+    tbem::Mesh<dim> displacement_bcs;
+    tbem::Mesh<dim> traction_bcs;
+    tbem::Mesh<dim> slip_bcs;
 };
 
 enum BCType {DISPLACEMENT, TRACTION, SLIP, CRACK};

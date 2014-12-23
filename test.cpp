@@ -63,7 +63,9 @@ TEST(Refinement) {
     auto elast_prob = build_problem(doc, elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 8);
     for (int i = 0; i < 8; i++) {
-        CHECK_EQUAL(elast_prob.traction_mesh.facets[0].vertices[0],
+        CHECK_EQUAL(elast_prob.traction_mesh.facets[i].vertices[0],
+                    (Vec2<double>{(double)i, -(double)i}));
+        CHECK_EQUAL(elast_prob.traction_bcs.facets[i].vertices[0],
                     (Vec2<double>{(double)i, -(double)i}));
     }
 }
