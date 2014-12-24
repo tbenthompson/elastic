@@ -6,16 +6,16 @@
 using namespace tbem;
 
 TEST(SimpleLoadGood) {
-    auto doc = parse_json(load_file("test_data/good.in"));
+    auto doc = parse_json(load_file("data/good.in"));
 }
 
 TEST(SimpleLoadBad) {
-    CHECK_THROW(parse_json(load_file("test_data/bad.in")), std::invalid_argument);
+    CHECK_THROW(parse_json(load_file("data/bad.in")), std::invalid_argument);
     CHECK_THROW(parse_json(load_file("doesnotexist")), std::invalid_argument);
 }
 
 TEST(LoadElements) {
-    auto doc = parse_json(load_file("test_data/one.in"));
+    auto doc = parse_json(load_file("data/one.in"));
     auto elements = collect_elements(doc);
     CHECK_EQUAL(elements[0].pts[0], (Vec2<double>{-20.0,0.0}));
     CHECK_EQUAL(elements[0].pts[1], (Vec2<double>{20.0,0.0}));
@@ -32,7 +32,7 @@ TEST(LoadElements) {
 TEST(RapidJSONBigFile) {
     UNITTEST_TIME_CONSTRAINT(100);
     TIC
-    auto file = load_file("test_data/reallybig.in");
+    auto file = load_file("data/reallybig.in");
     TOC("Loading file");
     TIC2
     auto doc = parse_json(file);
@@ -46,7 +46,7 @@ TEST(RapidJSONBigFile) {
 }
 
 TEST(BuildProblem) {
-    auto doc = parse_json(load_file("test_data/one.in"));
+    auto doc = parse_json(load_file("data/one.in"));
     auto elements = collect_elements(doc);
     auto elast_prob = build_problem(elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 1);
@@ -58,7 +58,7 @@ TEST(BuildProblem) {
 }
 
 TEST(Refinement) {
-    auto doc = parse_json(load_file("test_data/refine.in"));
+    auto doc = parse_json(load_file("data/refine.in"));
     auto elements = collect_elements(doc);
     auto elast_prob = build_problem(elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 8);
@@ -71,18 +71,18 @@ TEST(Refinement) {
 }
 
 TEST(MalformedElementException) {
-    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad2.in"))),
+    CHECK_THROW(collect_elements(parse_json(load_file("data/bad2.in"))),
                 std::invalid_argument);
-    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad3.in"))),
+    CHECK_THROW(collect_elements(parse_json(load_file("data/bad3.in"))),
                 std::invalid_argument);
-    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad4.in"))),
+    CHECK_THROW(collect_elements(parse_json(load_file("data/bad4.in"))),
                 std::invalid_argument);
-    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad5.in"))),
+    CHECK_THROW(collect_elements(parse_json(load_file("data/bad5.in"))),
                 std::invalid_argument);
 }
 
 TEST(LoadParametersDefault) {
-    auto doc = parse_json(load_file("test_data/one.in"));
+    auto doc = parse_json(load_file("data/one.in"));
     auto p = parse_parameters(doc);
     // All should be defaults.
     CHECK_EQUAL(p.obs_quad_order, 2); CHECK_EQUAL(p.src_far_quad_order, 2);
@@ -92,7 +92,7 @@ TEST(LoadParametersDefault) {
     CHECK_EQUAL(p.shear_modulus, 30e9);
 }
 TEST(LoadParametersNotDefault) {
-    auto doc = parse_json(load_file("test_data/params.in"));
+    auto doc = parse_json(load_file("data/params.in"));
     auto p = parse_parameters(doc);
     CHECK_EQUAL(p.obs_quad_order, 4); CHECK_EQUAL(p.src_far_quad_order, 6);
     CHECK_EQUAL(p.n_singular_steps, 9); CHECK_EQUAL(p.far_threshold, 4.0);

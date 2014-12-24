@@ -1,5 +1,5 @@
 n = 10000
-f = open('test_data/reallybig.in', 'w')
+f = open('data/reallybig.in', 'w')
 f.write('{"elements": [')
 element = """{"pts": [ [-20.0, 0.0],
                 [20.0, 0.0]
