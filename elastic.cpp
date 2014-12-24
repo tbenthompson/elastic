@@ -109,8 +109,23 @@ std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
     return out;
 }
 
-ElasticProblem<2> build_problem(const rapidjson::Document& doc, 
-                                const std::vector<Element<2>>& elements) {
+#define GETPARAM(TYPE, NAME) \
+    if (doc.HasMember(#NAME) && doc[#NAME].Is##TYPE()) {\
+        out.NAME = doc[#NAME].Get##TYPE();\
+    }
+Parameters parse_parameters(const rapidjson::Document& doc) {
+    Parameters out = default_params;
+    GETPARAM(Int, obs_quad_order);
+    GETPARAM(Int, src_far_quad_order);
+    GETPARAM(Int, n_singular_steps);
+    GETPARAM(Double, far_threshold);
+    GETPARAM(Double, near_tol);
+    GETPARAM(Double, poisson_ratio);
+    GETPARAM(Double, shear_modulus);
+    return out;
+}
+
+ElasticProblem<2> build_problem(const std::vector<Element<2>>& elements) {
     //One facet list per BC type.
     std::vector<Mesh<2>> facet_lists[4]; 
     std::vector<Mesh<2>> bc_lists[4];

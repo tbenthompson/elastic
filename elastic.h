@@ -5,6 +5,19 @@
 #include "3bem/constraint.h"
 #include "3bem/mesh.h"
 
+struct Parameters {
+    int obs_quad_order;
+    int src_far_quad_order;
+    int n_singular_steps;
+    double far_threshold;
+    double near_tol;
+
+    double poisson_ratio;
+    double shear_modulus;
+};
+
+const Parameters default_params{2, 2, 6, 3.0, 1e-2, 0.25, 30e9};
+
 template <int dim>
 struct ElasticProblem {
 
@@ -36,8 +49,8 @@ struct Element {
 std::string load_file(std::string filename);
 rapidjson::Document parse_json(std::string json);
 std::vector<Element<2>> collect_elements(const rapidjson::Document& doc);
-ElasticProblem<2> build_problem(const rapidjson::Document& doc, 
-                                const std::vector<Element<2>>& elements);
+Parameters parse_parameters(const rapidjson::Document& doc);
+ElasticProblem<2> build_problem(const std::vector<Element<2>>& elements);
 
 
 #endif

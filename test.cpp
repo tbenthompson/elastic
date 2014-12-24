@@ -41,14 +41,14 @@ TEST(RapidJSONBigFile) {
     auto elements = collect_elements(doc);
     TOC("Collecting " + std::to_string(elements.size()) + " elements");
     TIC2
-    auto prob = build_problem(doc, elements);
+    auto prob = build_problem(elements);
     TOC("Meshing " + std::to_string(elements.size()) + " elements");
 }
 
 TEST(BuildProblem) {
     auto doc = parse_json(load_file("test_data/one.in"));
     auto elements = collect_elements(doc);
-    auto elast_prob = build_problem(doc, elements);
+    auto elast_prob = build_problem(elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 1);
     CHECK_EQUAL(elast_prob.traction_mesh.facets[0].vertices[0],
                 (Vec2<double>{-20.0, 0.0}));
@@ -60,7 +60,7 @@ TEST(BuildProblem) {
 TEST(Refinement) {
     auto doc = parse_json(load_file("test_data/refine.in"));
     auto elements = collect_elements(doc);
-    auto elast_prob = build_problem(doc, elements);
+    auto elast_prob = build_problem(elements);
     CHECK_EQUAL(elast_prob.traction_mesh.facets.size(), 8);
     for (int i = 0; i < 8; i++) {
         CHECK_EQUAL(elast_prob.traction_mesh.facets[i].vertices[0],
@@ -79,6 +79,26 @@ TEST(MalformedElementException) {
                 std::invalid_argument);
     CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad5.in"))),
                 std::invalid_argument);
+}
+
+TEST(LoadParametersDefault) {
+    auto doc = parse_json(load_file("test_data/one.in"));
+    auto p = parse_parameters(doc);
+    // All should be defaults.
+    CHECK_EQUAL(p.obs_quad_order, 2); CHECK_EQUAL(p.src_far_quad_order, 2);
+    CHECK_EQUAL(p.n_singular_steps, 6); CHECK_EQUAL(p.far_threshold, 3.0);
+    CHECK_EQUAL(p.near_tol, 1e-2);
+    CHECK_EQUAL(p.poisson_ratio, 0.25);
+    CHECK_EQUAL(p.shear_modulus, 30e9);
+}
+TEST(LoadParametersNotDefault) {
+    auto doc = parse_json(load_file("test_data/params.in"));
+    auto p = parse_parameters(doc);
+    CHECK_EQUAL(p.obs_quad_order, 4); CHECK_EQUAL(p.src_far_quad_order, 6);
+    CHECK_EQUAL(p.n_singular_steps, 9); CHECK_EQUAL(p.far_threshold, 4.0);
+    CHECK_EQUAL(p.near_tol, 1e-4);
+    CHECK_EQUAL(p.poisson_ratio, 0.28);
+    CHECK_EQUAL(p.shear_modulus, 22e9);
 }
 
 int main() {

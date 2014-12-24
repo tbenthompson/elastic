@@ -7,6 +7,14 @@
 
 using namespace tbem;
 
+std::string remove_extension(const std::string& filename) {
+    size_t lastdot = filename.find_last_of(".");
+    if (lastdot == std::string::npos) {
+        return filename;
+    }
+    return filename.substr(0, lastdot); 
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cout << "Usage is 'elastic_process filename'" << std::endl;
@@ -16,7 +24,8 @@ int main(int argc, char* argv[]) {
     auto filename = argv[1];
     auto doc = parse_json(load_file(filename));
     auto elements = collect_elements(doc);
-    auto elastic_prob = build_problem(doc, elements);
+    auto params = parse_parameters(doc);
+    auto elastic_prob = build_problem(elements);
 
     auto trac_mesh = elastic_prob.traction_mesh;
     auto slip_mesh = elastic_prob.slip_mesh;
@@ -43,24 +52,17 @@ int main(int argc, char* argv[]) {
 
     
     // Setup the kernels that are necessary.
-    //TODO: Make these a parameter in the input file/ElasticProblem
-    double shear_modulus = 30e9;
-    double poisson_ratio = 0.25;
-    ElasticKernels<2> ek(shear_modulus, poisson_ratio);
+    ElasticKernels<2> ek(params.shear_modulus, params.poisson_ratio);
 
     
-    //TODO: Additional JSON file parameters:
-    //obs_order
-    //src_far_order
-    //n_singular_steps
-    //far_threshold
-    //near_tol
-    //shear_modulus
-    //poisson_ratio
-
     // Setup the quadrature
-    // TODO: Parameters for the file/ElasticProblem!
-    QuadStrategy<2> qs(2);
+    QuadStrategy<2> qs(
+        params.obs_quad_order,
+        params.src_far_quad_order,
+        params.n_singular_steps,
+        params.far_threshold,
+        params.near_tol
+    );
 
     // Gather the imposed boundary conditions
     //TODO: This will be unnecessary when Vec2 can be passed into problem
@@ -316,14 +318,14 @@ int main(int argc, char* argv[]) {
     }
 
     //TODO: More output?
-    //TODO: Strip the ".in" from the filename
+    std::string file_root = remove_extension(filename);
     if (trac_mesh.facets.size() > 0) {
-        hdf_out_surface<2>(std::string(filename) + ".trac_out",
+        hdf_out_surface<2>(file_root + ".trac_out",
                            trac_mesh, {trac_soln[0], trac_soln[1]});
     }
 
     if (disp_mesh.facets.size() > 0) {
-        hdf_out_surface<2>(std::string(filename) + ".disp_out",
+        hdf_out_surface<2>(file_root + ".disp_out",
                            disp_mesh, {disp_soln[0], disp_soln[1]});
     }
 }
