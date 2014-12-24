@@ -33,7 +33,6 @@ struct Element {
     int n_refines;
 };
 
-// TODO: Is rapidjson parallelizable?
 std::string load_file(std::string filename);
 rapidjson::Document parse_json(std::string json);
 std::vector<Element<2>> collect_elements(const rapidjson::Document& doc);

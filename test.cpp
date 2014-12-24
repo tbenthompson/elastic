@@ -70,6 +70,17 @@ TEST(Refinement) {
     }
 }
 
+TEST(MalformedElementException) {
+    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad2.in"))),
+                std::invalid_argument);
+    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad3.in"))),
+                std::invalid_argument);
+    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad4.in"))),
+                std::invalid_argument);
+    CHECK_THROW(collect_elements(parse_json(load_file("test_data/bad5.in"))),
+                std::invalid_argument);
+}
+
 int main() {
     return UnitTest::RunAllTests();
 }

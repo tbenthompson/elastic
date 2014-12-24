@@ -3,7 +3,7 @@ from fabricate import *
 test_sources = ['test', 'elastic']
 run_sources = ['elastic2d', 'elastic']
 
-cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
+cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
     '-I../3bem_stable',
     '-I../lib/unittest-cpp/src',
@@ -34,6 +34,7 @@ def compile():
         run('g++', '-c', source+'.cpp', cpp_flags)
 
 def link():
+    after()
     test_objs = [s+'.o' for s in test_sources]
     run('g++', '-o', 'test', test_objs, test_link_flags)
 
@@ -43,4 +44,4 @@ def link():
 def clean():
     autoclean()
 
-main()
+main(parallel_ok = True, jobs = 12)

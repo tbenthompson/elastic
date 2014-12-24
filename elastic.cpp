@@ -48,30 +48,61 @@ BCType parse_bc_type(std::string bc_type_str) {
     return bc_type;
 }
 
+Vec2<Vec2<double>> parse_tensor(const rapidjson::Value& e_json, 
+                                std::string field_name,
+                                std::string except_text) {
+    if (!e_json.HasMember(field_name.c_str())) {
+        throw std::invalid_argument(except_text);
+    }
+
+    const auto& V = e_json[field_name.c_str()];
+    if (!V.IsArray() || V.Capacity() != 2) {
+        throw std::invalid_argument(except_text);
+    }
+    for (int d0 = 0; d0 < 2; d0++) {
+        if (!V[d0].IsArray() || V[d0].Capacity() != 2) {
+            throw std::invalid_argument(except_text);
+        }
+        for (int d1 = 0; d1 < 2; d1++) {
+            if(!V[d0][d1].IsDouble()) {
+                throw std::invalid_argument(except_text);
+            }
+        }    
+    }
+
+    return {{
+        {V[0][0].GetDouble(), V[0][1].GetDouble()},
+        {V[1][0].GetDouble(), V[1][1].GetDouble()}
+    }};
+}
+
 std::vector<Element<2>> collect_elements(const rapidjson::Document& doc) {
     const auto& element_list = doc["elements"];
 
     std::vector<Element<2>> out;
 
-    for (std::size_t i = 0; i < element_list.Size(); i++) {
-        const auto& pts = element_list[i]["pts"];
-        //TODO: Better error handling for reading in file.
-        //TODO: How to check if entry exists in rapidjson?
-        const Vec2<Vec2<double>> corners = {{
-            {pts[0][0].GetDouble(), pts[0][1].GetDouble()},
-            {pts[1][0].GetDouble(), pts[1][1].GetDouble()}
-        }};
+    std::string except_text = "An element object must have a (dim x dim) \
+                'pts' and 'bc' array, a string 'bc_type' field, and an integer \
+                'refine' field.";
 
-        std::string bc_type_str = element_list[i]["bc_type"].GetString();
+    for (std::size_t i = 0; i < element_list.Size(); i++) {
+        auto& e_json = element_list[i];
+
+        auto corners = parse_tensor(e_json, "pts", except_text);
+
+        if (!e_json.HasMember("bc_type") || !e_json["bc_type"].IsString()) {
+            throw std::invalid_argument(except_text);
+        }
+        std::string bc_type_str = e_json["bc_type"].GetString();
         BCType bc_type = parse_bc_type(bc_type_str);
 
-        const auto& bc_element = element_list[i]["bc"];
-        Vec2<Vec2<double>> bc = {{
-            {bc_element[0][0].GetDouble(), bc_element[0][1].GetDouble()},
-            {bc_element[1][0].GetDouble(), bc_element[1][1].GetDouble()}
-        }};
+        auto bc = parse_tensor(e_json, "bc", except_text);
 
-        int n_refines = element_list[i]["refine"].GetInt();
+        if (!e_json.HasMember("refine") || !e_json["refine"].IsInt()) {
+            throw std::invalid_argument(except_text);
+        }
+
+        int n_refines = e_json["refine"].GetInt();
         Element<2> e{corners, bc_type, bc, n_refines};
         out.push_back(e);
     }
