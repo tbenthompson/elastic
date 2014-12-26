@@ -44,8 +44,6 @@ int main(int argc, char* argv[]) {
 
     // Remove continuity constraints at the intersection of the fault and the 
     // surface mesh.
-    // TODO: Here, the problem is more complex than in the past because I 
-    //       should allow the vertices not to match up.
     auto constraints = apply_discontinuities<2>(
         trac_mesh, slip_mesh, displacement_continuity
     );
@@ -65,8 +63,8 @@ int main(int argc, char* argv[]) {
     );
 
     // Gather the imposed boundary conditions
-    //TODO: This will be unnecessary when Vec2 can be passed into problem
-    // BEGIN UNNCESSARY
+    //
+    // BEGIN UNNCESSARY - This will be unnecessary when Vec2 can be passed into problem
     std::array<std::vector<double>,2> slip_bcs = {
         std::vector<double>(n_slip_dofs),   
         std::vector<double>(n_slip_dofs)
@@ -189,8 +187,6 @@ int main(int argc, char* argv[]) {
             Problem<2> p_trac_trac = {trac_mesh, trac_mesh, 
                                       ek.hypersingular_mat[k][j], {}};
             trac_trac_mats[k][j] = interact_matrix(p_trac_trac, qs);
-            // TODO: For situations like this, it would be useful to slightly
-            // encapsulate the std::vector storage mechanism
             for (std::size_t el = 0; el < trac_trac_mats[k][j].size(); el++) {
                 trac_trac_mats[k][j][el] = -trac_trac_mats[k][j][el];
             }
@@ -213,8 +209,6 @@ int main(int argc, char* argv[]) {
             Problem<2> p_disp_disp = {disp_mesh, disp_mesh, 
                                       ek.displacement_mat[k][j], {}};
             disp_disp_mats[k][j] = interact_matrix(p_disp_disp, qs);
-            // TODO: For situations like this, it would be useful to slightly
-            // encapsulate the std::vector storage mechanism
             for (std::size_t el = 0; el < disp_disp_mats[k][j].size(); el++) {
                 disp_disp_mats[k][j][el] = -disp_disp_mats[k][j][el];
             }
@@ -298,8 +292,6 @@ int main(int argc, char* argv[]) {
             }
         });
 
-    // TODO: Calculate the tractions on the slip_mesh.
-
     auto trac_begin = reduced_soln.begin();
     auto disp_begin = reduced_soln.begin() + 2 * n_reduced_trac_dofs;
     std::array<std::vector<double>,2> disp_soln;
@@ -317,7 +309,6 @@ int main(int argc, char* argv[]) {
         disp_soln[i] = constraints.get_all(reduced_disp, n_disp_dofs);
     }
 
-    //TODO: More output?
     std::string file_root = remove_extension(filename);
     if (trac_mesh.facets.size() > 0) {
         hdf_out_surface<2>(file_root + ".trac_out",
