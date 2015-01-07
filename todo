@@ -1,5 +1,6 @@
 ** HOW TO TEST THE ELASTIC SOLVER SYSTEMATICALLY?
 ** refactor the elastic solver
+-- generalize the matrix construction
 ** make another script to produce interior displacements
 ** more systematic python loading/viewing
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)

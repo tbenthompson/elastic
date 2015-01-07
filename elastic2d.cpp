@@ -4,6 +4,7 @@
 #include "3bem/bem.h"
 #include "3bem/petsc_interface.h"
 #include "3bem/util.h"
+#include "3bem/output.h"
 
 using namespace tbem;
 

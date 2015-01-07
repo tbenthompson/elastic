@@ -5,21 +5,21 @@ run_sources = ['elastic2d', 'elastic']
 
 cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
-    '-I../3bem_stable',
-    '-I../lib/unittest-cpp/src',
+    '-I./3bem_stable',
+    '-I../lib/unittest-cpp/UnitTest++',
     '-I../lib/rapidjson/include',
     '-fopenmp'
 ])
 
 link_flags = [
-    '-Wl,-rpath=../3bem_stable/build',
-    '-L../3bem_stable/build/',
+    '-Wl,-rpath=./3bem_stable/build',
+    '-L./3bem_stable/build/',
     '-l3bem',
     '-fopenmp'
 ]
 
 test_link_flags = link_flags + [
-    '-L../lib/unittest-cpp',
+    '-L../lib/unittest-cpp/builds',
     '-lUnitTest++'
 ]
 
