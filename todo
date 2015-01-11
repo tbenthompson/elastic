@@ -1,11 +1,9 @@
 ** HOW TO TEST THE ELASTIC SOLVER SYSTEMATICALLY?
-** refactor the elastic solver
--- generalize the matrix construction
+** come up with a more general way of specify the interactions terms?
 ** make another script to produce interior displacements
 ** more systematic python loading/viewing
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)
 ** load 3D problems
-** do the same kernel checking for 2d elastic as 3d elastic
 ** more output from elastic solver
 ** calculate the tractions on the slip_mesh.
 

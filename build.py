@@ -3,17 +3,19 @@ from fabricate import *
 test_sources = ['test', 'elastic']
 run_sources = ['elastic2d', 'elastic']
 
+tbem_loc = '../3bem_stable'
+
 cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
-    '-I./3bem_stable',
+    '-I' + tbem_loc,
     '-I../lib/unittest-cpp/UnitTest++',
     '-I../lib/rapidjson/include',
     '-fopenmp'
 ])
 
 link_flags = [
-    '-Wl,-rpath=./3bem_stable/build',
-    '-L./3bem_stable/build/',
+    '-Wl,-rpath=' + tbem_loc + '/build',
+    '-L' + tbem_loc + '/build/',
     '-l3bem',
     '-fopenmp'
 ]
