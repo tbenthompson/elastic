@@ -216,6 +216,26 @@ std::vector<double> concatenate(const std::vector<double>& A,
 }
 
 template <size_t dim>
+RHSVector<dim> extract_and_expand_fields(
+    const Solver<dim>& solver,
+    const std::vector<Vec<double,dim>> all_dofs,
+    int reduced_trac_dofs)
+{
+    int trac_dofs = solver.meshes_bcs.traction_mesh.n_dofs();
+    int disp_dofs = solver.meshes_bcs.displacement_mesh.n_dofs();
+
+    auto trac_begin = all_dofs.begin();
+    auto disp_begin = all_dofs.begin() + reduced_trac_dofs;
+    std::vector<Vec<double,dim>> reduced_trac(trac_begin, disp_begin);
+    std::vector<Vec<double,dim>> reduced_disp(trac_begin, all_dofs.end());
+
+    return {
+         solver.constraint_matrix.get_all(reduced_trac, trac_dofs),
+         solver.constraint_matrix.get_all(reduced_disp, disp_dofs)
+    };
+}
+
+template <size_t dim>
 std::vector<Vec<double,dim>> solve_bem_linear_system(const Solver<dim>& solver,
     const LHSMatrices<dim>& lhs, const RHSVector<dim>& rhs)
 {
@@ -234,18 +254,13 @@ std::vector<Vec<double,dim>> solve_bem_linear_system(const Solver<dim>& solver,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             count++;
             auto vec_x = reinterpret_vector<Vec<double,dim>>(x);
-            auto trac_begin = vec_x.begin();
-            auto disp_begin = vec_x.begin() + reduced_trac_dofs;
-            std::vector<Vec<double,dim>> reduced_trac(trac_begin, disp_begin);
-            std::vector<Vec<double,dim>> reduced_disp(disp_begin, vec_x.end());
-            auto all_trac = solver.constraint_matrix.get_all(reduced_trac, trac_dofs);
-            auto all_disp = solver.constraint_matrix.get_all(reduced_disp, disp_dofs);
+            auto fields = extract_and_expand_fields(solver, vec_x, reduced_trac_dofs);
 
             auto eval_trac_trac = bem_mat_mult(
-                lhs.trac_trac, solver.kernels.hypersingular, trac_dofs, all_trac
+                lhs.trac_trac, solver.kernels.hypersingular, trac_dofs, fields.trac
             );
             auto eval_disp_trac = bem_mat_mult(
-                lhs.disp_trac, solver.kernels.adjoint_traction, trac_dofs, all_disp
+                lhs.disp_trac, solver.kernels.adjoint_traction, trac_dofs, fields.disp
             );
             std::vector<Vec<double,dim>> eval_trac(trac_dofs);
             for (size_t i = 0; i < trac_dofs; i++) {
@@ -254,10 +269,10 @@ std::vector<Vec<double,dim>> solve_bem_linear_system(const Solver<dim>& solver,
             auto reduced_eval_trac = solver.constraint_matrix.get_reduced(eval_trac);
 
             auto eval_trac_disp = bem_mat_mult(
-                lhs.trac_disp, solver.kernels.traction, disp_dofs, all_trac
+                lhs.trac_disp, solver.kernels.traction, disp_dofs, fields.trac
             );
             auto eval_disp_disp = bem_mat_mult(
-                lhs.disp_disp, solver.kernels.displacement, disp_dofs, all_disp
+                lhs.disp_disp, solver.kernels.displacement, disp_dofs, fields.disp
             );
             std::vector<Vec<double,dim>> eval_disp(disp_dofs);
             for (size_t i = 0; i < disp_dofs; i++) {
@@ -277,34 +292,39 @@ std::vector<Vec<double,dim>> solve_bem_linear_system(const Solver<dim>& solver,
 }
 
 template <size_t dim>
-void output_solution(const Solver<dim>& solver,
-    const std::vector<Vec<double,dim>>& reduced_soln, 
-    int reduced_trac_dofs,
+Mesh<dim> merge_meshes(const Solver<dim>& solver) {
+    return Mesh<2>::form_union({
+        solver.meshes_bcs.displacement_mesh,
+        solver.meshes_bcs.traction_mesh
+    });
+}
+
+template <size_t dim>
+RHSVector<dim> merge_fields(const Solver<dim>& solver, const RHSVector<dim>& soln) {
+    auto combined_disp_field = Mesh<2>::form_union({
+        solver.meshes_bcs.displacement_bcs,
+        Mesh<2>{reinterpret_vector<Facet<2>>(soln.disp)}
+    });
+    auto combined_trac_field = Mesh<2>::form_union({
+        Mesh<2>{reinterpret_vector<Facet<2>>(soln.trac)},
+        solver.meshes_bcs.traction_bcs
+    });
+    return {
+        reinterpret_vector<Vec<double,dim>>(combined_trac_field.facets),
+        reinterpret_vector<Vec<double,dim>>(combined_disp_field.facets),
+    };
+}
+
+template <size_t dim>
+void output_solution(const Mesh<dim>& merged_mesh,
+    const RHSVector<dim>& soln, 
     const std::string& in_filename)
 {
-    int trac_dofs = solver.meshes_bcs.traction_mesh.n_dofs();
-    int disp_dofs = solver.meshes_bcs.displacement_mesh.n_dofs();
-
-    auto trac_begin = reduced_soln.begin();
-    auto disp_begin = reduced_soln.begin() + reduced_trac_dofs;
-    std::vector<Vec<double,dim>> reduced_trac(trac_begin, disp_begin);
-    std::vector<Vec<double,dim>> reduced_disp(disp_begin, reduced_soln.end());
-    auto all_trac_soln = solver.constraint_matrix.get_all(reduced_trac, trac_dofs);
-    auto all_disp_soln = solver.constraint_matrix.get_all(reduced_disp, disp_dofs);
-
     auto in_filename_root = remove_extension(in_filename);
     auto out_filename_trac = in_filename_root + ".trac_out";
     auto out_filename_disp = in_filename_root + ".disp_out";
-    if (trac_dofs > 0) {
-        auto file = HDFOutputter(in_filename_root + ".trac_out");
-        out_surface(file, solver.meshes_bcs.traction_mesh, all_trac_soln, dim);
-        std::cout << all_trac_soln.size() << std::endl;
-    }
-
-    if (disp_dofs > 0) {
-        auto file = HDFOutputter(in_filename_root + ".disp_out");
-        out_surface(file, solver.meshes_bcs.displacement_mesh, all_disp_soln, dim);
-    }
+    out_surface(HDFOutputter(out_filename_trac), merged_mesh, soln.trac, dim);
+    out_surface(HDFOutputter(out_filename_disp), merged_mesh, soln.disp, dim);
 }
 
 int main(int argc, char* argv[]) {
@@ -325,6 +345,9 @@ int main(int argc, char* argv[]) {
 
     auto rhs = compute_rhs(solver);
     auto lhs = compute_lhs_matrices(solver);
-    auto soln = solve_bem_linear_system(solver, lhs, rhs);
-    output_solution(solver, soln, rhs.trac.size(), filename);
+    auto reduced_soln = solve_bem_linear_system(solver, lhs, rhs);
+    auto soln = extract_and_expand_fields(solver, reduced_soln, rhs.trac.size());
+    auto merged_mesh = merge_meshes(solver);
+    auto merged_fields = merge_fields(solver, soln);
+    output_solution(merged_mesh, merged_fields, filename);
 }

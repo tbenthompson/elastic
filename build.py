@@ -3,7 +3,7 @@ from fabricate import *
 test_sources = ['test', 'elastic']
 run_sources = ['elastic2d', 'elastic']
 
-tbem_loc = '../3bem_stable'
+tbem_loc = '../3bem'
 
 cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
