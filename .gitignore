@@ -1,0 +1,9 @@
+.deps
+*.swp
+*.o
+*.pyc
+test
+run
+*.hdf5
+*disp_out
+*trac_out
