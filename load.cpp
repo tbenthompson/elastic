@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include "elastic.h"
+#include "load.h"
 #include "3bem/vec.h"
 
 using namespace tbem;
@@ -160,11 +160,3 @@ MeshesAndBCs<2> get_meshes_bcs(const rapidjson::Document& doc) {
     };
 }
 
-std::vector<double> linspace(const double& a, const double& b, size_t count)
-{
-    std::vector<double> out(count);
-    for (size_t i = 0; i < count; i++) {
-        out[i] = a + i * (b - a) / ((double)count - 1);
-    }
-    return out;
-}

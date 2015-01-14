@@ -33,6 +33,5 @@ std::string load_file(const std::string& filename);
 rapidjson::Document parse_json(const std::string& json);
 Parameters get_parameters(const rapidjson::Document& doc);
 MeshesAndBCs<2> get_meshes_bcs(const rapidjson::Document& doc);
-std::vector<double> linspace(const double& a, const double& b, size_t count);
 
 #endif

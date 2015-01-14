@@ -1,6 +1,6 @@
 #include "UnitTest++.h"
 #include <iostream>
-#include "elastic.h"
+#include "load.h"
 #include "3bem/util.h"
 
 using namespace tbem;
@@ -81,13 +81,6 @@ TEST(LoadParametersNotDefault) {
     CHECK_EQUAL(p.near_tol, 1e-4);
     CHECK_EQUAL(p.poisson_ratio, 0.28);
     CHECK_EQUAL(p.shear_modulus, 22e9);
-}
-
-TEST(Linspace) {
-    auto vals = linspace(0.0, 1.0, 10);
-    CHECK_EQUAL(vals.size(), 10);
-    CHECK_EQUAL(vals[0], 0.0);
-    CHECK_EQUAL(vals[9], 1.0);
 }
 
 int main() {
