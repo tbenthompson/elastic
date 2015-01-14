@@ -1,10 +1,11 @@
 from fabricate import *
 
 test_sources = ['test', 'elastic']
-run_sources = ['elastic2d', 'elastic']
+run_sources = ['elastic2d', 'load']
 
-tbem_loc = '../3bem'
+run_name = 'run'
 
+tbem_loc = '../3bem_stable'
 cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
     '-I' + tbem_loc,
@@ -41,9 +42,10 @@ def link():
     run('g++', '-o', 'test', test_objs, test_link_flags)
 
     run_objs = [s+'.o' for s in run_sources]
-    run('g++', '-o', 'elastic2d', run_objs, run_link_flags)
+    run('g++', '-o', run_name, run_objs, run_link_flags)
 
 def clean():
     autoclean()
 
-main(parallel_ok = True, jobs = 12)
+if __name__ == "__main__":
+    main(parallel_ok = True, jobs = 12)

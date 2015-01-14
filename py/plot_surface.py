@@ -33,6 +33,7 @@ def plot2d(facets, data, values_dim):
 
     x = vertices[:, 1]
     # easy_plot_x(vertices, data[:, values_dim])
+    print np.linalg.norm(data[:,0])
     quiver_plot(vertices, data)
 
     plt.show()

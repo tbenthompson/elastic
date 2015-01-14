@@ -6,7 +6,7 @@
 #include "3bem/vec.h"
 
 using namespace tbem;
-std::string load_file(std::string filename) {
+std::string load_file(const std::string& filename) {
     std::ifstream file;
     file.open(filename);
     if (!file.is_open()) {
@@ -22,7 +22,7 @@ std::string load_file(std::string filename) {
     return buffer.str();
 }
 
-rapidjson::Document parse_json(std::string json) {
+rapidjson::Document parse_json(const std::string& json) {
     rapidjson::Document doc;
     bool parse_error = doc.Parse(json.c_str()).HasParseError();
     if (parse_error) {
@@ -31,7 +31,7 @@ rapidjson::Document parse_json(std::string json) {
     return doc;
 }
 
-BCType parse_bc_type(std::string bc_type_str) {
+BCType parse_bc_type(const std::string& bc_type_str) {
     BCType bc_type = DISPLACEMENT;
     if (bc_type_str == "displacement") {
         bc_type = DISPLACEMENT;
@@ -42,8 +42,7 @@ BCType parse_bc_type(std::string bc_type_str) {
     } else if (bc_type_str == "crack") {
         bc_type = CRACK;
     } else {
-        throw std::invalid_argument("bc_type must be one of \
-                                     (displacement, traction, slip, crack)");
+        throw std::invalid_argument("bc_type must be one of (displacement, traction, slip, crack)");
     }
     return bc_type;
 }
@@ -71,11 +70,12 @@ Vec2<Vec2<double>> parse_tensor(const rapidjson::Value& e_json,
     }
 
     return {{
-        {V[0][0].GetDouble(), V[0][1].GetDouble()},
-        {V[1][0].GetDouble(), V[1][1].GetDouble()}
+        {{V[0][0].GetDouble(), V[0][1].GetDouble()}},
+        {{V[1][0].GetDouble(), V[1][1].GetDouble()}}
     }};
 }
 
+const Parameters default_params{2, 2, 6, 3.0, 1e-2, 0.25, 30e9};
 #define GETPARAM(TYPE, NAME) {\
     if (doc.HasMember(#NAME) && doc[#NAME].Is##TYPE()) {\
         out.NAME = doc[#NAME].Get##TYPE();\
@@ -105,9 +105,9 @@ std::vector<Element<2>> get_elements(const rapidjson::Document& doc) {
 
     std::vector<Element<2>> out;
 
-    std::string except_text = "An element object must have a (dim x dim) \
-                'pts' and 'bc' array, a string 'bc_type' field, and an integer \
-                'refine' field.";
+    std::string except_text = "An element object must have a (dim x dim) array of float";
+    except_text += "'pts' and 'bc' array, a string 'bc_type' field, and an integer ";
+    except_text += "'refine' field.";
 
     for (std::size_t i = 0; i < element_list.Size(); i++) {
         auto& e_json = element_list[i];
@@ -158,4 +158,13 @@ MeshesAndBCs<2> get_meshes_bcs(const rapidjson::Document& doc) {
         Mesh<2>::form_union(bc_lists[TRACTION]),
         Mesh<2>::form_union(bc_lists[SLIP])
     };
+}
+
+std::vector<double> linspace(const double& a, const double& b, size_t count)
+{
+    std::vector<double> out(count);
+    for (size_t i = 0; i < count; i++) {
+        out[i] = a + i * (b - a) / ((double)count - 1);
+    }
+    return out;
 }

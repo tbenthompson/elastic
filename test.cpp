@@ -83,10 +83,11 @@ TEST(LoadParametersNotDefault) {
     CHECK_EQUAL(p.shear_modulus, 22e9);
 }
 
-TEST(ABC) {
-    std::vector<double> abc{1.0, 2.0, 3.0};
-    std::vector<double> def(abc.end(), abc.end());
-    std::cout << def.size() << std::endl;
+TEST(Linspace) {
+    auto vals = linspace(0.0, 1.0, 10);
+    CHECK_EQUAL(vals.size(), 10);
+    CHECK_EQUAL(vals[0], 0.0);
+    CHECK_EQUAL(vals[9], 1.0);
 }
 
 int main() {
