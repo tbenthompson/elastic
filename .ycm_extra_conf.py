@@ -4,7 +4,7 @@ import ycm_core
 # These are the compilation flags that will be used in case there's no
 # compilation database set (by default, one is not set).
 # CHANGE THIS LIST OF FLAGS. YES, THIS IS THE DROID YOU HAVE BEEN LOOKING FOR.
-tbem_loc = '../3bem'
+tbem_loc = '../3bem_stable'
 flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 flags.extend([
     '-I' + tbem_loc,

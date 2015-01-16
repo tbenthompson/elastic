@@ -2,6 +2,7 @@
 #include <iostream>
 #include "load.h"
 #include "3bem/util.h"
+#include "3bem/vec_ops.h"
 
 using namespace tbem;
 
@@ -23,42 +24,49 @@ TEST(RapidJSONBigFile) {
     auto doc = parse_json(file);
     TOC("Parsing file");
     TIC2
-    auto meshes_bcs = get_meshes_bcs(doc);
-    int n_elements = meshes_bcs.traction_mesh.facets.size();
+    auto meshes = get_meshes(get_elements(doc));
+    int n_elements = meshes["traction"].facets.size();
     TOC("Meshing " + std::to_string(n_elements) + " elements");
 }
 
 TEST(BuildProblem) {
     auto doc = parse_json(load_file("data/one.in"));
-    auto meshes_bcs = get_meshes_bcs(doc);
-    CHECK_EQUAL(meshes_bcs.traction_mesh.facets.size(), 1);
-    CHECK_EQUAL(meshes_bcs.traction_mesh.facets[0].vertices[0],
+    auto meshes = get_meshes(get_elements(doc));
+    CHECK_EQUAL(meshes["traction"].facets.size(), 1);
+    CHECK_EQUAL(meshes["traction"].facets[0][0],
                 (Vec2<double>{-20.0, 0.0}));
-    CHECK_EQUAL(meshes_bcs.slip_mesh.facets.size(), 1);
-    CHECK_EQUAL(meshes_bcs.slip_mesh.facets[0].vertices[0],
+    CHECK_EQUAL(meshes["slip"].facets.size(), 1);
+    CHECK_EQUAL(meshes["slip"].facets[0][0],
                 (Vec2<double>{-2.0, -2.0}));
 }
 
 TEST(Refinement) {
     auto doc = parse_json(load_file("data/refine.in"));
-    auto meshes_bcs = get_meshes_bcs(doc);
-    CHECK_EQUAL(meshes_bcs.traction_mesh.facets.size(), 8);
+    auto meshes = get_meshes(get_elements(doc));
+    CHECK_EQUAL(meshes["traction"].facets.size(), 8);
     for (int i = 0; i < 8; i++) {
-        CHECK_EQUAL(meshes_bcs.traction_mesh.facets[i].vertices[0],
-                    (Vec2<double>{(double)i, -(double)i}));
-        CHECK_EQUAL(meshes_bcs.traction_bcs.facets[i].vertices[0],
+        CHECK_EQUAL(meshes["traction"].facets[i][0],
                     (Vec2<double>{(double)i, -(double)i}));
     }
 }
 
+TEST(BCRefinement) {
+    auto doc = parse_json(load_file("data/refine.in"));
+    auto bcs = get_bcs(get_elements(doc));
+    for (int i = 0; i < 8; i++) {
+        CHECK_EQUAL(bcs["traction"][0][2 * i], i);
+        CHECK_EQUAL(bcs["traction"][1][2 * i], -i);
+    }
+}
+
 TEST(MalformedElementException) {
-    CHECK_THROW(get_meshes_bcs(parse_json(load_file("data/bad2.in"))),
+    CHECK_THROW(get_elements(parse_json(load_file("data/bad2.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_meshes_bcs(parse_json(load_file("data/bad3.in"))),
+    CHECK_THROW(get_elements(parse_json(load_file("data/bad3.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_meshes_bcs(parse_json(load_file("data/bad4.in"))),
+    CHECK_THROW(get_elements(parse_json(load_file("data/bad4.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_meshes_bcs(parse_json(load_file("data/bad5.in"))),
+    CHECK_THROW(get_elements(parse_json(load_file("data/bad5.in"))),
                 std::invalid_argument);
 }
 

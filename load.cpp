@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include "load.h"
 #include "3bem/vec.h"
+#include "3bem/vertex_iterator.h"
 
 using namespace tbem;
 std::string load_file(const std::string& filename) {
@@ -29,22 +30,6 @@ rapidjson::Document parse_json(const std::string& json) {
         throw std::invalid_argument("There are json errors.");
     }
     return doc;
-}
-
-BCType parse_bc_type(const std::string& bc_type_str) {
-    BCType bc_type = DISPLACEMENT;
-    if (bc_type_str == "displacement") {
-        bc_type = DISPLACEMENT;
-    } else if (bc_type_str == "traction") {
-        bc_type = TRACTION;
-    } else if (bc_type_str == "slip") {
-        bc_type = SLIP;
-    } else if (bc_type_str == "crack") {
-        bc_type = CRACK;
-    } else {
-        throw std::invalid_argument("bc_type must be one of (displacement, traction, slip, crack)");
-    }
-    return bc_type;
 }
 
 Vec2<Vec2<double>> parse_tensor(const rapidjson::Value& e_json, 
@@ -92,14 +77,6 @@ Parameters get_parameters(const rapidjson::Document& doc) {
     return out;
 }
 
-template <size_t dim>
-struct Element {
-    tbem::Vec<tbem::Vec<double,dim>,dim> pts; 
-    BCType bc_type;
-    tbem::Vec<tbem::Vec<double,dim>,dim> bc;
-    int n_refines;
-};
-
 std::vector<Element<2>> get_elements(const rapidjson::Document& doc) {
     const auto& element_list = doc["elements"];
 
@@ -117,8 +94,7 @@ std::vector<Element<2>> get_elements(const rapidjson::Document& doc) {
         if (!e_json.HasMember("bc_type") || !e_json["bc_type"].IsString()) {
             throw std::invalid_argument(except_text);
         }
-        std::string bc_type_str = e_json["bc_type"].GetString();
-        BCType bc_type = parse_bc_type(bc_type_str);
+        std::string bc_type = e_json["bc_type"].GetString();
 
         auto bc = parse_tensor(e_json, "bc", except_text);
 
@@ -133,30 +109,51 @@ std::vector<Element<2>> get_elements(const rapidjson::Document& doc) {
     return out;
 }
 
-MeshesAndBCs<2> get_meshes_bcs(const rapidjson::Document& doc) {
-    auto elements = get_elements(doc);
-
-    //One facet list per BC type.
-    std::vector<Mesh<2>> facet_lists[4]; 
-    std::vector<Mesh<2>> bc_lists[4];
-
+template <size_t dim>
+MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
+    std::map<std::string,std::vector<Mesh<dim>>> facet_sets;
     for (auto e: elements) {
-        auto facet = Mesh<2>{{Facet<2>{e.pts}}};
+        auto facet = Mesh<dim>{{e.pts}};
         auto refined_facet = facet.refine_repeatedly(e.n_refines);
-        facet_lists[e.bc_type].push_back(refined_facet);
-
-        auto bc = Mesh<2>{{Facet<2>{e.bc}}};
-        auto refined_bc = bc.refine_repeatedly(e.n_refines);
-        bc_lists[e.bc_type].push_back(refined_bc);
+        facet_sets[e.bc_type].push_back(refined_facet);
     }
 
-    return {
-        Mesh<2>::form_union(facet_lists[DISPLACEMENT]),
-        Mesh<2>::form_union(facet_lists[TRACTION]),
-        Mesh<2>::form_union(facet_lists[SLIP]),
-        Mesh<2>::form_union(bc_lists[DISPLACEMENT]),
-        Mesh<2>::form_union(bc_lists[TRACTION]),
-        Mesh<2>::form_union(bc_lists[SLIP])
-    };
+    std::vector<std::pair<std::string,Mesh<dim>>> meshes;
+    for (auto it = facet_sets.begin(); it != facet_sets.end(); ++it) {
+        auto union_mesh = Mesh<dim>::create_union(it->second);
+        meshes.push_back(std::make_pair(it->first, union_mesh));
+    }
+
+    MeshSet<dim> out(meshes.begin(), meshes.end());
+    return out;
 }
 
+template 
+MeshSet<2> get_meshes(const std::vector<Element<2>>& elements);
+template 
+MeshSet<3> get_meshes(const std::vector<Element<3>>& elements);
+
+template <size_t dim>
+BCSet get_bcs(const std::vector<Element<dim>>& elements) {
+    BCSet bc_sets;
+    for (auto e: elements) {
+        auto bc = Mesh<dim>{{e.bc}};
+        // BCs need to be refined to match up with the refined mesh.
+        auto refined_bc = bc.refine_repeatedly(e.n_refines);
+        bc_sets[e.bc_type].resize(dim);
+        for (size_t d = 0; d < dim; d++) {
+            bc_sets[e.bc_type][d].resize(refined_bc.n_dofs());
+            for (auto it = refined_bc.begin(); it != refined_bc.end(); ++it) {
+                const auto& vertex_val = *it;
+                bc_sets[e.bc_type][d][it.absolute_index()] = vertex_val[d];
+            }
+        }
+    }
+
+    return bc_sets;
+}
+
+template 
+BCSet get_bcs<2>(const std::vector<Element<2>>& elements);
+template 
+BCSet get_bcs<3>(const std::vector<Element<3>>& elements);

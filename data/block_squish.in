@@ -1,5 +1,5 @@
 {
-    "shear_modulus": 1.0,
+    "shear_modulus": 30e9,
     "elements": [
         {
             "pts": [
