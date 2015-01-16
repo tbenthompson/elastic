@@ -16,7 +16,6 @@ TEST(SimpleLoadBad) {
 }
 
 TEST(RapidJSONBigFile) {
-    UNITTEST_TIME_CONSTRAINT(100);
     TIC
     auto file = load_file("data/reallybig.in");
     TOC("Loading file");

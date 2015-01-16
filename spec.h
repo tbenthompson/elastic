@@ -25,39 +25,23 @@ struct OperatorSpec
     const double multiplier;
 };
 
-// Operators for the displacement BIE
-OperatorSpec uut("displacement", "displacement", "traction", "displacement", 1);
-OperatorSpec utt("displacement", "traction", "traction", "displacement", 1);
-OperatorSpec ust("displacement", "slip", "traction", "slip", 1);
-OperatorSpec uuu("displacement", "displacement", "displacement", "traction", -1);
-OperatorSpec utu("displacement", "traction", "displacement", "traction", -1);
-
-// Operators for the traction BIE
-OperatorSpec tuh("traction", "displacement", "hypersingular", "displacement", 1);
-OperatorSpec tth("traction", "traction", "hypersingular", "displacement", 1);
-OperatorSpec tsh("traction", "slip", "hypersingular", "displacement", 1);
-OperatorSpec tua("traction", "displacement", "adjoint_traction", "traction", -1);
-OperatorSpec tta("traction", "traction", "adjoint_traction", "traction", -1);
-
 struct MassSpec {
     const std::string obs_mesh;
     const std::string function;
     const double multiplier;
 };
 
-struct IntegralEquation {
+// The convention will be that sum of the mass and the terms is equal to 0.
+struct IntegralEquationSpec {
     MassSpec mass;
     std::vector<OperatorSpec> terms;
 };
 
-IntegralEquation displacement_BIE{
-    {"displacement", "displacement", 1},
-    {uut, utt, ust, uuu, utu}
-};
+template <size_t dim>
+KernelSet<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 
-IntegralEquation traction_BIE{
-    {"traction", "traction", 1},
-    {tuh, tth, tsh, tua, tta}
-};
+IntegralEquationSpec get_displacement_BIE();
+
+IntegralEquationSpec get_traction_BIE();
 
 #endif

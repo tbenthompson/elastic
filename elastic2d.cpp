@@ -13,7 +13,6 @@ using namespace tbem;
 //     return filename.substr(0, last_dot); 
 // }
 // 
-// ConstraintMatrix form_constraint_matrix(const Mesh<2>& surface, const Mesh<2>& fault) 
 // {
 //     auto continuity = mesh_continuity(surface.begin());
 //     auto cut_continuity = cut_at_intersection(
