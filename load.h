@@ -32,11 +32,11 @@ struct Element {
 std::vector<Element<2>> get_elements(const rapidjson::Document& doc);
 
 template <size_t dim>
-using MeshSet = std::map<std::string,tbem::Mesh<dim>>;
+using MeshSet = std::map<std::string, tbem::Mesh<dim>>;
 
 typedef std::vector<std::vector<double>> BC;
 
-typedef std::map<std::string,BC> BCSet;
+typedef std::map<std::string, BC> BCSet;
 
 template <size_t dim>
 MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements);

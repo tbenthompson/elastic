@@ -7,3 +7,5 @@ run
 *.hdf5
 *disp_out
 *trac_out
+full_int_eqtns/*
+!full_int_eqtns/*.tex

@@ -1,16 +1,11 @@
-test a problem with just displacement BCS
-get_meshes + get_bcs, not get_meshes_bcs
-** potential problems:
--- scaling the rows of the linear system. why doesn't this work right?
--- constrain the ends of the unknown displacement field 
-** why is bem_mat_mult taking a constant amount of time independent of the
-inputs
-** HOW TO TEST THE ELASTIC SOLVER SYSTEMATICALLY?
-** come up with a more general way of specify the interactions terms?
-** make another script to produce interior displacements
+** test a problem with just displacement BCS and test a problem with just traction BCS
+-- this will confirm that they work independently. Then, I can combine!
+** scaling the rows of the linear system
+** constrain the ends of the unknown displacement field 
+** why is bem_mat_mult taking a constant amount of time independent of the inputs? strange.
 ** more systematic python loading/viewing
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)
 ** load 3D problems
-** more output from elastic solver
-** calculate the tractions on the slip_mesh.
+** calculate and output the tractions on the slip_mesh.
+** how to test the elastic solver systematically?
 

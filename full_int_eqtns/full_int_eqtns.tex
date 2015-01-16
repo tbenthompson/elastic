@@ -1,0 +1,90 @@
+%        File: full_int_eqtns.tex
+%     Created: Thu Jan 15 10:00 PM 2015 E
+% Last Change: Thu Jan 15 10:00 PM 2015 E
+%     Handy hints for vim-latex-suite: http://vim-latex.sourceforge.net/documentation/latex-suite/auc-tex-mappings.html
+%     Character list for math: http://www.artofproblemsolving.com/Wiki/index.php/LaTeX:Symbols
+%
+\documentclass[a4paper]{article}
+
+\usepackage[pdftex,pagebackref,letterpaper=true,colorlinks=true,pdfpagemode=none
+,urlcolor=blue,linkcolor=blue,citecolor=blue,pdfstartview=FitH]{hyperref}
+
+\usepackage{amsmath,amsfonts}
+\usepackage{graphicx}
+\usepackage{color}
+
+\setlength{\oddsidemargin}{0pt}
+\setlength{\evensidemargin}{0pt}
+\setlength{\textwidth}{6.0in}
+\setlength{\topmargin}{0in}
+\setlength{\textheight}{8.5in}
+
+\setlength{\parindent}{0in}
+\setlength{\parskip}{5px}
+
+\begin{document}
+\tiny
+Displacement BIE -- this is applied where displacements are known
+\begin{align}
+\begin{split}
+&\int_{S_u}\phi_i(x)u(x)dx +
+\int_{S_u}\phi_i(x)\int_{S_u}T^{*}(x,y)u(y)dydx + 
+\int_{S_u}\phi_i(x)\int_{S_t}T^{*}(x,y)u(y)dydx
+=\\
+&\int_{S_u}\phi_i(x)\int_{S_u}U^{*}(x,y)t(y)dydx + 
+\int_{S_u}\phi_i(x)\int_{S_t}U^{*}(x,y)t(y)dydx 
+-\int_{S_u}\phi_i(x)\int_{S_c}T^{*}(x,y)\Delta u(y)dydx
+\end{split}
+\end{align}
+\begin{align}
+\begin{split}
+&\int_{S_u}\phi_i(x) \Bigg[
+\\
+&+u(x)
++\int_{S_u}T^{*}(x,y)u(y)dy
++\int_{S_t}T^{*}(x,y)u(y)dy
+\\
+&+\int_{S_c}T^{*}(x,y)\Delta u(y)dy
+-\int_{S_u}U^{*}(x,y)t(y)dy
+-\int_{S_t}U^{*}(x,y)t(y)dy
+\\
+&=0\Bigg]dx
+\end{split}
+\end{align}
+
+
+Traction BIE -- this is applied where tractions are known
+\begin{align}
+\begin{split}
+&\int_{S_t}\phi_i(x)t(x)dx +
+\int_{S_t}\phi_i(x)\int_{S_u}W^{*}(x,y)u(y)dydx + 
+\int_{S_t}\phi_i(x)\int_{S_t}W^{*}(x,y)u(y)dydx 
+=\\
+&\int_{S_t}\phi_i(x)\int_{S_u}\hat{T}^{*}(x,y)t(y)dydx +
+\int_{S_t}\phi_i(x)\int_{S_t}\hat{T}^{*}(x,y)t(y)dydx - 
+\int_{S_t}\phi_i(x)\int_{S_c}W^{*}(x,y)\Delta u(y)dydx
+\end{split}
+\end{align}
+
+\begin{align}
+\begin{split}
+&\int_{S_t}\phi_i(x)\Bigg[
+\\
+&+t(x)
++\int_{S_t}W^{*}(x,y)u(y)dy 
++\int_{S_u}W^{*}(x,y)u(y)dy
+\\
+&+\int_{S_c}W^{*}(x,y)\Delta u(y)dy
+-\int_{S_t}\hat{T}^{*}(x,y)t(y)dy
+-\int_{S_u}\hat{T}^{*}(x,y)t(y)dy
+\\
+&=0\Bigg]dx
+\end{split}
+\end{align}
+
+If slip is known, no BIE needs to be solved. It's a forward problem. Use traction BIE to get tractions.
+
+If crack/fault traction is known, use the traction BIE.
+\end{document}
+
+
