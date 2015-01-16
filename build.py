@@ -1,7 +1,7 @@
 from fabricate import *
 
 test_sources = ['test_load', 'load', 'spec']
-run_sources = ['elastic2d', 'load', 'spec']
+run_sources = ['main', 'load', 'spec']
 
 run_name = 'run'
 

@@ -3,24 +3,32 @@
 
 template <size_t dim>
 KernelSet<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio) {
-    return {
-        {
-            "displacement",
-            tbem::ElasticDisplacement<dim>(shear_modulus, poisson_ratio)
-        },
-        {
-            "traction",
-            tbem::ElasticTraction<dim>(shear_modulus, poisson_ratio)
-        },
-        {
-            "adjoint_traction",
-            tbem::ElasticAdjointTraction<dim>(shear_modulus, poisson_ratio)
-        },
-        {
-            "hypersingular",
-            tbem::ElasticHypersingular<dim>(shear_modulus, poisson_ratio)
-        }
-    };
+    KernelSet<dim> out;
+    out.insert(std::make_pair(
+        "displacement",
+        KernelPtr<dim>(
+            new tbem::ElasticDisplacement<dim>(shear_modulus, poisson_ratio)
+        ))
+    );
+    out.insert(std::make_pair(
+        "traction",
+        KernelPtr<dim>(
+            new tbem::ElasticTraction<dim>(shear_modulus, poisson_ratio)
+        ))
+    );
+    out.insert(std::make_pair(
+        "adjoint_traction",
+        KernelPtr<dim>(
+            new tbem::ElasticAdjointTraction<dim>(shear_modulus, poisson_ratio)
+        ))
+    );
+    out.insert(std::make_pair(
+        "hypersingular",
+        KernelPtr<dim>(
+            new tbem::ElasticHypersingular<dim>(shear_modulus, poisson_ratio)
+        ))
+    );
+    return std::move(out);
 }
 
 template 
@@ -43,7 +51,7 @@ IntegralEquationSpec get_displacement_BIE() {
 IntegralEquationSpec get_traction_BIE() {
     OperatorSpec tuh{"traction", "displacement", "hypersingular", "displacement", 1};
     OperatorSpec tth{"traction", "traction", "hypersingular", "displacement", 1};
-    OperatorSpec tsh{"traction", "slip", "hypersingular", "displacement", 1};
+    OperatorSpec tsh{"traction", "slip", "hypersingular", "slip", 1};
     OperatorSpec tua{"traction", "displacement", "adjoint_traction", "traction", -1};
     OperatorSpec tta{"traction", "traction", "adjoint_traction", "traction", -1};
     return {

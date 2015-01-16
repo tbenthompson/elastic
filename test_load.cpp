@@ -4,7 +4,12 @@
 #include "3bem/util.h"
 #include "3bem/vec_ops.h"
 
+
 using namespace tbem;
+
+TEST(RemoveExtension) {
+    CHECK_EQUAL(remove_extension("abc.in"), "abc");
+}
 
 TEST(SimpleLoadGood) {
     auto doc = parse_json(load_file("data/good.in"));
@@ -23,14 +28,15 @@ TEST(RapidJSONBigFile) {
     auto doc = parse_json(file);
     TOC("Parsing file");
     TIC2
-    auto meshes = get_meshes(get_elements(doc));
+    auto meshes = get_meshes(get_elements<2>(doc));
     int n_elements = meshes["traction"].facets.size();
     TOC("Meshing " + std::to_string(n_elements) + " elements");
 }
 
-TEST(BuildProblem) {
+
+TEST(GetMeshes) {
     auto doc = parse_json(load_file("data/one.in"));
-    auto meshes = get_meshes(get_elements(doc));
+    auto meshes = get_meshes(get_elements<2>(doc));
     CHECK_EQUAL(meshes["traction"].facets.size(), 1);
     CHECK_EQUAL(meshes["traction"].facets[0][0],
                 (Vec2<double>{-20.0, 0.0}));
@@ -39,9 +45,17 @@ TEST(BuildProblem) {
                 (Vec2<double>{-2.0, -2.0}));
 }
 
+TEST(AllMeshesCreated) {
+    auto doc = parse_json(load_file("data/empty.in"));
+    auto meshes = get_meshes(get_elements<2>(doc));
+    for (const auto& name: mesh_types) {
+        CHECK(meshes.find(name) != meshes.end());
+    }
+}
+
 TEST(Refinement) {
     auto doc = parse_json(load_file("data/refine.in"));
-    auto meshes = get_meshes(get_elements(doc));
+    auto meshes = get_meshes(get_elements<2>(doc));
     CHECK_EQUAL(meshes["traction"].facets.size(), 8);
     for (int i = 0; i < 8; i++) {
         CHECK_EQUAL(meshes["traction"].facets[i][0],
@@ -51,21 +65,21 @@ TEST(Refinement) {
 
 TEST(BCRefinement) {
     auto doc = parse_json(load_file("data/refine.in"));
-    auto bcs = get_bcs(get_elements(doc));
+    auto bcs = get_bcs(get_elements<2>(doc));
     for (int i = 0; i < 8; i++) {
-        CHECK_EQUAL(bcs["traction"][0][2 * i], i);
-        CHECK_EQUAL(bcs["traction"][1][2 * i], -i);
+        CHECK_EQUAL(bcs[(FieldDescriptor{"traction", "traction"})][0][2 * i], i);
+        CHECK_EQUAL(bcs[(FieldDescriptor{"traction", "traction"})][1][2 * i], -i);
     }
 }
 
 TEST(MalformedElementException) {
-    CHECK_THROW(get_elements(parse_json(load_file("data/bad2.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad2.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements(parse_json(load_file("data/bad3.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad3.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements(parse_json(load_file("data/bad4.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad4.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements(parse_json(load_file("data/bad5.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad5.in"))),
                 std::invalid_argument);
 }
 
@@ -88,6 +102,12 @@ TEST(LoadParametersNotDefault) {
     CHECK_EQUAL(p.near_tol, 1e-4);
     CHECK_EQUAL(p.poisson_ratio, 0.28);
     CHECK_EQUAL(p.shear_modulus, 22e9);
+}
+
+TEST(Load3D) {
+    auto doc = parse_json(load_file("data/3d_test.in"));
+    auto meshes = get_meshes(get_elements<3>(doc));
+    CHECK_EQUAL(meshes["traction"].n_facets(), 64);
 }
 
 int main() {

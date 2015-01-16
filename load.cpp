@@ -7,6 +7,16 @@
 #include "3bem/vertex_iterator.h"
 
 using namespace tbem;
+
+std::string remove_extension(const std::string& filename) 
+{
+    size_t last_dot = filename.find_last_of(".");
+    if (last_dot == std::string::npos) {
+        return filename;
+    }
+    return filename.substr(0, last_dot); 
+}
+
 std::string load_file(const std::string& filename) {
     std::ifstream file;
     file.open(filename);
@@ -32,32 +42,33 @@ rapidjson::Document parse_json(const std::string& json) {
     return doc;
 }
 
-Vec2<Vec2<double>> parse_tensor(const rapidjson::Value& e_json, 
-                                std::string field_name,
-                                std::string except_text) {
+template <size_t dim>
+Vec<Vec<double,dim>,dim> parse_tensor(const rapidjson::Value& e_json, 
+    std::string field_name, std::string except_text) 
+{
     if (!e_json.HasMember(field_name.c_str())) {
         throw std::invalid_argument(except_text);
     }
 
     const auto& V = e_json[field_name.c_str()];
-    if (!V.IsArray() || V.Capacity() != 2) {
+    if (!V.IsArray() || V.Capacity() != dim) {
         throw std::invalid_argument(except_text);
     }
-    for (int d0 = 0; d0 < 2; d0++) {
-        if (!V[d0].IsArray() || V[d0].Capacity() != 2) {
+
+    Vec<Vec<double,dim>,dim> out;
+    for (int d0 = 0; d0 < dim; d0++) {
+        if (!V[d0].IsArray() || V[d0].Capacity() != dim) {
             throw std::invalid_argument(except_text);
         }
-        for (int d1 = 0; d1 < 2; d1++) {
+        for (int d1 = 0; d1 < dim; d1++) {
             if(!V[d0][d1].IsDouble()) {
                 throw std::invalid_argument(except_text);
             }
+            out[d0][d1] = V[d0][d1].GetDouble();
         }    
     }
-
-    return {{
-        {{V[0][0].GetDouble(), V[0][1].GetDouble()}},
-        {{V[1][0].GetDouble(), V[1][1].GetDouble()}}
-    }};
+    
+    return out;
 }
 
 const Parameters default_params{2, 2, 6, 3.0, 1e-2, 0.25, 30e9};
@@ -77,41 +88,44 @@ Parameters get_parameters(const rapidjson::Document& doc) {
     return out;
 }
 
-std::vector<Element<2>> get_elements(const rapidjson::Document& doc) {
+template <size_t dim>
+std::vector<Element<dim>> get_elements(const rapidjson::Document& doc) {
     const auto& element_list = doc["elements"];
 
-    std::vector<Element<2>> out;
+    std::vector<Element<dim>> out;
 
-    std::string except_text = "An element object must have a (dim x dim) array of float";
-    except_text += "'pts' and 'bc' array, a string 'bc_type' field, and an integer ";
-    except_text += "'refine' field.";
+    std::string except_text = "An element object must have a (dim x dim) array of float 'pts' and 'bc' array, a string 'bc_type' field, and an integer 'refine' field.";
 
     for (std::size_t i = 0; i < element_list.Size(); i++) {
         auto& e_json = element_list[i];
 
-        auto corners = parse_tensor(e_json, "pts", except_text);
+        auto corners = parse_tensor<dim>(e_json, "pts", except_text);
 
         if (!e_json.HasMember("bc_type") || !e_json["bc_type"].IsString()) {
             throw std::invalid_argument(except_text);
         }
         std::string bc_type = e_json["bc_type"].GetString();
 
-        auto bc = parse_tensor(e_json, "bc", except_text);
+        auto bc = parse_tensor<dim>(e_json, "bc", except_text);
 
         if (!e_json.HasMember("refine") || !e_json["refine"].IsInt()) {
             throw std::invalid_argument(except_text);
         }
 
         int n_refines = e_json["refine"].GetInt();
-        Element<2> e{corners, bc_type, bc, n_refines};
-        out.push_back(e);
+        out.push_back({corners, bc_type, bc, n_refines});
     }
     return out;
 }
 
+template 
+std::vector<Element<2>> get_elements(const rapidjson::Document& doc);
+template 
+std::vector<Element<3>> get_elements(const rapidjson::Document& doc);
+
 template <size_t dim>
 MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
-    std::map<std::string,std::vector<Mesh<dim>>> facet_sets;
+    std::unordered_map<std::string,std::vector<Mesh<dim>>> facet_sets;
     for (auto e: elements) {
         auto facet = Mesh<dim>{{e.pts}};
         auto refined_facet = facet.refine_repeatedly(e.n_refines);
@@ -125,6 +139,11 @@ MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
     }
 
     MeshSet<dim> out(meshes.begin(), meshes.end());
+
+    for (const auto& type: mesh_types) {
+        (void)out[type];
+    }
+
     return out;
 }
 
@@ -140,12 +159,13 @@ BCSet get_bcs(const std::vector<Element<dim>>& elements) {
         auto bc = Mesh<dim>{{e.bc}};
         // BCs need to be refined to match up with the refined mesh.
         auto refined_bc = bc.refine_repeatedly(e.n_refines);
-        bc_sets[e.bc_type].resize(dim);
+        FieldDescriptor key{e.bc_type, e.bc_type};
+        bc_sets[key].resize(dim);
         for (size_t d = 0; d < dim; d++) {
-            bc_sets[e.bc_type][d].resize(refined_bc.n_dofs());
+            bc_sets[key][d].resize(refined_bc.n_dofs());
             for (auto it = refined_bc.begin(); it != refined_bc.end(); ++it) {
                 const auto& vertex_val = *it;
-                bc_sets[e.bc_type][d][it.absolute_index()] = vertex_val[d];
+                bc_sets[key][d][it.absolute_index()] = vertex_val[d];
             }
         }
     }
