@@ -1,7 +1,7 @@
 from fabricate import *
 
-test_sources = ['test_load', 'load', 'spec']
-run_sources = ['main', 'load', 'spec']
+test_sources = ['test_compute', 'test_function', 'test_load', 'load', 'spec', 'compute']
+run_sources = ['main', 'load', 'spec', 'compute']
 
 run_name = 'run'
 

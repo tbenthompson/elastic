@@ -34,13 +34,8 @@ struct Element {
 template <size_t dim>
 std::vector<Element<dim>> get_elements(const rapidjson::Document& doc);
 
-const std::string mesh_types[3] = {
-    "traction", "displacement", "slip"
-};
 template <size_t dim>
-using MeshSet = std::map<std::string, tbem::Mesh<dim>>;
-
-typedef std::vector<std::vector<double>> BC;
+using MeshMap = std::map<std::string, tbem::Mesh<dim>>;
 
 struct FieldDescriptor 
 {
@@ -60,13 +55,14 @@ struct FieldDescriptor
     }
 };
 
-typedef std::map<FieldDescriptor, BC> BCSet;
+typedef std::vector<std::vector<double>> Function;
+typedef std::map<FieldDescriptor,Function> BCMap;
 
 template <size_t dim>
-MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements);
+MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements);
 
 template <size_t dim>
-BCSet get_bcs(const std::vector<Element<dim>>& elements);
+BCMap get_bcs(const std::vector<Element<dim>>& elements);
 
 
 #endif

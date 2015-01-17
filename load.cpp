@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include "load.h"
+#include "spec.h"
 #include "3bem/vec.h"
 #include "3bem/vertex_iterator.h"
 
@@ -124,7 +125,7 @@ template
 std::vector<Element<3>> get_elements(const rapidjson::Document& doc);
 
 template <size_t dim>
-MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
+MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements) {
     std::unordered_map<std::string,std::vector<Mesh<dim>>> facet_sets;
     for (auto e: elements) {
         auto facet = Mesh<dim>{{e.pts}};
@@ -138,9 +139,9 @@ MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
         meshes.push_back(std::make_pair(it->first, union_mesh));
     }
 
-    MeshSet<dim> out(meshes.begin(), meshes.end());
+    MeshMap<dim> out(meshes.begin(), meshes.end());
 
-    for (const auto& type: mesh_types) {
+    for (const auto& type: get_mesh_types()) {
         (void)out[type];
     }
 
@@ -148,13 +149,13 @@ MeshSet<dim> get_meshes(const std::vector<Element<dim>>& elements) {
 }
 
 template 
-MeshSet<2> get_meshes(const std::vector<Element<2>>& elements);
+MeshMap<2> get_meshes(const std::vector<Element<2>>& elements);
 template 
-MeshSet<3> get_meshes(const std::vector<Element<3>>& elements);
+MeshMap<3> get_meshes(const std::vector<Element<3>>& elements);
 
 template <size_t dim>
-BCSet get_bcs(const std::vector<Element<dim>>& elements) {
-    BCSet bc_sets;
+BCMap get_bcs(const std::vector<Element<dim>>& elements) {
+    BCMap bc_sets;
     for (auto e: elements) {
         auto bc = Mesh<dim>{{e.bc}};
         // BCs need to be refined to match up with the refined mesh.
@@ -174,6 +175,6 @@ BCSet get_bcs(const std::vector<Element<dim>>& elements) {
 }
 
 template 
-BCSet get_bcs<2>(const std::vector<Element<2>>& elements);
+BCMap get_bcs<2>(const std::vector<Element<2>>& elements);
 template 
-BCSet get_bcs<3>(const std::vector<Element<3>>& elements);
+BCMap get_bcs<3>(const std::vector<Element<3>>& elements);

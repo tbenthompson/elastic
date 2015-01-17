@@ -16,12 +16,12 @@ using KernelPtr =
     >>;
 
 template <size_t dim>
-using KernelSet = std::map<std::string, KernelPtr<dim>>;
+using KernelMap = std::map<std::string, KernelPtr<dim>>;
 
 template <size_t dim>
-KernelSet<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio);
+KernelMap<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 
-struct OperatorSpec 
+struct IntegralSpec 
 {
     const std::string obs_mesh;
     const std::string src_mesh;
@@ -29,8 +29,8 @@ struct OperatorSpec
     const std::string function;
     const double multiplier;
 
-    friend std::ostream& operator<<(std::ostream& os, const OperatorSpec& spec) {
-        os << "(" << spec.obs_mesh << ", " << spec.src_mesh << ", " <<
+    friend std::ostream& operator<<(std::ostream& os, const IntegralSpec& spec) {
+        os << "IntegralSpec(" << spec.obs_mesh << ", " << spec.src_mesh << ", " <<
             spec.kernel << ", " << spec.function << ", " <<  spec.multiplier << ")";
         return os;
     }
@@ -45,11 +45,13 @@ struct MassSpec {
 // The convention will be that sum of the mass and the terms is equal to 0.
 struct IntegralEquationSpec {
     MassSpec mass;
-    std::vector<OperatorSpec> terms;
+    std::vector<IntegralSpec> terms;
 };
 
 IntegralEquationSpec get_displacement_BIE();
 
 IntegralEquationSpec get_traction_BIE();
+
+std::vector<std::string> get_mesh_types();
 
 #endif

@@ -2,8 +2,8 @@
 #include "3bem/elastic_kernels.h"
 
 template <size_t dim>
-KernelSet<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio) {
-    KernelSet<dim> out;
+KernelMap<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio) {
+    KernelMap<dim> out;
     out.insert(std::make_pair(
         "displacement",
         KernelPtr<dim>(
@@ -32,16 +32,16 @@ KernelSet<dim> get_elastic_kernels(double shear_modulus, double poisson_ratio) {
 }
 
 template 
-KernelSet<2> get_elastic_kernels(double shear_modulus, double poisson_ratio);
+KernelMap<2> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 template 
-KernelSet<3> get_elastic_kernels(double shear_modulus, double poisson_ratio);
+KernelMap<3> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 
 IntegralEquationSpec get_displacement_BIE() {
-    OperatorSpec uut{"displacement", "displacement", "traction", "displacement", 1};
-    OperatorSpec utt{"displacement", "traction", "traction", "displacement", 1};
-    OperatorSpec ust{"displacement", "slip", "traction", "slip", 1};
-    OperatorSpec uuu{"displacement", "displacement", "displacement", "traction", -1};
-    OperatorSpec utu{"displacement", "traction", "displacement", "traction", -1};
+    IntegralSpec uut{"displacement", "displacement", "traction", "displacement", 1};
+    IntegralSpec utt{"displacement", "traction", "traction", "displacement", 1};
+    IntegralSpec ust{"displacement", "slip", "traction", "slip", 1};
+    IntegralSpec uuu{"displacement", "displacement", "displacement", "traction", -1};
+    IntegralSpec utu{"displacement", "traction", "displacement", "traction", -1};
     return {
         {"displacement", "displacement", 1},
         {uut, utt, ust, uuu, utu}
@@ -49,13 +49,19 @@ IntegralEquationSpec get_displacement_BIE() {
 }
 
 IntegralEquationSpec get_traction_BIE() {
-    OperatorSpec tuh{"traction", "displacement", "hypersingular", "displacement", 1};
-    OperatorSpec tth{"traction", "traction", "hypersingular", "displacement", 1};
-    OperatorSpec tsh{"traction", "slip", "hypersingular", "slip", 1};
-    OperatorSpec tua{"traction", "displacement", "adjoint_traction", "traction", -1};
-    OperatorSpec tta{"traction", "traction", "adjoint_traction", "traction", -1};
+    IntegralSpec tuh{"traction", "displacement", "hypersingular", "displacement", 1};
+    IntegralSpec tth{"traction", "traction", "hypersingular", "displacement", 1};
+    IntegralSpec tsh{"traction", "slip", "hypersingular", "slip", 1};
+    IntegralSpec tua{"traction", "displacement", "adjoint_traction", "traction", -1};
+    IntegralSpec tta{"traction", "traction", "adjoint_traction", "traction", -1};
     return {
         {"traction", "traction", 1},
         {tuh, tth, tsh, tua, tta}
+    };
+}
+
+std::vector<std::string> get_mesh_types() {
+    return {
+        "traction", "displacement", "slip"
     };
 }

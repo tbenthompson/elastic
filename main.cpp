@@ -1,81 +1,8 @@
 #include "spec.h"
 #include "load.h"
-#include "3bem/3bem.h"
+#include "compute.h"
 
 using namespace tbem;
-
-template <size_t dim>
-ConstraintMatrix form_unknown_displacement_constraints(const MeshSet<dim>& meshes) 
-{
-    auto continuity = mesh_continuity(meshes.at("traction").begin());
-    auto cut_continuity = cut_at_intersection(
-        continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
-    );
-    auto constraints = convert_to_constraints(cut_continuity);
-    auto constraint_matrix = ConstraintMatrix::from_constraints(constraints);
-    return constraint_matrix;
-}
-
-template <size_t dim>
-QuadStrategy<dim> form_quad_strategy(const Parameters& params) {
-    return QuadStrategy<dim>(
-        params.obs_quad_order,
-        params.src_far_quad_order,
-        params.n_singular_steps,
-        params.far_threshold,
-        params.near_tol
-    );
-}
-
-template <size_t dim>
-struct BEMInput {
-    const Parameters params; 
-    const MeshSet<dim> meshes;
-    const BCSet bcs;
-    const KernelSet<dim> kernels;
-    const QuadStrategy<dim> quad_strategy;
-    const ConstraintMatrix unknown_displacement_constraints;
-
-    BEMInput(const Parameters& params, const MeshSet<dim>& meshes, const BCSet& bcs):
-        params(params),
-        meshes(meshes),
-        bcs(bcs),
-        kernels(get_elastic_kernels<dim>(params.shear_modulus, params.poisson_ratio)),
-        quad_strategy(form_quad_strategy<dim>(params)),
-        unknown_displacement_constraints(form_unknown_displacement_constraints(meshes))
-    {}
-};
-
-template <size_t dim>
-BEMInput<dim> parse_into_bem_input(const std::string& filename)
-{
-    auto doc = parse_json(load_file(filename));
-    auto params = get_parameters(doc);
-    auto elements = get_elements<dim>(doc);
-    auto meshes = get_meshes(elements);
-    auto bcs = get_bcs(elements);
-
-    // Setup the kernels that are necessary.
-    return BEMInput<dim>(params, meshes, bcs);
-}
-
-template <size_t dim>
-void compute_operator(const BEMInput<dim>& bem_input, const OperatorSpec& op_spec) {
-    assert(bem_input.meshes.count(op_spec.obs_mesh) > 0);
-    assert(bem_input.meshes.count(op_spec.src_mesh) > 0);
-    assert(bem_input.kernels.count(op_spec.kernel) > 0);
-
-    const auto& obs_mesh = bem_input.meshes.at(op_spec.obs_mesh);  
-    const auto& src_mesh = bem_input.meshes.at(op_spec.src_mesh);
-    const auto& kernel = bem_input.kernels.at(op_spec.kernel);
-
-    auto problem = make_problem(src_mesh, obs_mesh, *kernel);
-    auto op = mesh_to_mesh_operator(problem, bem_input.quad_strategy);
-
-    std::cout << op_spec << std::endl;
-    std::cout << op.rows << std::endl;
-    std::cout << op.cols << std::endl;
-}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -84,13 +11,80 @@ int main(int argc, char* argv[]) {
     }
     
     auto filename = argv[1];
-    auto bem_input = parse_into_bem_input<2>(filename);
-    auto displacement_BIE = get_displacement_BIE();
-    for (const auto& term: displacement_BIE.terms) {
-        compute_operator(bem_input, term);
-    }
-    auto traction_BIE = get_traction_BIE();
-    for (const auto& term: traction_BIE.terms) {
-        compute_operator(bem_input, term);
-    }
+    auto bem_input = parse_into_bem<2>(filename);
+
+    auto disp_BIE_ops = bem_input.compute_integral_equation(get_displacement_BIE());
+    auto trac_BIE_ops = bem_input.compute_integral_equation(get_traction_BIE());
+    std::cout << "Initial ops" << std::endl;
+    std::cout << disp_BIE_ops.terms.size() << std::endl;
+    std::cout << trac_BIE_ops.terms.size() << std::endl;
+
+    auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
+    auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
+    std::cout << "after rhs eval ops" << std::endl;
+    std::cout << disp_system.lhs.size() << std::endl;
+    std::cout << trac_system.lhs.size() << std::endl;
+
+    // //prep:
+    // scale rows
+    auto disp_scaled_system = scale_rows(disp_system);
+    auto trac_scaled_system = scale_rows(trac_system);
+
+    //reduce using constraints
+    //stack rows
+    const auto& disp_constraints = bem_input.displacement_constraints;
+    auto stacked_rhs = concatenate({
+        disp_constraints.get_reduced(disp_scaled_system.rhs[0]),
+        disp_constraints.get_reduced(disp_scaled_system.rhs[1]),
+        trac_scaled_system.rhs[0],
+        trac_scaled_system.rhs[1]
+    });
+
+
+    //solve:
+    int count = 0;
+    auto reduced_soln = solve_system(stacked_rhs.data, 1e-5,
+        [&] (std::vector<double>& x, std::vector<double>& y) {
+            std::cout << "iteration " << count << std::endl;
+            count++;
+
+            //unstack_rows
+            auto unstacked_rhs = expand(stacked_rhs, x);
+
+            //expand using constraints
+            int n_disp_dofs = disp_scaled_system.rhs[0].size();
+            Function unknown_disp = {
+                disp_constraints.get_all(unstacked_rhs[0], n_disp_dofs),
+                disp_constraints.get_all(unstacked_rhs[1], n_disp_dofs)
+            };
+            Function unknown_trac = {
+                unstacked_rhs[2],
+                unstacked_rhs[3],
+            };
+
+            //apply operators
+            //TODO: better name than BCMap, FunctionMap?
+            BCMap unknowns; 
+            unknowns[FieldDescriptor{"traction", "displacement"}] = unknown_disp;
+            unknowns[FieldDescriptor{"displacement", "traction"}] = unknown_trac;
+
+            std::cout << "Inside solution." << std::endl;
+            auto disp_eval = separate(ComputedIntegralEquation{disp_scaled_system.lhs}, unknowns);
+            std::cout << disp_eval.lhs.size() << std::endl;
+            // assert(disp_eval.lhs.size() == 0);
+            auto trac_eval = separate(ComputedIntegralEquation{trac_scaled_system.lhs}, unknowns);
+            std::cout << trac_eval.lhs.size() << std::endl;
+            assert(trac_eval.lhs.size() == 0);
+            //reduce using constraints
+            //stack rows
+        }
+    );
+    
+    //handle soln:
+    //unstack rows
+    //expand using constraints
+
+    //output
+
+    //interior eval
 }

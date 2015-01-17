@@ -1,6 +1,7 @@
 #include "UnitTest++.h"
 #include <iostream>
 #include "load.h"
+#include "spec.h"
 #include "3bem/util.h"
 #include "3bem/vec_ops.h"
 
@@ -48,7 +49,7 @@ TEST(GetMeshes) {
 TEST(AllMeshesCreated) {
     auto doc = parse_json(load_file("data/empty.in"));
     auto meshes = get_meshes(get_elements<2>(doc));
-    for (const auto& name: mesh_types) {
+    for (const auto& name: get_mesh_types()) {
         CHECK(meshes.find(name) != meshes.end());
     }
 }
