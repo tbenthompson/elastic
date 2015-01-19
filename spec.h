@@ -53,5 +53,6 @@ IntegralEquationSpec get_displacement_BIE();
 IntegralEquationSpec get_traction_BIE();
 
 std::vector<std::string> get_mesh_types();
+std::vector<std::string> get_bc_types();
 
 #endif

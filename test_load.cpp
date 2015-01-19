@@ -54,6 +54,14 @@ TEST(AllMeshesCreated) {
     }
 }
 
+TEST(AllBCs) {
+    auto doc = parse_json(load_file("data/empty.in"));
+    auto bcs = get_bcs(get_elements<2>(doc));
+    for (const auto& name: get_bc_types()) {
+        CHECK(bcs.find(FieldDescriptor{name,name}) != bcs.end());
+    }
+}
+
 TEST(Refinement) {
     auto doc = parse_json(load_file("data/refine.in"));
     auto meshes = get_meshes(get_elements<2>(doc));
@@ -88,11 +96,13 @@ TEST(LoadParametersDefault) {
     auto doc = parse_json(load_file("data/one.in"));
     auto p = get_parameters(doc);
     // All should be defaults.
-    CHECK_EQUAL(p.obs_quad_order, 2); CHECK_EQUAL(p.src_far_quad_order, 2);
-    CHECK_EQUAL(p.n_singular_steps, 6); CHECK_EQUAL(p.far_threshold, 3.0);
-    CHECK_EQUAL(p.near_tol, 1e-2);
-    CHECK_EQUAL(p.poisson_ratio, 0.25);
-    CHECK_EQUAL(p.shear_modulus, 30e9);
+    CHECK_EQUAL(p.obs_quad_order, default_params.obs_quad_order);
+    CHECK_EQUAL(p.src_far_quad_order, default_params.src_far_quad_order);
+    CHECK_EQUAL(p.n_singular_steps, default_params.n_singular_steps);
+    CHECK_EQUAL(p.far_threshold, default_params.far_threshold);
+    CHECK_EQUAL(p.near_tol, default_params.near_tol);
+    CHECK_EQUAL(p.poisson_ratio, default_params.poisson_ratio);
+    CHECK_EQUAL(p.shear_modulus, default_params.shear_modulus);
 }
 
 TEST(LoadParametersNotDefault) {

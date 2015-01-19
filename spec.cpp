@@ -65,3 +65,8 @@ std::vector<std::string> get_mesh_types() {
         "traction", "displacement", "slip"
     };
 }
+
+
+std::vector<std::string> get_bc_types() {
+    return get_mesh_types();
+}

@@ -2,56 +2,6 @@
 
 using namespace tbem;
 
-template <size_t dim>
-BEM<dim> parse_into_bem(const std::string& filename)
-{
-    auto doc = parse_json(load_file(filename));
-    auto params = get_parameters(doc);
-    auto elements = get_elements<dim>(doc);
-    auto meshes = get_meshes(elements);
-    auto bcs = get_bcs(elements);
-
-    // Setup the kernels that are necessary.
-    return BEM<dim>(params, meshes, bcs);
-}
-
-template 
-BEM<2> parse_into_bem(const std::string& filename);
-template 
-BEM<3> parse_into_bem(const std::string& filename);
-
-template <size_t dim>
-BEM<dim>::BEM(const Parameters& params,
-        const MeshMap<dim>& meshes, const BCMap& bcs):
-    meshes(meshes),
-    bcs(bcs),
-    kernels(get_elastic_kernels<dim>(params.shear_modulus, params.poisson_ratio)),
-    quad_strategy(form_quad_strategy(params)),
-    displacement_constraints(form_displacement_constraints(meshes))
-{}
-
-template <size_t dim>
-ConstraintMatrix BEM<dim>::form_displacement_constraints(const MeshMap<dim>& meshes) 
-{
-    auto continuity = mesh_continuity(meshes.at("traction").begin());
-    auto cut_continuity = cut_at_intersection(
-        continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
-    );
-    auto constraints = convert_to_constraints(cut_continuity);
-    auto constraint_matrix = ConstraintMatrix::from_constraints(constraints);
-    return constraint_matrix;
-}
-
-template <size_t dim>
-QuadStrategy<dim> BEM<dim>::form_quad_strategy(const Parameters& params) {
-    return QuadStrategy<dim>(
-        params.obs_quad_order,
-        params.src_far_quad_order,
-        params.n_singular_steps,
-        params.far_threshold,
-        params.near_tol
-    );
-}
 
 MatrixOperator operator*(const MatrixOperator& op, double s) {
     std::vector<std::vector<double>> out_data(op.data.size(),
@@ -65,32 +15,31 @@ MatrixOperator operator*(const MatrixOperator& op, double s) {
 }
 
 template <size_t dim>
-ComputedOperator 
-BEM<dim>::compute_integral(const IntegralSpec& op_spec) {
-    assert(meshes.count(op_spec.obs_mesh) > 0);
-    assert(meshes.count(op_spec.src_mesh) > 0);
-    assert(kernels.count(op_spec.kernel) > 0);
+ComputedOperator compute_integral(const BEM<dim>& bem, const IntegralSpec& op_spec)
+{
+    assert(bem.meshes.count(op_spec.obs_mesh) > 0);
+    assert(bem.meshes.count(op_spec.src_mesh) > 0);
+    assert(bem.kernels.count(op_spec.kernel) > 0);
 
-    const auto& obs_mesh = meshes.at(op_spec.obs_mesh);  
-    const auto& src_mesh = meshes.at(op_spec.src_mesh);
-    const auto& kernel = kernels.at(op_spec.kernel);
+    const auto& obs_mesh = bem.meshes.at(op_spec.obs_mesh);  
+    const auto& src_mesh = bem.meshes.at(op_spec.src_mesh);
+    const auto& kernel = bem.kernels.at(op_spec.kernel);
 
     auto problem = make_problem(src_mesh, obs_mesh, *kernel);
-    auto op = mesh_to_mesh_operator(problem, quad_strategy);
+    auto op = mesh_to_mesh_operator(problem, bem.quad_strategy);
 
     return {op * op_spec.multiplier, op_spec.src_mesh, op_spec.function};
 }
 
 template <size_t dim>
-ComputedOperator
-BEM<dim>::compute_mass(const MassSpec& op_spec) {
-    assert(meshes.count(op_spec.obs_mesh) > 0);
+ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
+    assert(bem.meshes.count(op_spec.obs_mesh) > 0);
 
-    const auto& obs_mesh = meshes.at(op_spec.obs_mesh);  
+    const auto& obs_mesh = bem.meshes.at(op_spec.obs_mesh);  
 
     IdentityTensor<dim,dim,dim> identity;
     auto problem = make_problem(obs_mesh, obs_mesh, identity);
-    auto mass_op = mass_operator(problem, quad_strategy);
+    auto mass_op = mass_operator(problem, bem.quad_strategy);
 
     return {mass_op * op_spec.multiplier, op_spec.obs_mesh, op_spec.function};
 }
@@ -98,16 +47,23 @@ BEM<dim>::compute_mass(const MassSpec& op_spec) {
 
 template <size_t dim>
 ComputedIntegralEquation
-BEM<dim>::compute_integral_equation(const IntegralEquationSpec& eqtn_spec) 
+compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_spec)
 {
     std::vector<ComputedOperator> integrals;
     for (const auto& term: eqtn_spec.terms) {
-        integrals.push_back(compute_integral(term));
+        integrals.push_back(compute_integral(bem, term));
     }
-    integrals.push_back(compute_mass(eqtn_spec.mass));
+    integrals.push_back(compute_mass(bem, eqtn_spec.mass));
 
     return {integrals};
 }
+
+template 
+ComputedIntegralEquation
+compute_integral_equation(const BEM<2>& bem, const IntegralEquationSpec& eqtn_spec);
+template 
+ComputedIntegralEquation
+compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec& eqtn_spec);
 
 LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
     size_t components = eqtn.terms[0].op.n_comp_rows;
@@ -123,8 +79,8 @@ LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
         } else 
         {
             const auto& bc = it->second;
+
             //negate because the term is shifted to the other side of the equation.
-            std::cout << term.src_mesh << term.function << std::endl;
             rhs -= apply_operator(term.op, bc);
         }
     }
@@ -164,6 +120,3 @@ LinearSystem scale_rows(const LinearSystem& eqtn)
         constant_function(eqtn.rhs.size(), eqtn.rhs[0].size(), 1.0)
     };
 }
-
-template struct BEM<2>;
-template struct BEM<3>;

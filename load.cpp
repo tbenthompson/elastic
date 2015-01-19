@@ -29,6 +29,7 @@ std::string load_file(const std::string& filename) {
     // Read the file into a string
     std::stringstream buffer;
     buffer << file.rdbuf();
+
     file.close();
 
     return buffer.str();
@@ -72,7 +73,7 @@ Vec<Vec<double,dim>,dim> parse_tensor(const rapidjson::Value& e_json,
     return out;
 }
 
-const Parameters default_params{2, 2, 6, 3.0, 1e-2, 0.25, 30e9};
+//TODO: Should this be configurable?
 #define GETPARAM(TYPE, NAME) {\
     if (doc.HasMember(#NAME) && doc[#NAME].Is##TYPE()) {\
         out.NAME = doc[#NAME].Get##TYPE();\
@@ -112,8 +113,8 @@ std::vector<Element<dim>> get_elements(const rapidjson::Document& doc) {
         if (!e_json.HasMember("refine") || !e_json["refine"].IsInt()) {
             throw std::invalid_argument(except_text);
         }
-
         int n_refines = e_json["refine"].GetInt();
+
         out.push_back({corners, bc_type, bc, n_refines});
     }
     return out;
@@ -142,7 +143,9 @@ MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements) {
     MeshMap<dim> out(meshes.begin(), meshes.end());
 
     for (const auto& type: get_mesh_types()) {
-        (void)out[type];
+        if (out.find(type) == out.end()) {
+            out.insert(std::make_pair(type, Mesh<dim>{{}}));
+        };
     }
 
     return out;
@@ -155,23 +158,36 @@ MeshMap<3> get_meshes(const std::vector<Element<3>>& elements);
 
 template <size_t dim>
 BCMap get_bcs(const std::vector<Element<dim>>& elements) {
-    BCMap bc_sets;
+    std::unordered_map<std::string,std::vector<Mesh<dim>>> bc_sets;
     for (auto e: elements) {
         auto bc = Mesh<dim>{{e.bc}};
         // BCs need to be refined to match up with the refined mesh.
         auto refined_bc = bc.refine_repeatedly(e.n_refines);
-        FieldDescriptor key{e.bc_type, e.bc_type};
-        bc_sets[key].resize(dim);
+        bc_sets[e.bc_type].push_back(refined_bc);
+    }
+
+    BCMap bc_map;
+    for (auto it = bc_sets.begin(); it != bc_sets.end(); ++it) {
+        FieldDescriptor key{it->first, it->first};
+        auto union_mesh = Mesh<dim>::create_union(it->second);
+        bc_map[key].resize(dim);
         for (size_t d = 0; d < dim; d++) {
-            bc_sets[key][d].resize(refined_bc.n_dofs());
-            for (auto it = refined_bc.begin(); it != refined_bc.end(); ++it) {
+            bc_map[key][d].resize(union_mesh.n_dofs());
+            for (auto it = union_mesh.begin(); it != union_mesh.end(); ++it) {
                 const auto& vertex_val = *it;
-                bc_sets[key][d][it.absolute_index()] = vertex_val[d];
+                bc_map[key][d][it.absolute_index()] = vertex_val[d];
             }
         }
     }
 
-    return bc_sets;
+    for (const auto& type: get_mesh_types()) {
+        FieldDescriptor key{type, type};
+        if (bc_map.find(key) == bc_map.end()) {
+            bc_map.insert(std::make_pair(key, Function(dim, std::vector<double>(0))));
+        };
+    }
+
+    return bc_map;
 }
 
 template 

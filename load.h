@@ -20,6 +20,7 @@ struct Parameters {
     double poisson_ratio;
     double shear_modulus;
 };
+const Parameters default_params{2, 2, 8, 3.0, 1e-4, 0.25, 30e9};
 
 Parameters get_parameters(const rapidjson::Document& doc);
 
