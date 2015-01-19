@@ -3,8 +3,18 @@
 #include "load.h"
 #include "spec.h"
 #include "function.h"
-#include "system.h"
-#include "3bem/operator.h"
+#include "3bem/3bem.h"
+
+template <size_t dim>
+struct BEM {
+    const Parameters params;
+    const MeshMap<dim> meshes;
+    const BCMap bcs;
+    const KernelMap<dim> kernels;
+    const tbem::QuadStrategy<dim> quad_strategy;
+    const std::vector<IntegralEquationSpec> eqtn_specs;
+    const std::vector<tbem::ConstraintMatrix> constraints;
+};
 
 struct ComputedOperator {
     const tbem::MatrixOperator op;
@@ -13,12 +23,8 @@ struct ComputedOperator {
 };
 
 // The integral equation is implicitly defined by (sum(integrals) + mass) = 0
-struct ComputedIntegralEquation {
-    const std::vector<ComputedOperator> terms;
-};
-
 template <size_t dim>
-ComputedIntegralEquation
+std::vector<ComputedOperator>
 compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_spec);
 
 struct LinearSystem {
@@ -28,7 +34,7 @@ struct LinearSystem {
 };
 
 //TODO: better name
-LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs);
+LinearSystem separate(const std::vector<ComputedOperator>& eqtn, const BCMap& bcs);
 
 LinearSystem scale_rows(const LinearSystem& eqtn);
 

@@ -16,3 +16,9 @@ TEST_FIXTURE(Data, FunctionSub) {
     a -= -b;
     CHECK_EQUAL(a, c);
 }
+
+TEST_FIXTURE(Data, FunctionMul) {
+    a *= 2;
+    a += b * 2;
+    CHECK_EQUAL(a, c);
+}

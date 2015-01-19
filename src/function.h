@@ -45,6 +45,21 @@ inline Function& operator-=(Function& a, const Function& b) {
     return a;
 }
 
+inline Function& operator*=(Function& a, const double b) {
+    for (size_t d = 0; d < a.size(); d++) {\
+        for (size_t i = 0; i < a[d].size(); i++) {
+            a[d][i] *= b;
+        }
+    }
+    return a;
+}
+
+inline Function operator*(const Function& a, double b) {
+    Function out = a;
+    out *= b;
+    return out;
+}
+
 inline Function constant_function(size_t components, size_t dofs, double value) {
     return Function(components, std::vector<double>(dofs, value));
 }

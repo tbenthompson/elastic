@@ -1,7 +1,9 @@
-from fabricate import *
+from tools.fabricate import *
 
 test_sources = ['test_compute', 'test_function', 'test_load', 'load', 'spec', 'compute']
+test_sources = ['src/' + f for f in test_sources]
 run_sources = ['main', 'load', 'spec', 'compute']
+run_sources = ['src/' + f for f in run_sources]
 
 run_name = 'run'
 
@@ -34,14 +36,14 @@ def build():
 
 def compile():
     for source in (test_sources + run_sources):
-        run('g++', '-c', source+'.cpp', cpp_flags)
+        run('g++', '-c', source + '.cpp', '-o', source + '.o', cpp_flags)
 
 def link():
     after()
-    test_objs = [s+'.o' for s in test_sources]
+    test_objs = [s + '.o' for s in test_sources]
     run('g++', '-o', 'test', test_objs, test_link_flags)
 
-    run_objs = [s+'.o' for s in run_sources]
+    run_objs = [s + '.o' for s in run_sources]
     run('g++', '-o', run_name, run_objs, run_link_flags)
 
 def clean():

@@ -13,17 +13,17 @@ TEST(RemoveExtension) {
 }
 
 TEST(SimpleLoadGood) {
-    auto doc = parse_json(load_file("data/good.in"));
+    auto doc = parse_json(load_file("test_data/good.in"));
 }
 
 TEST(SimpleLoadBad) {
-    CHECK_THROW(parse_json(load_file("data/bad.in")), std::invalid_argument);
+    CHECK_THROW(parse_json(load_file("test_data/bad.in")), std::invalid_argument);
     CHECK_THROW(parse_json(load_file("doesnotexist")), std::invalid_argument);
 }
 
 TEST(RapidJSONBigFile) {
     TIC
-    auto file = load_file("data/reallybig.in");
+    auto file = load_file("test_data/reallybig.in");
     TOC("Loading file");
     TIC2
     auto doc = parse_json(file);
@@ -36,7 +36,7 @@ TEST(RapidJSONBigFile) {
 
 
 TEST(GetMeshes) {
-    auto doc = parse_json(load_file("data/one.in"));
+    auto doc = parse_json(load_file("test_data/one.in"));
     auto meshes = get_meshes(get_elements<2>(doc));
     CHECK_EQUAL(meshes["traction"].facets.size(), 1);
     CHECK_EQUAL(meshes["traction"].facets[0][0],
@@ -47,7 +47,7 @@ TEST(GetMeshes) {
 }
 
 TEST(AllMeshesCreated) {
-    auto doc = parse_json(load_file("data/empty.in"));
+    auto doc = parse_json(load_file("test_data/empty.in"));
     auto meshes = get_meshes(get_elements<2>(doc));
     for (const auto& name: get_mesh_types()) {
         CHECK(meshes.find(name) != meshes.end());
@@ -55,7 +55,7 @@ TEST(AllMeshesCreated) {
 }
 
 TEST(AllBCs) {
-    auto doc = parse_json(load_file("data/empty.in"));
+    auto doc = parse_json(load_file("test_data/empty.in"));
     auto bcs = get_bcs(get_elements<2>(doc));
     for (const auto& name: get_bc_types()) {
         CHECK(bcs.find(FieldDescriptor{name,name}) != bcs.end());
@@ -63,7 +63,7 @@ TEST(AllBCs) {
 }
 
 TEST(Refinement) {
-    auto doc = parse_json(load_file("data/refine.in"));
+    auto doc = parse_json(load_file("test_data/refine.in"));
     auto meshes = get_meshes(get_elements<2>(doc));
     CHECK_EQUAL(meshes["traction"].facets.size(), 8);
     for (int i = 0; i < 8; i++) {
@@ -73,7 +73,7 @@ TEST(Refinement) {
 }
 
 TEST(BCRefinement) {
-    auto doc = parse_json(load_file("data/refine.in"));
+    auto doc = parse_json(load_file("test_data/refine.in"));
     auto bcs = get_bcs(get_elements<2>(doc));
     for (int i = 0; i < 8; i++) {
         CHECK_EQUAL(bcs[(FieldDescriptor{"traction", "traction"})][0][2 * i], i);
@@ -82,18 +82,18 @@ TEST(BCRefinement) {
 }
 
 TEST(MalformedElementException) {
-    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad2.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("test_data/bad2.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad3.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("test_data/bad3.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad4.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("test_data/bad4.in"))),
                 std::invalid_argument);
-    CHECK_THROW(get_elements<2>(parse_json(load_file("data/bad5.in"))),
+    CHECK_THROW(get_elements<2>(parse_json(load_file("test_data/bad5.in"))),
                 std::invalid_argument);
 }
 
 TEST(LoadParametersDefault) {
-    auto doc = parse_json(load_file("data/one.in"));
+    auto doc = parse_json(load_file("test_data/one.in"));
     auto p = get_parameters(doc);
     // All should be defaults.
     CHECK_EQUAL(p.obs_quad_order, default_params.obs_quad_order);
@@ -106,7 +106,7 @@ TEST(LoadParametersDefault) {
 }
 
 TEST(LoadParametersNotDefault) {
-    auto doc = parse_json(load_file("data/params.in"));
+    auto doc = parse_json(load_file("test_data/params.in"));
     auto p = get_parameters(doc);
     CHECK_EQUAL(p.obs_quad_order, 4); CHECK_EQUAL(p.src_far_quad_order, 6);
     CHECK_EQUAL(p.n_singular_steps, 9); CHECK_EQUAL(p.far_threshold, 4.0);
@@ -116,7 +116,7 @@ TEST(LoadParametersNotDefault) {
 }
 
 TEST(Load3D) {
-    auto doc = parse_json(load_file("data/3d_test.in"));
+    auto doc = parse_json(load_file("test_data/3d_test.in"));
     auto meshes = get_meshes(get_elements<3>(doc));
     CHECK_EQUAL(meshes["traction"].n_facets(), 64);
 }

@@ -1,5 +1,4 @@
 {
-    "shear_modulus": 30e9,
     "elements": [
         {
             "pts": [
@@ -11,19 +10,19 @@
                 [0.0, 0.0],
                 [0.0, 0.0]
             ],
-            "refine": 7
+            "refine": 9
         },
         {
             "pts": [
                 [-1.0, 1.0],
                 [-1.0, -1.0]
             ],
-            "bc_type": "displacement",
+            "bc_type": "traction",
             "bc": [
                 [1.0, 0.0],
                 [1.0, 0.0]
             ],
-            "refine": 8
+            "refine": 9
         },
         {
             "pts": [
@@ -35,19 +34,19 @@
                 [0.0, 0.0],
                 [0.0, 0.0]
             ],
-            "refine": 7
+            "refine": 9
         },
         {
             "pts": [
                 [1.0, -1.0],
                 [1.0, 1.0]
             ],
-            "bc_type": "displacement",
+            "bc_type": "traction",
             "bc": [
                 [-1.0, 0.0],
                 [-1.0, 0.0]
             ],
-            "refine": 8
+            "refine": 9
         }
     ]
 }

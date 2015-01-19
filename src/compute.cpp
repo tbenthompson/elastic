@@ -46,7 +46,7 @@ ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
 
 
 template <size_t dim>
-ComputedIntegralEquation
+std::vector<ComputedOperator>
 compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_spec)
 {
     std::vector<ComputedOperator> integrals;
@@ -59,19 +59,19 @@ compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_
 }
 
 template 
-ComputedIntegralEquation
+std::vector<ComputedOperator>
 compute_integral_equation(const BEM<2>& bem, const IntegralEquationSpec& eqtn_spec);
 template 
-ComputedIntegralEquation
+std::vector<ComputedOperator>
 compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec& eqtn_spec);
 
-LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
-    size_t components = eqtn.terms[0].op.n_comp_rows;
-    size_t dofs = eqtn.terms[0].op.rows;
+LinearSystem separate(const std::vector<ComputedOperator>& eqtn, const BCMap& bcs) {
+    size_t components = eqtn[0].op.n_comp_rows;
+    size_t dofs = eqtn[0].op.rows;
     Function rhs = constant_function(components, dofs, 0.0);
     std::vector<ComputedOperator> lhs;
 
-    for (const auto& term: eqtn.terms) {
+    for (const auto& term: eqtn) {
         FieldDescriptor field_desc{term.src_mesh, term.function};
         auto it = bcs.find(field_desc);
         if (it == bcs.end()) {
@@ -84,39 +84,5 @@ LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
             rhs -= apply_operator(term.op, bc);
         }
     }
-
     return {lhs, rhs};
-}
-
-MatrixOperator divide_rows(const MatrixOperator& op, const Function& rhs) {
-    std::vector<std::vector<double>> out_data(op.data.size(),
-            std::vector<double>(op.data[0].size()));
-    for (size_t d0 = 0; d0 < op.n_comp_rows; d0++) {
-        for (size_t d1 = 0; d1 < op.n_comp_cols; d1++) {
-            for (size_t i = 0; i < op.rows; i++) {
-                for (size_t j = 0; j < op.cols; j++) {
-                    auto val = 
-                        op.data[d0 * op.n_comp_cols + d1][i * op.cols + j] / rhs[d0][i];
-                    out_data[d0 * op.n_comp_cols + d1][i * op.cols + j] = val;
-                }
-            }
-        }
-    }
-    return {op.rows, op.cols, op.n_comp_rows, op.n_comp_cols, out_data};
-}
-
-LinearSystem scale_rows(const LinearSystem& eqtn) 
-{
-    std::vector<ComputedOperator> integrals;
-    for (const auto& term: eqtn.lhs) {
-        integrals.push_back({
-            divide_rows(term.op, eqtn.rhs),
-            term.src_mesh,
-            term.function
-        });
-    }
-    return {
-        integrals,
-        constant_function(eqtn.rhs.size(), eqtn.rhs[0].size(), 1.0)
-    };
 }
