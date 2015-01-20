@@ -1,11 +1,6 @@
-** test a problem with just displacement BCS and test a problem with just traction BCS
--- this will confirm that they work independently. Then, I can combine!
-** scaling the rows of the linear system
-** constrain the ends of the unknown displacement field 
-** why is bem_mat_mult taking a constant amount of time independent of the inputs? strange.
+** why scaling doesn't work?!
 ** more systematic python loading/viewing
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)
 ** load 3D problems
 ** calculate and output the tractions on the slip_mesh.
 ** how to test the elastic solver systematically?
-

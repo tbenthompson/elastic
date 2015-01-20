@@ -11,15 +11,19 @@ def quiver_plot(vertices, datax, datay):
     x = vertices[::skip, 0]
     y = vertices[::skip, 1]
     opts = dict(
-        scale = 20.0,
+        scale = 2.0,
         minshaft = 1,
         headwidth = 2,
         headlength = 3,
         headaxislength = 4,
         width = 0.003
     )
+    print np.mean(np.abs(datax))
+    print np.mean(np.abs(datay))
+    print np.max(datax)
+    print np.max(datay)
     plt.quiver(x, y, datax[::skip], datay[::skip], **opts)
-    plt.axis([-1.1, 1.1, -1.1, 1.1])
+    plt.axis([-2.0, 2.0, -2.0, 2.0])
     plt.show()
 
 def plot2d(facets, datax, datay):

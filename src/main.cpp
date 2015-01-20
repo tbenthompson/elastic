@@ -5,15 +5,47 @@
 using namespace tbem;
 
 template <size_t dim>
-ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes) 
+ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
+    const BCMap& bcs) 
+{
+    // return ConstraintMatrix::from_constraints({});
+    auto continuity = mesh_continuity(meshes.at("displacement").begin());
+    auto constraints = convert_to_constraints(continuity);
+    auto constraint_matrix = ConstraintMatrix::from_constraints(constraints);
+    return constraint_matrix;
+}
+
+template <size_t dim>
+ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes, 
+    const BCMap& bcs, size_t which_component) 
 {
     auto continuity = mesh_continuity(meshes.at("traction").begin());
     auto cut_continuity = cut_at_intersection(
         continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
     );
+    auto bc_constraints = form_neighbor_bcs(
+        meshes.at("traction").begin(),
+        meshes.at("displacement").begin(),
+        bcs.at(FieldDescriptor{"displacement", "displacement"})[which_component]
+    );
     auto constraints = convert_to_constraints(cut_continuity);
-    auto constraint_matrix = ConstraintMatrix::from_constraints(constraints);
+    for (const auto& c: constraints) {
+        bc_constraints.push_back(c); 
+    }
+    auto constraint_matrix = ConstraintMatrix::from_constraints(bc_constraints);
     return constraint_matrix;
+}
+
+template <size_t dim>
+std::vector<ConstraintMatrix> form_constraints(const MeshMap<dim>& meshes,
+    const BCMap& bcs)
+{
+    return {
+        form_traction_constraints(meshes, bcs),
+        form_traction_constraints(meshes, bcs),
+        form_displacement_constraints(meshes, bcs, 0),
+        form_displacement_constraints(meshes, bcs, 1)
+    };
 }
 
 template <size_t dim>
@@ -36,12 +68,7 @@ BEM<dim> parse_into_bem(const std::string& filename)
             get_displacement_BIE(),
             get_traction_BIE()
         },
-        {
-            ConstraintMatrix::from_constraints({}),
-            ConstraintMatrix::from_constraints({}),
-            form_displacement_constraints(meshes),
-            form_displacement_constraints(meshes)
-        }
+        form_constraints(meshes, bcs)
     };
 }
 
@@ -65,7 +92,7 @@ int main(int argc, char* argv[]) {
     assert(trac_system.lhs.size() == 2);
 
     // //prep:
-    // scale rows (TODO: FIX)
+    // scale rows
     auto disp_rhs = disp_system.rhs;
     auto trac_rhs = trac_system.rhs * (1.0 / bem_input.params.shear_modulus);
 
@@ -117,8 +144,8 @@ int main(int argc, char* argv[]) {
             assert(trac_eval.lhs.size() == 0);
             //TODO: If separate is split into a "evaluate_possible" function, these
             //two lines would be unnecessary
-            auto disp_eval_vec = disp_eval.rhs;
-            auto trac_eval_vec = trac_eval.rhs * (1.0 / bem_input.params.shear_modulus);
+            auto disp_eval_vec = -disp_eval.rhs;
+            auto trac_eval_vec = -trac_eval.rhs * (1.0 / bem_input.params.shear_modulus);
 
             //reduce using constraints
             //stack rows
@@ -174,4 +201,25 @@ int main(int argc, char* argv[]) {
     }
 
     //interior eval
+    BCMap fields = bem_input.bcs; 
+    fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
+    fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
+
+    auto x_vals = linspace(-1, 1, 20);
+    auto y_vals = linspace(-1, 1, 20);
+    std::vector<Vec<double,2>> locs;
+    std::vector<ObsPt<2>> obs_pts;
+    for (size_t i = 0; i < x_vals.size(); i++) {
+        for (size_t j = 0; j < y_vals.size(); j++) {
+            locs.push_back({x_vals[i], y_vals[j]});
+        }
+    }
+    for (size_t i = 0; i < locs.size(); i++) {
+        obs_pts.push_back({0.001, locs[i], {0, 1}, -locs[i]});
+    }
+    auto interior = compute_interior(obs_pts, bem_input, get_displacement_BIE(), fields);
+    HDFOutputter interior_dispx_file(out_filename_disp + "intx");
+    HDFOutputter interior_dispy_file(out_filename_disp + "inty");
+    out_volume(interior_dispx_file, locs, interior[0], 1);
+    out_volume(interior_dispy_file, locs, interior[1], 1);
 }
