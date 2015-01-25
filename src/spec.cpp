@@ -37,12 +37,15 @@ template
 KernelMap<3> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 
 IntegralEquationSpec get_displacement_BIE() {
+    //CORRECT
     IntegralSpec uut{"displacement", "displacement", "traction", "displacement", -1};
+    //CORRECT
     IntegralSpec uuu{"displacement", "displacement", "displacement", "traction", -1};
     IntegralSpec ust{"displacement", "slip", "traction", "slip", -1};
     IntegralSpec utt{"displacement", "traction", "traction", "displacement", 1};
     IntegralSpec utu{"displacement", "traction", "displacement", "traction", 1};
     return {
+    //CORRECT
         {"displacement", "displacement", 1},
         {uut, utt, ust, uuu, utu}
     };
@@ -52,9 +55,12 @@ IntegralEquationSpec get_traction_BIE() {
     IntegralSpec tuh{"traction", "displacement", "hypersingular", "displacement", 1};
     IntegralSpec tua{"traction", "displacement", "adjoint_traction", "traction", -1};
     IntegralSpec tsh{"traction", "slip", "hypersingular", "slip", 1};
-    IntegralSpec tth{"traction", "traction", "hypersingular", "displacement", -1};
+    //CORRECT
+    IntegralSpec tth{"traction", "traction", "hypersingular", "displacement", 1};
+    //CORRECT
     IntegralSpec tta{"traction", "traction", "adjoint_traction", "traction", 1};
     return {
+    //CORRECT
         {"traction", "traction", 1},
         {tuh, tth, tsh, tua, tta}
     };

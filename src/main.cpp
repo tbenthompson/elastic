@@ -208,12 +208,16 @@ int main(int argc, char* argv[]) {
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
 
-    auto x_vals = linspace(0, 1, 20);
+    auto x_vals = linspace(-1, 1, 20);
     auto y_vals = linspace(-1, 1, 20);
     std::vector<Vec<double,2>> locs;
     std::vector<ObsPt<2>> obs_pts;
     for (size_t i = 0; i < x_vals.size(); i++) {
         for (size_t j = 0; j < y_vals.size(); j++) {
+            double r = std::sqrt(std::pow(x_vals[i], 2) + std::pow(y_vals[j], 2));
+            if (r < 0.5 || r > 1.0) {
+                continue;
+            }
             locs.push_back({x_vals[i], y_vals[j]});
         }
     }

@@ -1,11 +1,10 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-import subprocess
-from input_builder import Element, displacement_edge, exec_template
+from input_builder import Element, displacement_edge, exec_template, run_file
 
-def G_from_E_mu(a, b):
-    return a / (2 * (1 + b))
+def G_from_E_mu(E, mu):
+    return E / (2 * (1 + mu))
 
 L = 1.0
 c = 1.0
@@ -20,6 +19,8 @@ G = G_from_E_mu(E, mu)
 mu_fic = mu / (1 - mu)
 E_fic = E / (1 - mu ** 2)
 G_fic = G_from_E_mu(E_fic, mu_fic)
+
+input_filename = 'test_data/beam_bend.in'
 
 def solution(x, y):
     ux = (-P * x ** 2 * y) / (2 * E_fic * I) \
@@ -54,7 +55,6 @@ def plotter():
     plt.quiver(x, y, ux, uy)
     plt.show()
 
-input_filename = 'test_data/beam_bend.in'
 def create_file():
     refine = 7
     # top_edge =
@@ -75,12 +75,6 @@ def create_file():
     exec_template(input_filename, es = es, G = G, mu = mu)
     print("Input file created")
 
-def run_file():
-    process = subprocess.Popen('./run ' + input_filename, shell=True,
-        stdout = subprocess.PIPE)
-    process.wait()
-    print("File processed")
-
 def test_displacements():
     filename = 'test_data/beam_bend.disp_outint'
     f = h5py.File(filename)
@@ -99,6 +93,6 @@ def test_displacements():
 if __name__ == "__main__":
     # plotter()
     create_file()
-    run_file()
+    run_file(input_filename)
     test_displacements()
 

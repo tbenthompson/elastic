@@ -1,5 +1,8 @@
+import h5py
 import numpy as np
+import subprocess
 from mako.template import Template
+import matplotlib.pyplot as plt
 
 class Element(object):
     def __init__(self, pts, bc_type, bc, refine):
@@ -25,6 +28,29 @@ def displacement_edge(end_pts, refine, fnc):
 
     return es
 
+def circle(center, r, refine, bc_type, fnc, reverse):
+    n = 2 ** refine
+
+    end_pt = 2 * np.pi
+    if reverse:
+        end_pt = -end_pt
+    t = np.linspace(0.0, end_pt, n)
+    x = r * np.cos(t) + center[0]
+    y = r * np.sin(t) + center[1]
+    ux, uy = fnc(x, y)
+
+    es = []
+    for i in range(n - 1):
+        es.append(Element(
+            [[x[i], y[i]], [x[i + 1], y[i + 1]]],
+            bc_type,
+            [[ux[i], uy[i]], [ux[i + 1], uy[i + 1]]],
+            0
+        ))
+
+    return es
+
+
 def exec_template(filename, **params):
     file_template = """
     {
@@ -49,3 +75,31 @@ def exec_template(filename, **params):
     text = Template(file_template).render(**params)
     with open(filename, 'w') as file:
         file.write(text)
+
+def run_file(filename):
+    process = subprocess.Popen('./run ' + filename, shell=True,
+        stdout = subprocess.PIPE)
+    process.wait()
+    print("File processed")
+
+def test_displacements(filename, solution, plot_diff):
+    f = h5py.File(filename)
+    x = f['locations'][:, 0]
+    y = f['locations'][:, 1]
+    datax = f['values0'][:, 0]
+    datay = f['values1'][:, 0]
+    exactx, exacty = solution(x, y)
+    errorx = np.abs((exactx - datax) / exactx)
+    errory = np.abs((exacty - datay) / exacty)
+    if plot_diff:
+        plt.figure()
+        plt.quiver(x, y, datax, datay)
+        plt.figure()
+        plt.quiver(x, y, exactx, exacty)
+        plt.figure()
+        plt.quiver(x, y, exactx - datax, exacty - datay)
+        plt.show()
+        print datax, exactx
+    np.testing.assert_almost_equal(errorx, np.zeros_like(errorx), 2)
+    np.testing.assert_almost_equal(errory, np.zeros_like(errory), 2)
+    print("Tests passed!")
