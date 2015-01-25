@@ -8,11 +8,11 @@ template <size_t dim>
 ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
-    // return ConstraintMatrix::from_constraints({});
-    auto continuity = mesh_continuity(meshes.at("displacement").begin());
-    auto constraints = convert_to_constraints(continuity);
-    auto constraint_matrix = ConstraintMatrix::from_constraints(constraints);
-    return constraint_matrix;
+    return from_constraints({});
+    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
+    // auto constraints = convert_to_constraints(continuity);
+    // auto constraint_matrix = from_constraints(constraints);
+    // return constraint_matrix;
 }
 
 template <size_t dim>
@@ -32,7 +32,7 @@ ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes,
     for (const auto& c: constraints) {
         bc_constraints.push_back(c); 
     }
-    auto constraint_matrix = ConstraintMatrix::from_constraints(bc_constraints);
+    auto constraint_matrix = from_constraints(bc_constraints);
     return constraint_matrix;
 }
 
@@ -99,10 +99,10 @@ int main(int argc, char* argv[]) {
     //reduce using constraints
     //stack rows
     auto stacked_rhs = concatenate({
-        bem_input.constraints[0].get_reduced(disp_rhs[0]),
-        bem_input.constraints[1].get_reduced(disp_rhs[1]),
-        bem_input.constraints[2].get_reduced(trac_rhs[0]),
-        bem_input.constraints[3].get_reduced(trac_rhs[1])
+        condense_vector(bem_input.constraints[0], disp_rhs[0]),
+        condense_vector(bem_input.constraints[1], disp_rhs[1]),
+        condense_vector(bem_input.constraints[2], trac_rhs[0]),
+        condense_vector(bem_input.constraints[3], trac_rhs[1])
     });
 
     int n_unknown_trac_dofs = disp_system.rhs[0].size();
@@ -121,15 +121,15 @@ int main(int argc, char* argv[]) {
 
             //expand using constraints
             Function unknown_trac = {
-                bem_input.constraints[0].get_all(unstacked_estimate[0],
+                distribute_vector(bem_input.constraints[0], unstacked_estimate[0],
                                                  n_unknown_trac_dofs),
-                bem_input.constraints[1].get_all(unstacked_estimate[1],
+                distribute_vector(bem_input.constraints[1], unstacked_estimate[1],
                                                  n_unknown_trac_dofs)
             };
             Function unknown_disp = {
-                bem_input.constraints[2].get_all(unstacked_estimate[2],
+                distribute_vector(bem_input.constraints[2], unstacked_estimate[2],
                                                  n_unknown_disp_dofs),
-                bem_input.constraints[3].get_all(unstacked_estimate[3],
+                distribute_vector(bem_input.constraints[3], unstacked_estimate[3],
                                                  n_unknown_disp_dofs)
             };
 
@@ -150,10 +150,10 @@ int main(int argc, char* argv[]) {
             //reduce using constraints
             //stack rows
             auto evaluated_lhs = concatenate({
-                bem_input.constraints[0].get_reduced(disp_eval_vec[0]),
-                bem_input.constraints[1].get_reduced(disp_eval_vec[1]),
-                bem_input.constraints[2].get_reduced(trac_eval_vec[0]),
-                bem_input.constraints[3].get_reduced(trac_eval_vec[1])
+                condense_vector(bem_input.constraints[0], disp_eval_vec[0]),
+                condense_vector(bem_input.constraints[1], disp_eval_vec[1]),
+                condense_vector(bem_input.constraints[2], trac_eval_vec[0]),
+                condense_vector(bem_input.constraints[3], trac_eval_vec[1])
             });
 
             for (size_t comp = 0; comp < evaluated_lhs.components; comp++) {
@@ -174,12 +174,16 @@ int main(int argc, char* argv[]) {
 
     //expand using constraints
     Function soln_trac = {
-        bem_input.constraints[0].get_all(unstacked_soln[0], n_unknown_trac_dofs),
-        bem_input.constraints[1].get_all(unstacked_soln[1], n_unknown_trac_dofs)
+        distribute_vector(bem_input.constraints[0], unstacked_soln[0],
+                n_unknown_trac_dofs),
+        distribute_vector(bem_input.constraints[1], unstacked_soln[1],
+                n_unknown_trac_dofs)
     };
     Function soln_disp = {
-        bem_input.constraints[2].get_all(unstacked_soln[2], n_unknown_disp_dofs),
-        bem_input.constraints[3].get_all(unstacked_soln[3], n_unknown_disp_dofs)
+        distribute_vector(bem_input.constraints[2], unstacked_soln[2],
+                n_unknown_disp_dofs),
+        distribute_vector(bem_input.constraints[3], unstacked_soln[3],
+                n_unknown_disp_dofs)
     };
 
 
@@ -187,25 +191,24 @@ int main(int argc, char* argv[]) {
     auto in_filename_root = remove_extension(filename);
     auto out_filename_disp = in_filename_root + ".disp_out";
     auto out_filename_trac = in_filename_root + ".trac_out";
-    HDFOutputter dispx_file(out_filename_disp + "x");
-    HDFOutputter dispy_file(out_filename_disp + "y");
-    HDFOutputter tracx_file(out_filename_trac + "x");
-    HDFOutputter tracy_file(out_filename_trac + "y");
+    HDFOutputter disp_file(out_filename_disp);
+    HDFOutputter trac_file(out_filename_trac);
     if (soln_disp[0].size() > 0) {
-        out_surface(dispx_file, bem_input.meshes.at("traction"), soln_disp[0], 1);
-        out_surface(dispy_file, bem_input.meshes.at("traction"), soln_disp[1], 1);
+        out_surface(disp_file, bem_input.meshes.at("traction"), soln_disp);
     }
     if (soln_trac[0].size() > 0) {
-        out_surface(tracx_file, bem_input.meshes.at("displacement"), soln_trac[0], 1);
-        out_surface(tracy_file, bem_input.meshes.at("displacement"), soln_trac[1], 1);
+        out_surface(trac_file, bem_input.meshes.at("displacement"), soln_trac);
     }
 
     //interior eval
+    // long-term, use an input file containing the list of points
+    // find the nearest boundary point and make that the path to follow away
+    // for nearfield integration --> nearest neighbor problems are a real theme!
     BCMap fields = bem_input.bcs; 
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
 
-    auto x_vals = linspace(-1, 1, 20);
+    auto x_vals = linspace(0, 1, 20);
     auto y_vals = linspace(-1, 1, 20);
     std::vector<Vec<double,2>> locs;
     std::vector<ObsPt<2>> obs_pts;
@@ -215,11 +218,10 @@ int main(int argc, char* argv[]) {
         }
     }
     for (size_t i = 0; i < locs.size(); i++) {
-        obs_pts.push_back({0.001, locs[i], {0, 1}, -locs[i]});
+        obs_pts.push_back({0.001, locs[i], {0, 1}, 
+            Vec<double,2>{0.5, 0.5} - locs[i]});
     }
     auto interior = compute_interior(obs_pts, bem_input, get_displacement_BIE(), fields);
-    HDFOutputter interior_dispx_file(out_filename_disp + "intx");
-    HDFOutputter interior_dispy_file(out_filename_disp + "inty");
-    out_volume(interior_dispx_file, locs, interior[0], 1);
-    out_volume(interior_dispy_file, locs, interior[1], 1);
+    HDFOutputter interior_disp_file(out_filename_disp + "int");
+    out_volume(interior_disp_file, locs, interior);
 }

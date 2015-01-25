@@ -11,7 +11,7 @@ MatrixOperator operator*(const MatrixOperator& op, double s) {
             out_data[c][i] = op.data[c][i] * s;
         }
     }
-    return {op.rows, op.cols, op.n_comp_rows, op.n_comp_cols, out_data};
+    return {op.n_rows, op.n_cols, op.n_comp_rows, op.n_comp_cols, out_data};
 }
 
 template <size_t dim>
@@ -67,7 +67,7 @@ compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec& eqtn_sp
 
 LinearSystem separate(const std::vector<ComputedOperator>& eqtn, const BCMap& bcs) {
     size_t components = eqtn[0].op.n_comp_rows;
-    size_t dofs = eqtn[0].op.rows;
+    size_t dofs = eqtn[0].op.n_rows;
     Function rhs = constant_function(components, dofs, 0.0);
     std::vector<ComputedOperator> lhs;
 
