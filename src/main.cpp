@@ -8,11 +8,11 @@ template <size_t dim>
 ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
-    // return from_constraints({});
-    auto continuity = mesh_continuity(meshes.at("displacement").begin());
-    auto constraints = convert_to_constraints(continuity);
-    auto constraint_matrix = from_constraints(constraints);
-    return constraint_matrix;
+    return from_constraints({});
+    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
+    // auto constraints = convert_to_constraints(continuity);
+    // auto constraint_matrix = from_constraints(constraints);
+    // return constraint_matrix;
 }
 
 template <size_t dim>
@@ -65,8 +65,8 @@ BEM<dim> parse_into_bem(const std::string& filename)
         QuadStrategy<dim>(params.obs_quad_order, params.src_far_quad_order,
             params.n_singular_steps, params.far_threshold, params.near_tol),
         {
-            get_displacement_BIE(),
-            get_traction_BIE()
+            get_displacement_BIE("displacement"),
+            get_displacement_BIE("traction")
         },
         form_constraints(meshes, bcs)
     };
@@ -88,13 +88,11 @@ int main(int argc, char* argv[]) {
 
     auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
     auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
-    assert(disp_system.lhs.size() == 2);
-    assert(trac_system.lhs.size() == 2);
 
     // //prep:
     // scale rows
     auto disp_rhs = disp_system.rhs;
-    auto trac_rhs = trac_system.rhs * (1.0 / bem_input.params.shear_modulus);
+    auto trac_rhs = trac_system.rhs;
 
     //reduce using constraints
     //stack rows
@@ -144,8 +142,9 @@ int main(int argc, char* argv[]) {
             assert(trac_eval.lhs.size() == 0);
             //TODO: If separate is split into a "evaluate_possible" function, these
             //two lines would be unnecessary
+            //scale rows
             auto disp_eval_vec = -disp_eval.rhs;
-            auto trac_eval_vec = -trac_eval.rhs * (1.0 / bem_input.params.shear_modulus);
+            auto trac_eval_vec = -trac_eval.rhs;
 
             //reduce using constraints
             //stack rows
@@ -225,7 +224,8 @@ int main(int argc, char* argv[]) {
         obs_pts.push_back({0.001, locs[i], {0, 1}, 
             Vec<double,2>{0.5, 0.5} - locs[i]});
     }
-    auto interior = compute_interior(obs_pts, bem_input, get_displacement_BIE(), fields);
+    auto interior = compute_interior(obs_pts, bem_input,
+        get_displacement_BIE("displacement"), fields);
     HDFOutputter interior_disp_file(out_filename_disp + "int");
     out_volume(interior_disp_file, locs, interior);
 }

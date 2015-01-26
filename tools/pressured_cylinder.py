@@ -1,39 +1,31 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from input_builder import circle, exec_template, run_file, test_displacements
+import os
+from input_builder import circle, exec_template, run_file, test_field
 
-a = 0.3
-b = 1.2
-
-p_a = 10e6
-p_b = -50e6
-
-E = 80e9
-mu = 0.25
-G = E / (2 * (1 + mu))
-
-input_filename = 'test_data/pressured_cylinder.in'
-
-def solution(x, y):
-    r = np.sqrt(x ** 2 + y ** 2)
-    theta = np.arctan2(y, x)
-    ur = ((1 + mu) * a ** 2 * b ** 2) / (E * (b ** 2 - a ** 2)) *\
-        (((p_a - p_b) / r) +
-         ((1 - 2 * mu) * ((p_a * a ** 2 - p_b * b ** 2) / (a ** 2 * b ** 2)) * r))
-    ux = ur * np.cos(theta)
-    uy = ur * np.sin(theta)
-
-    return ux, uy
-
-def trac_bc(pressure):
-    def bc(x, y):
+def build_disp_bc(a, b, p_a, p_b, E, mu):
+    def disp_bc(x, y):
+        r = np.sqrt(x ** 2 + y ** 2)
         theta = np.arctan2(y, x)
+        ur = ((1 + mu) * a ** 2 * b ** 2) / (E * (b ** 2 - a ** 2)) *\
+            (((p_a - p_b) / r) +
+             ((1 - 2 * mu) * ((p_a * a ** 2 - p_b * b ** 2) / (a ** 2 * b ** 2)) * r))
+        ux = ur * np.cos(theta)
+        uy = ur * np.sin(theta)
+        return ux, uy
+    return disp_bc
+
+def build_trac_bc(a, b, p_a, p_b, E, mu):
+    def trac_bc(x, y):
+        theta = np.arctan2(y, x)
+        r = np.sqrt(x ** 2 + y ** 2)
+        pressure = np.where(r < ((a + b) / 2), -p_a, p_b)
         p_x = pressure * np.cos(theta)
         p_y = pressure * np.sin(theta)
         return p_x, p_y
-    return bc
+    return trac_bc
 
-def plotter():
+def plotter(disp_bc):
     nt = 20
     nr = 5
     t_vals = np.linspace(0.0, 2 * np.pi, nt)
@@ -42,7 +34,7 @@ def plotter():
     x = r * np.cos(t)
     y = r * np.sin(t)
 
-    ux, uy = solution(x, y)
+    ux, uy = disp_bc(x, y)
 
     plt.figure()
     plt.contourf(x, y, ux)
@@ -54,39 +46,68 @@ def plotter():
     plt.quiver(x, y, ux, uy)
     plt.show()
 
-def create_file(bc_types):
-    refine = 8
+def create_file(bc_types, bc_funcs):
+    refine = 9
 
     es = []
-    if bc_types["inner"] == "traction":
-        es.extend(circle([0, 0], a, refine, "traction", trac_bc(-p_a), True))
-    elif bc_types["inner"] == "displacement":
-        es.extend(circle([0, 0], a, refine, "displacement", solution, True))
+    es.extend(circle([0, 0], a, refine, bc_types['inner'],
+                     bc_funcs[bc_types['inner']], True))
+    es.extend(circle([0, 0], b, refine, bc_types['outer'],
+                     bc_funcs[bc_types['outer']], False))
 
-    if bc_types["outer"] == "traction":
-        es.extend(circle([0, 0], b, refine, "traction", trac_bc(p_b), False))
-    elif bc_types["outer"] == "displacement":
-        es.extend(circle([0, 0], b, refine, "displacement", solution, False))
-
+    G = E / (2 * (1 + mu))
     exec_template(input_filename, es = es, G = G, mu = mu)
     print("Input file created")
 
+def delete_files(input_filepath):
+    dir, filename = input_filepath.split('/')
+    root = os.path.splitext(filename)[0]
+    for f in os.listdir(dir):
+        if root in f:
+            os.remove(os.path.join(dir, f))
+
 if __name__ == "__main__":
-    out_filename = 'test_data/pressured_cylinder.disp_outint'
-    # plotter()
+    a = 0.4
+    b = 1.2
+    p_a = 10e6
+    p_b = -30e6
+    E = 80e9
+    mu = 0.25
+    input_filename = 'test_data/pressured_cylinder.in'
 
-    create_file(dict(inner = "traction", outer = "traction"))
+    disp_bc = build_disp_bc(a, b, p_a, p_b, E, mu)
+    trac_bc = build_trac_bc(a, b, p_a, p_b, E, mu)
+    bc_funcs = dict()
+    bc_funcs['traction'] = trac_bc
+    bc_funcs['displacement'] = disp_bc
+
+    in_root, file_ext = os.path.splitext(input_filename)
+    displacement_filename = in_root + '.disp_out'
+    traction_filename = in_root + '.trac_out'
+    interior_disp_filename = in_root + '.disp_outint'
+
+    delete_files(input_filename)
+    create_file(dict(inner = "traction", outer = "traction"), bc_funcs)
+    run_file(input_filename, False)
+    test_field(displacement_filename, disp_bc, False, 6)
+    test_field(interior_disp_filename, disp_bc, False, 7)
+
+    delete_files(input_filename)
+    create_file(dict(inner = "displacement", outer = "displacement"), bc_funcs)
     run_file(input_filename, True)
-    test_displacements(out_filename, solution, False)
+    test_field(traction_filename, trac_bc, False, -5)
+    test_field(interior_disp_filename, disp_bc, False, 7)
 
-    create_file(dict(inner = "displacement", outer = "displacement"))
+    delete_files(input_filename)
+    create_file(dict(inner = "traction", outer = "displacement"), bc_funcs)
     run_file(input_filename, True)
-    test_displacements(out_filename, solution, False)
+    test_field(displacement_filename, disp_bc, False, 6)
+    test_field(traction_filename, trac_bc, False, -5)
+    test_field(interior_disp_filename, disp_bc, False, 7)
 
-    # create_file(dict(inner = "traction", outer = "displacement"))
-    # run_file(input_filename, True)
-    # test_displacements(out_filename, solution, False)
-
-    # create_file(dict(inner = "displacement", outer = "traction"))
-    # run_file(input_filename, True)
-    # test_displacements(out_filename, solution, False)
+    delete_files(input_filename)
+    create_file(dict(inner = "displacement", outer = "traction"), bc_funcs)
+    run_file(input_filename, True)
+    test_field(displacement_filename, disp_bc, False, 6)
+    test_field(traction_filename, trac_bc, False, 0)
+    # test_field(interior_disp_filename, disp_bc, False, 7)

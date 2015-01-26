@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy as np
 import subprocess
@@ -84,15 +85,32 @@ def run_file(filename, suppress_out):
     process.wait()
     print("File processed")
 
-def test_displacements(filename, solution, plot_diff):
+def get_points(f):
+    if f['locations'].shape[1] == 2:
+        x = f['locations'][:, 0]
+        y = f['locations'][:, 1]
+        return x, y
+    elif f['locations'].shape[1] == 4:
+        x_index = [0, 2]
+        y_index = [1, 3]
+        vertices = np.array([
+            f['locations'][:, x_index].flatten(),
+            f['locations'][:, y_index].flatten()
+        ]).T
+        return vertices[:, 0], vertices[:, 1]
+
+def test_field(filename, solution, plot_diff, digits):
     f = h5py.File(filename)
-    x = f['locations'][:, 0]
-    y = f['locations'][:, 1]
+
+    x, y = get_points(f)
     datax = f['values0'][:, 0]
     datay = f['values1'][:, 0]
     exactx, exacty = solution(x, y)
-    errorx = np.abs((exactx - datax) / exactx)
-    errory = np.abs((exacty - datay) / exacty)
+    #TODO: It would be better to use norms here
+    diffx = np.abs(exactx - datax)
+    diffy = np.abs(exacty - datay)
+    print zip(datax, exactx), diffx
+    print np.max(diffx)
     if plot_diff:
         plt.figure()
         plt.quiver(x, y, datax, datay)
@@ -101,7 +119,6 @@ def test_displacements(filename, solution, plot_diff):
         plt.figure()
         plt.quiver(x, y, exactx - datax, exacty - datay)
         plt.show()
-        print datax, exactx, errorx
-    np.testing.assert_almost_equal(errorx, np.zeros_like(errorx), 2)
-    np.testing.assert_almost_equal(errory, np.zeros_like(errory), 2)
+    np.testing.assert_almost_equal(diffx, np.zeros_like(diffx), digits)
+    np.testing.assert_almost_equal(diffy, np.zeros_like(diffy), digits)
     print("Tests passed!")

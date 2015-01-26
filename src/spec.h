@@ -48,9 +48,9 @@ struct IntegralEquationSpec {
     std::vector<IntegralSpec> terms;
 };
 
-IntegralEquationSpec get_displacement_BIE();
+IntegralEquationSpec get_displacement_BIE(const std::string& obs_mesh);
 
-IntegralEquationSpec get_traction_BIE();
+IntegralEquationSpec get_traction_BIE(const std::string& obs_mesh);
 
 std::vector<std::string> get_mesh_types();
 std::vector<std::string> get_bc_types();
