@@ -76,9 +76,11 @@ def exec_template(filename, **params):
     with open(filename, 'w') as file:
         file.write(text)
 
-def run_file(filename):
-    process = subprocess.Popen('./run ' + filename, shell=True,
-        stdout = subprocess.PIPE)
+def run_file(filename, suppress_out):
+    popen_params = dict(shell = True)
+    if suppress_out:
+        popen_params['stdout'] = subprocess.PIPE
+    process = subprocess.Popen('./run ' + filename, **popen_params)
     process.wait()
     print("File processed")
 
@@ -99,7 +101,7 @@ def test_displacements(filename, solution, plot_diff):
         plt.figure()
         plt.quiver(x, y, exactx - datax, exacty - datay)
         plt.show()
-        print datax, exactx
+        print datax, exactx, errorx
     np.testing.assert_almost_equal(errorx, np.zeros_like(errorx), 2)
     np.testing.assert_almost_equal(errory, np.zeros_like(errory), 2)
     print("Tests passed!")

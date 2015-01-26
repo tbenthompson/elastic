@@ -1,7 +1,8 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from input_builder import Element, displacement_edge, exec_template, run_file
+from input_builder import Element, displacement_edge, exec_template, run_file,\
+                          test_displacements
 
 def G_from_E_mu(E, mu):
     return E / (2 * (1 + mu))
@@ -75,24 +76,10 @@ def create_file():
     exec_template(input_filename, es = es, G = G, mu = mu)
     print("Input file created")
 
-def test_displacements():
-    filename = 'test_data/beam_bend.disp_outint'
-    f = h5py.File(filename)
-    x = f['locations'][:, 0]
-    y = f['locations'][:, 1]
-    datax = f['values0'][:, 0]
-    datay = f['values1'][:, 0]
-    exactx, exacty = solution(x, y)
-    errorx = np.abs((exactx - datax) / exactx)
-    errory = np.abs((exacty - datay) / exacty)
-    np.testing.assert_almost_equal(errorx, np.zeros_like(errorx), 2)
-    np.testing.assert_almost_equal(errory, np.zeros_like(errory), 2)
-    print("Tests passed!")
-
-
 if __name__ == "__main__":
     # plotter()
     create_file()
     run_file(input_filename)
-    test_displacements()
+    filename = 'test_data/beam_bend.disp_outint'
+    test_displacements(filename, solution, False)
 

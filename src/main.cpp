@@ -8,11 +8,11 @@ template <size_t dim>
 ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
-    return from_constraints({});
-    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
-    // auto constraints = convert_to_constraints(continuity);
-    // auto constraint_matrix = from_constraints(constraints);
-    // return constraint_matrix;
+    // return from_constraints({});
+    auto continuity = mesh_continuity(meshes.at("displacement").begin());
+    auto constraints = convert_to_constraints(continuity);
+    auto constraint_matrix = from_constraints(constraints);
+    return constraint_matrix;
 }
 
 template <size_t dim>

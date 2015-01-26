@@ -1,5 +1,3 @@
-** traction for beam bending problem
-** a traction-only problem with tests
 ** cleaner interior evaluation
 ** simple refactorings on main.cpp (extract function, etc)
 ** try out direct solvers

@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from input_builder import circle, exec_template, run_file, test_displacements
 
-a = 0.1
-b = 1.5
+a = 0.3
+b = 1.2
 
 p_a = 10e6
-p_b = 0e6
+p_b = -50e6
 
 E = 80e9
 mu = 0.25
@@ -54,18 +54,39 @@ def plotter():
     plt.quiver(x, y, ux, uy)
     plt.show()
 
-def create_file():
+def create_file(bc_types):
     refine = 8
+
     es = []
-    es.extend(circle([0, 0], a, refine, "traction", trac_bc(p_a), True))
-    es.extend(circle([0, 0], b, refine, "traction", trac_bc(p_b), False))
+    if bc_types["inner"] == "traction":
+        es.extend(circle([0, 0], a, refine, "traction", trac_bc(-p_a), True))
+    elif bc_types["inner"] == "displacement":
+        es.extend(circle([0, 0], a, refine, "displacement", solution, True))
+
+    if bc_types["outer"] == "traction":
+        es.extend(circle([0, 0], b, refine, "traction", trac_bc(p_b), False))
+    elif bc_types["outer"] == "displacement":
+        es.extend(circle([0, 0], b, refine, "displacement", solution, False))
 
     exec_template(input_filename, es = es, G = G, mu = mu)
     print("Input file created")
 
 if __name__ == "__main__":
-    # plotter()
-    create_file()
-    run_file(input_filename)
     out_filename = 'test_data/pressured_cylinder.disp_outint'
+    # plotter()
+
+    create_file(dict(inner = "traction", outer = "traction"))
+    run_file(input_filename, True)
     test_displacements(out_filename, solution, False)
+
+    create_file(dict(inner = "displacement", outer = "displacement"))
+    run_file(input_filename, True)
+    test_displacements(out_filename, solution, False)
+
+    # create_file(dict(inner = "traction", outer = "displacement"))
+    # run_file(input_filename, True)
+    # test_displacements(out_filename, solution, False)
+
+    # create_file(dict(inner = "displacement", outer = "traction"))
+    # run_file(input_filename, True)
+    # test_displacements(out_filename, solution, False)
