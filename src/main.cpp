@@ -16,9 +16,11 @@ ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs, size_t which_component) 
 {
     auto continuity = mesh_continuity(meshes.at("traction").begin());
+    std::cout << continuity.size() << std::endl;
     auto cut_continuity = cut_at_intersection(
         continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
     );
+    std::cout << cut_continuity.size() << std::endl;
     auto bc_constraints = form_neighbor_bcs(
         meshes.at("traction").begin(),
         meshes.at("displacement").begin(),
