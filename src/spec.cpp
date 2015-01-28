@@ -50,14 +50,14 @@ IntegralEquationSpec get_displacement_BIE(const std::string& obs_mesh) {
 }
 
 IntegralEquationSpec get_traction_BIE(const std::string& obs_mesh) {
-    IntegralSpec tuh{obs_mesh, "displacement", "hypersingular", "displacement", 1};
-    IntegralSpec tua{obs_mesh, "displacement", "adjoint_traction", "traction", -1};
-    IntegralSpec tth{obs_mesh, "traction", "hypersingular", "displacement", 1};
-    IntegralSpec tta{obs_mesh, "traction", "adjoint_traction", "traction", -1};
+    IntegralSpec tuh{obs_mesh, "displacement", "hypersingular", "displacement", -1};
+    IntegralSpec tua{obs_mesh, "displacement", "adjoint_traction", "traction", 1};
+    IntegralSpec tth{obs_mesh, "traction", "hypersingular", "displacement", -1};
+    IntegralSpec tta{obs_mesh, "traction", "adjoint_traction", "traction", 1};
     IntegralSpec tsh{obs_mesh, "slip", "hypersingular", "slip", -1};
 
     return {
-        {obs_mesh, "traction", -1},
+        {obs_mesh, "traction", 1},
         {tuh, tth, tsh, tua, tta}
     };
 }

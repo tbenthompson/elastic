@@ -12,14 +12,14 @@ class Element(object):
         self.bc = np.array(bc).astype(np.float32).tolist()
         self.refine = int(refine)
 
-def displacement_edge(end_pts, refine, fnc):
+def line(end_pts, refine, bc_type, fnc):
     n = 2 ** refine
-    x_vals = np.linspace(end_pts[0][0], end_pts[1][0], n)
-    y_vals = np.linspace(end_pts[0][1], end_pts[1][1], n)
+    x_vals = np.linspace(end_pts[0][0], end_pts[1][0], n + 1)
+    y_vals = np.linspace(end_pts[0][1], end_pts[1][1], n + 1)
     ux, uy = fnc(x_vals, y_vals)
 
     es = []
-    for i in range(n - 1):
+    for i in range(n):
         es.append(Element(
             [[x_vals[i], y_vals[i]], [x_vals[i + 1], y_vals[i + 1]]],
             "displacement",
@@ -35,13 +35,13 @@ def circle(center, r, refine, bc_type, fnc, reverse):
     end_pt = 2 * np.pi
     if reverse:
         end_pt = -end_pt
-    t = np.linspace(0.0, end_pt, n)
+    t = np.linspace(0.0, end_pt, n + 1)
     x = r * np.cos(t) + center[0]
     y = r * np.sin(t) + center[1]
     ux, uy = fnc(x, y)
 
     es = []
-    for i in range(n - 1):
+    for i in range(n):
         es.append(Element(
             [[x[i], y[i]], [x[i + 1], y[i + 1]]],
             bc_type,
@@ -83,7 +83,6 @@ def run_file(filename, suppress_out):
         popen_params['stdout'] = subprocess.PIPE
     process = subprocess.Popen('./run ' + filename, **popen_params)
     process.wait()
-    print("File processed")
 
 def get_points(f):
     if f['locations'].shape[1] == 2:
@@ -99,7 +98,7 @@ def get_points(f):
         ]).T
         return vertices[:, 0], vertices[:, 1]
 
-def test_field(filename, solution, plot_diff, digits):
+def check_field(filename, solution, plot_diff, digits):
     f = h5py.File(filename)
 
     x, y = get_points(f)
@@ -109,8 +108,6 @@ def test_field(filename, solution, plot_diff, digits):
     #TODO: It would be better to use norms here
     diffx = np.abs(exactx - datax)
     diffy = np.abs(exacty - datay)
-    print zip(datax, exactx), diffx
-    print np.max(diffx)
     if plot_diff:
         plt.figure()
         plt.quiver(x, y, datax, datay)
@@ -121,4 +118,3 @@ def test_field(filename, solution, plot_diff, digits):
         plt.show()
     np.testing.assert_almost_equal(diffx, np.zeros_like(diffx), digits)
     np.testing.assert_almost_equal(diffy, np.zeros_like(diffy), digits)
-    print("Tests passed!")

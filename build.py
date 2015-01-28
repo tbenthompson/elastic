@@ -1,4 +1,6 @@
 from tools.fabricate import *
+import subprocess
+import sys
 
 test_sources = ['test_compute', 'test_function', 'test_load', 'load', 'spec', 'compute']
 test_sources = ['src/' + f for f in test_sources]
@@ -45,6 +47,17 @@ def link():
 
     run_objs = [s + '.o' for s in run_sources]
     run('g++', '-o', run_name, run_objs, run_link_flags)
+
+def tests():
+    assert(sys.argv[1] == 'tests')
+    args = ' '.join(sys.argv[2:])
+    cmd = ' py.test -s \
+        tools/test_input_builder.py\
+        tools/pressured_cylinder.py\
+        tools/beam_bend.py\
+        ' + args
+    print cmd
+    subprocess.call(cmd, shell = True)
 
 def clean():
     autoclean()

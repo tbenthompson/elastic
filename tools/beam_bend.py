@@ -1,8 +1,7 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from input_builder import Element, displacement_edge, exec_template, run_file,\
-                          test_displacements
+from input_builder import Element, line, exec_template, run_file, check_field
 
 def G_from_E_mu(E, mu):
     return E / (2 * (1 + mu))
@@ -62,11 +61,11 @@ def create_file():
     # left_edge = Element([[0, -c], [0, c]], "traction", [[0, P], [0, P]], refine)
 
     es = []
-    es.extend(displacement_edge([[0, c], [0, -c]], refine, solution))
-    es.extend(displacement_edge([[0, -c], [L, -c]], refine, solution))
+    es.extend(line([[0, c], [0, -c]], refine, solution))
+    es.extend(line([[0, -c], [L, -c]], refine, solution))
     # es.append(Element([[0, -c], [L, -c]], "traction", [[0, 0], [0, 0]], refine))
-    es.extend(displacement_edge([[L, -c], [L, c]], refine, solution))
-    es.extend(displacement_edge([[L, c], [0, c]], refine, solution))
+    es.extend(line([[L, -c], [L, c]], refine, solution))
+    es.extend(line([[L, c], [0, c]], refine, solution))
     # es.append(Element([[L, c], [0, c]], "traction", [[0, 0], [0, 0]], refine))
 
     # fictitious_mu = mu / (1 - mu)
@@ -81,5 +80,5 @@ if __name__ == "__main__":
     create_file()
     run_file(input_filename)
     filename = 'test_data/beam_bend.disp_outint'
-    test_displacements(filename, solution, False)
+    check_field(filename, solution, False, 2)
 

@@ -9,10 +9,6 @@ ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
     return from_constraints({});
-    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
-    // auto constraints = convert_to_constraints(continuity);
-    // auto constraint_matrix = from_constraints(constraints);
-    // return constraint_matrix;
 }
 
 template <size_t dim>
@@ -190,12 +186,12 @@ int main(int argc, char* argv[]) {
     auto in_filename_root = remove_extension(filename);
     auto out_filename_disp = in_filename_root + ".disp_out";
     auto out_filename_trac = in_filename_root + ".trac_out";
-    HDFOutputter disp_file(out_filename_disp);
-    HDFOutputter trac_file(out_filename_trac);
     if (soln_disp[0].size() > 0) {
+        HDFOutputter disp_file(out_filename_disp);
         out_surface(disp_file, bem_input.meshes.at("traction"), soln_disp);
     }
     if (soln_trac[0].size() > 0) {
+        HDFOutputter trac_file(out_filename_trac);
         out_surface(trac_file, bem_input.meshes.at("displacement"), soln_trac);
     }
 
