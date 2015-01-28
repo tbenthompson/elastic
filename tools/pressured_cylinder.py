@@ -19,7 +19,7 @@ def build_trac_bc(a, b, p_a, p_b, E, mu):
     def trac_bc(x, y):
         theta = np.arctan2(y, x)
         r = np.sqrt(x ** 2 + y ** 2)
-        pressure = np.where(r < ((a + b) / 2), -p_a, p_b)
+        pressure = np.where(r < ((a + b) / 2), p_a, -p_b)
         p_x = pressure * np.cos(theta)
         p_y = pressure * np.sin(theta)
         return p_x, p_y
@@ -88,12 +88,12 @@ def pressured_cylinder(bc_types):
     delete_files(input_filename)
     create_file(a, b, E, mu, input_filename,
                 bc_types, bc_funcs)
-    run_file(input_filename, False)
+    run_file(input_filename)
     if 'displacement' in bc_types.values():
         check_field(traction_filename, trac_bc, False, -5)
     if 'traction' in bc_types.values():
         check_field(displacement_filename, disp_bc, False, 7)
-    # check_field(interior_disp_filename, disp_bc, False, 7)
+    check_field(interior_disp_filename, disp_bc, False, 7)
 
 def test_trac_trac():
     pressured_cylinder(dict(inner = "traction", outer = "traction"))

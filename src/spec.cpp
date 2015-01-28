@@ -38,9 +38,9 @@ KernelMap<3> get_elastic_kernels(double shear_modulus, double poisson_ratio);
 
 IntegralEquationSpec get_displacement_BIE(const std::string& obs_mesh) {
     IntegralSpec uut{obs_mesh, "displacement", "traction", "displacement", -1};
-    IntegralSpec uuu{obs_mesh, "displacement", "displacement", "traction", 1};
+    IntegralSpec uuu{obs_mesh, "displacement", "displacement", "traction", -1};
     IntegralSpec utt{obs_mesh, "traction", "traction", "displacement", -1};
-    IntegralSpec utu{obs_mesh, "traction", "displacement", "traction", 1};
+    IntegralSpec utu{obs_mesh, "traction", "displacement", "traction", -1};
     IntegralSpec ust{obs_mesh, "slip", "traction", "slip", -1};
 
     return {

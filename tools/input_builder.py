@@ -77,10 +77,8 @@ def exec_template(filename, **params):
     with open(filename, 'w') as file:
         file.write(text)
 
-def run_file(filename, suppress_out):
+def run_file(filename, stdout_dest = None):
     popen_params = dict(shell = True)
-    if suppress_out:
-        popen_params['stdout'] = subprocess.PIPE
     process = subprocess.Popen('./run ' + filename, **popen_params)
     process.wait()
 
@@ -108,6 +106,7 @@ def check_field(filename, solution, plot_diff, digits):
     #TODO: It would be better to use norms here
     diffx = np.abs(exactx - datax)
     diffy = np.abs(exacty - datay)
+    print exactx,datax,diffx
     if plot_diff:
         plt.figure()
         plt.quiver(x, y, datax, datay)
