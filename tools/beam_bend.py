@@ -61,7 +61,7 @@ def plotter():
     plt.show()
 
 def create_file():
-    refine = 7
+    refine = 9
     # top_edge =
     # left_edge = Element([[0, -c], [0, c]], "traction", [[0, P], [0, P]], refine)
 

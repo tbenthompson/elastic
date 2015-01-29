@@ -1,5 +1,5 @@
 #!/bin/bash
 python build.py
 ./run data/disp_squish.in
-python tools/quiver_surface.py data/disp_squish.trac_outx data/disp_squish.trac_outy
-python tools/quiver_volume.py data/disp_squish.disp_outintx data/disp_squish.disp_outinty
+python tools/quiver_surface.py data/disp_squish.trac_out
+python tools/quiver_volume.py data/disp_squish.disp_outint
