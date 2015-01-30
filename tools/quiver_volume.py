@@ -22,9 +22,11 @@ def main(filename):
         width = 0.003
     )
 
+
     plt.quiver(x, y, datax, datay, **opts)
     # plt.plot([-0.5, 0.5], [-0.5, 0.5], 'b')
     plt.axis([-1.1, 1.1, -1.1, 1.1])
+    plt.title(filename)
     plt.show()
 
 if __name__ == "__main__":

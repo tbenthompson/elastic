@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 def easy_plot_x(vertices, data):
     plt.plot(vertices[:, 0], data, 'b.-')
 
-def quiver_plot(vertices, datax, datay):
-    skip = vertices.shape[0] / 64
+def quiver_plot(vertices, datax, datay, filename):
+    skip = vertices.shape[0] / 128
     x = vertices[::skip, 0]
     y = vertices[::skip, 1]
     scale = 12.0 * (np.mean(np.abs(datax)) + np.mean(np.abs(datay)))
@@ -26,9 +26,10 @@ def quiver_plot(vertices, datax, datay):
               np.max(x) + (np.max(x) - np.mean(x)) * view_factor)
     plt.ylim(np.min(y) + (np.min(y) - np.mean(y)) * view_factor,
               np.max(y) + (np.max(y) - np.mean(y)) * view_factor)
+    plt.title(filename)
     plt.show()
 
-def plot2d(facets, datax, datay):
+def plot2d(facets, datax, datay, filename):
     x_index = [0, 2]
     y_index = [1, 3]
     vertices = np.array([
@@ -38,7 +39,7 @@ def plot2d(facets, datax, datay):
 
     x = vertices[:, 1]
     # easy_plot_x(vertices, data[:, values_dim])
-    quiver_plot(vertices, datax, datay)
+    quiver_plot(vertices, datax, datay, filename)
 
     plt.show()
 
@@ -47,7 +48,7 @@ def main(filename):
     facets = f['locations']
     datax = f['values0'][:,0]
     datay = f['values1'][:,0]
-    plot2d(facets, datax, datay)
+    plot2d(facets, datax, datay, filename)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

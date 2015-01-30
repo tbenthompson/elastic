@@ -61,7 +61,7 @@ def plotter():
     plt.show()
 
 def create_file():
-    refine = 9
+    refine = 7
     # top_edge =
     # left_edge = Element([[0, -c], [0, c]], "traction", [[0, P], [0, P]], refine)
 
@@ -86,7 +86,7 @@ def test_all_displacements():
     # trac_filename = 'test_data/beam_bend.trac_out'
     # check_field(trac_filename, upper_lower_trac_bc, False, -5)
     disp_filename = 'test_data/beam_bend.disp_out'
-    check_field(disp_filename, disp_bc, False, 7)
+    check_field(disp_filename, disp_bc, False, 6)
     disp_intfilename = 'test_data/beam_bend.disp_outint'
     check_field(disp_intfilename, disp_bc, False, 7)
 

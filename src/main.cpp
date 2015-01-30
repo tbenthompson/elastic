@@ -9,6 +9,10 @@ ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
     return from_constraints({});
+    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
+    // auto constraints = convert_to_constraints(continuity);
+    // auto constraint_matrix = from_constraints(constraints);
+    // return constraint_matrix;
 }
 
 template <size_t dim>
@@ -25,12 +29,12 @@ ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes,
         bcs.at(FieldDescriptor{"displacement", "displacement"})[which_component]
     );
     //TODO: The main problem with beam bend comes from the bc_constraints
-    // bc_constraints.clear();
+    bc_constraints.clear();
     auto constraints = convert_to_constraints(cut_continuity);
-    for (const auto& c: constraints) {
-        bc_constraints.push_back(c); 
+    for (const auto& c: bc_constraints) {
+        constraints.push_back(c); 
     }
-    auto constraint_matrix = from_constraints(bc_constraints);
+    auto constraint_matrix = from_constraints(constraints);
     return constraint_matrix;
 }
 
@@ -107,7 +111,7 @@ int main(int argc, char* argv[]) {
     //solve:
     int count = 0;
     //TODO: Linear system tolerance should be a file parameter
-    auto reduced_soln = solve_system(stacked_rhs.data, 1e-5,
+    auto reduced_soln = solve_system(stacked_rhs.data, 1e-10,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             std::cout << "iteration " << count << std::endl;
             count++;

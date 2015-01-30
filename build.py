@@ -9,7 +9,7 @@ run_sources = ['src/' + f for f in run_sources]
 
 run_name = 'run'
 
-tbem_loc = '../stablelib'
+tbem_loc = '../devlib'
 cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 cpp_flags.extend([
     '-I' + tbem_loc,
