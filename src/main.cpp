@@ -9,10 +9,6 @@ ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs) 
 {
     return from_constraints({});
-    // auto continuity = mesh_continuity(meshes.at("displacement").begin());
-    // auto constraints = convert_to_constraints(continuity);
-    // auto constraint_matrix = from_constraints(constraints);
-    // return constraint_matrix;
 }
 
 template <size_t dim>
@@ -23,17 +19,7 @@ ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes,
     auto cut_continuity = cut_at_intersection(
         continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
     );
-    auto bc_constraints = form_neighbor_bcs(
-        meshes.at("traction").begin(),
-        meshes.at("displacement").begin(),
-        bcs.at(FieldDescriptor{"displacement", "displacement"})[which_component]
-    );
-    //TODO: The main problem with beam bend comes from the bc_constraints
-    bc_constraints.clear();
     auto constraints = convert_to_constraints(cut_continuity);
-    for (const auto& c: bc_constraints) {
-        constraints.push_back(c); 
-    }
     auto constraint_matrix = from_constraints(constraints);
     return constraint_matrix;
 }

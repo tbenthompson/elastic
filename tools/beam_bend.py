@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from input_builder import Element, line, exec_template, run_file, check_field
+import subprocess
 
 def G_from_E_mu(E, mu):
     return E / (2 * (1 + mu))
@@ -10,7 +11,7 @@ L = 1.0
 c = 1.0
 I = (2.0 / 3.0) * c ** 3
 
-P = -10e6
+P = -40e6
 E = 80e9
 mu = 0.25
 G = G_from_E_mu(E, mu)
@@ -62,39 +63,22 @@ def plotter():
 
 def create_file():
     refine = 7
-    # top_edge =
-    # left_edge = Element([[0, -c], [0, c]], "traction", [[0, P], [0, P]], refine)
 
     es = []
     es.extend(line([[0, c], [0, -c]], refine, "displacement", disp_bc))
-    # es.extend(line([[0, -c], [L, -c]], refine, "displacement", disp_bc))
     es.append(Element([[0, -c], [L, -c]], "traction", [[0, 0], [0, 0]], refine))
     es.extend(line([[L, -c], [L, c]], refine, "displacement", disp_bc))
-    # es.extend(line([[L, c], [0, c]], refine, "displacement", disp_bc))
     es.append(Element([[L, c], [0, c]], "traction", [[0, 0], [0, 0]], refine))
 
-    # fictitious_mu = mu / (1 - mu)
-    # fictitious_E = E / (1 - mu ** 2)
-    # fictitious_G = G_from_E_mu(fictitious_E, fictitious_mu)
-    # exec_template(input_filename, es = es, G = fictitious_G, mu = fictitious_mu)
     exec_template(input_filename, es = es, G = G, mu = mu)
-    print("Input file created")
 
-def test_all_displacements():
+def test_beam_bend():
     create_file()
-    run_file(input_filename)
-    # trac_filename = 'test_data/beam_bend.trac_out'
-    # check_field(trac_filename, upper_lower_trac_bc, False, -5)
+    run_file(input_filename, stdout_dest = subprocess.PIPE)
     disp_filename = 'test_data/beam_bend.disp_out'
     check_field(disp_filename, disp_bc, False, 6)
     disp_intfilename = 'test_data/beam_bend.disp_outint'
-    check_field(disp_intfilename, disp_bc, False, 7)
-
-# def test_upper_lower_traction_free():
-#     create_file()
-#     run_file(input_filename)
-#     filename = 'test_data/beam_bend.disp_outint'
-#     check_field(filename, disp_bc, False, 2)
+    check_field(disp_intfilename, disp_bc, False, 6)
 
 if __name__ == "__main__":
     plotter()
