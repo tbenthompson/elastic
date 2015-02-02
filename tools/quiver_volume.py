@@ -22,6 +22,9 @@ def main(filename):
         width = 0.003
     )
 
+    print datax[x < -0.99]
+    print datay[x < -0.99]
+
 
     plt.quiver(x, y, datax, datay, **opts)
     # plt.plot([-0.5, 0.5], [-0.5, 0.5], 'b')

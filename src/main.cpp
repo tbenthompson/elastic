@@ -1,6 +1,8 @@
 #include "spec.h"
 #include "load.h"
 #include "compute.h"
+#include "3bem/function.h"
+#include "3bem/armadillo_facade.h"
 
 using namespace tbem;
 
@@ -54,7 +56,7 @@ BEM<dim> parse_into_bem(const std::string& filename)
             params.n_singular_steps, params.far_threshold, params.near_tol),
         {
             get_displacement_BIE("displacement"),
-            get_displacement_BIE("traction")
+            get_traction_BIE("traction")
         },
         form_constraints(meshes, bcs)
     };
@@ -80,7 +82,7 @@ int main(int argc, char* argv[]) {
     // //prep:
     // scale rows
     auto disp_rhs = disp_system.rhs;
-    auto trac_rhs = trac_system.rhs;
+    auto trac_rhs = trac_system.rhs * (1.0 / bem_input.params.shear_modulus);
 
     //reduce using constraints
     //stack rows
@@ -94,6 +96,41 @@ int main(int argc, char* argv[]) {
     int n_unknown_trac_dofs = disp_system.rhs[0].size();
     int n_unknown_disp_dofs = trac_system.rhs[0].size();
 
+    std::cout << disp_system.lhs[0].src_mesh << std::endl;
+    std::cout << disp_system.lhs[1].src_mesh << std::endl;
+    std::cout << trac_system.lhs[0].src_mesh << std::endl;
+    std::cout << trac_system.lhs[1].src_mesh << std::endl;
+    BlockOperator lhs{
+        4, 4,
+        {
+            disp_system.lhs[1].op.ops[0],
+            disp_system.lhs[1].op.ops[1],
+            disp_system.lhs[0].op.ops[0],
+            disp_system.lhs[0].op.ops[1],
+
+            disp_system.lhs[1].op.ops[2],
+            disp_system.lhs[1].op.ops[3],
+            disp_system.lhs[0].op.ops[2],
+            disp_system.lhs[0].op.ops[3],
+
+            trac_system.lhs[1].op.ops[0],
+            trac_system.lhs[1].op.ops[1],
+            trac_system.lhs[0].op.ops[0],
+            trac_system.lhs[0].op.ops[1],
+
+            trac_system.lhs[1].op.ops[2],
+            trac_system.lhs[1].op.ops[3],
+            trac_system.lhs[0].op.ops[2],
+            trac_system.lhs[0].op.ops[3],
+        }
+    };
+
+    auto condensed_lhs = condense_block_operator(
+        bem_input.constraints, bem_input.constraints, lhs);
+    auto combined_lhs = combine_components(condensed_lhs);
+    std::cout << "Condition number: " << arma_cond(combined_lhs.ops[0]) << std::endl;
+    return 0;
+
     //solve:
     int count = 0;
     //TODO: Linear system tolerance should be a file parameter
@@ -106,13 +143,13 @@ int main(int argc, char* argv[]) {
             auto unstacked_estimate = expand(stacked_rhs, x);
 
             //expand using constraints
-            Function unknown_trac = {
+            BlockFunction unknown_trac = {
                 distribute_vector(bem_input.constraints[0], unstacked_estimate[0],
                                                  n_unknown_trac_dofs),
                 distribute_vector(bem_input.constraints[1], unstacked_estimate[1],
                                                  n_unknown_trac_dofs)
             };
-            Function unknown_disp = {
+            BlockFunction unknown_disp = {
                 distribute_vector(bem_input.constraints[2], unstacked_estimate[2],
                                                  n_unknown_disp_dofs),
                 distribute_vector(bem_input.constraints[3], unstacked_estimate[3],
@@ -132,7 +169,7 @@ int main(int argc, char* argv[]) {
             //two lines would be unnecessary
             //scale rows
             auto disp_eval_vec = -disp_eval.rhs;
-            auto trac_eval_vec = -trac_eval.rhs;
+            auto trac_eval_vec = -trac_eval.rhs * (1.0 / bem_input.params.shear_modulus);
 
             //reduce using constraints
             //stack rows
@@ -160,13 +197,13 @@ int main(int argc, char* argv[]) {
     auto unstacked_soln = expand(stacked_rhs, reduced_soln);
 
     //expand using constraints
-    Function soln_trac = {
+    BlockFunction soln_trac = {
         distribute_vector(bem_input.constraints[0], unstacked_soln[0],
                 n_unknown_trac_dofs),
         distribute_vector(bem_input.constraints[1], unstacked_soln[1],
                 n_unknown_trac_dofs)
     };
-    Function soln_disp = {
+    BlockFunction soln_disp = {
         distribute_vector(bem_input.constraints[2], unstacked_soln[2],
                 n_unknown_disp_dofs),
         distribute_vector(bem_input.constraints[3], unstacked_soln[3],
@@ -195,7 +232,7 @@ int main(int argc, char* argv[]) {
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
 
-    auto x_vals = linspace(0, 1, 20);
+    auto x_vals = linspace(-1, 1, 20);
     auto y_vals = linspace(-1, 1, 20);
     std::vector<Vec<double,2>> locs;
     std::vector<ObsPt<2>> obs_pts;

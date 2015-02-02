@@ -2,16 +2,20 @@
 
 using namespace tbem;
 
-
-MatrixOperator operator*(const MatrixOperator& op, double s) {
-    std::vector<std::vector<double>> out_data(op.data.size(),
-        std::vector<double>(op.data[0].size()));
-    for (size_t c = 0; c < op.data.size(); c++) {
-        for (size_t i = 0; i < op.data[0].size(); i++) {
-            out_data[c][i] = op.data[c][i] * s;
-        }
+Operator operator*(const Operator& op, double s) {
+    auto out = op;
+    for (size_t i = 0; i < op.data.size(); i++) {
+        out.data[i] *= s;
     }
-    return {op.n_rows, op.n_cols, op.n_comp_rows, op.n_comp_cols, out_data};
+    return out;
+}
+
+BlockOperator operator*(const BlockOperator& op, double s) {
+    std::vector<Operator> out_data;
+    for (size_t c = 0; c < op.ops.size(); c++) {
+        out_data.push_back(op.ops[c] * s);
+    }
+    return {op.n_comp_rows, op.n_comp_cols, out_data};
 }
 
 template <size_t dim>
@@ -67,8 +71,8 @@ compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec& eqtn_sp
 
 LinearSystem separate(const std::vector<ComputedOperator>& eqtn, const BCMap& bcs) {
     size_t components = eqtn[0].op.n_comp_rows;
-    size_t dofs = eqtn[0].op.n_rows;
-    Function rhs = constant_function(components, dofs, 0.0);
+    size_t dofs = eqtn[0].op.ops[0].n_rows;
+    BlockFunction rhs = constant_function(components, dofs, 0.0);
     std::vector<ComputedOperator> lhs;
 
     for (const auto& term: eqtn) {

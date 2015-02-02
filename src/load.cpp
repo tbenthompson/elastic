@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 #include "load.h"
 #include "spec.h"
 #include "3bem/vec.h"
@@ -183,7 +184,7 @@ BCMap get_bcs(const std::vector<Element<dim>>& elements) {
     for (const auto& type: get_mesh_types()) {
         FieldDescriptor key{type, type};
         if (bc_map.find(key) == bc_map.end()) {
-            bc_map.insert(std::make_pair(key, Function(dim, std::vector<double>(0))));
+            bc_map.insert(std::make_pair(key, BlockFunction(dim, std::vector<double>(0))));
         };
     }
 

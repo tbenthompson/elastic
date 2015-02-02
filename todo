@@ -1,10 +1,8 @@
 ** start thinking about preconditioning
 ** condition number!
 ** quadrature order?
-** come up with a way of getting the condition number
 ** cleaner interior evaluation
 ** simple refactorings on main.cpp (extract function, etc)
-** direct solvers
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)
 ** load 3D problems
 ** calculate and output the tractions on the slip_mesh.

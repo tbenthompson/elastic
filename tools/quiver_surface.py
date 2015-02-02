@@ -8,6 +8,7 @@ def easy_plot_x(vertices, data):
 
 def quiver_plot(vertices, datax, datay, filename):
     skip = vertices.shape[0] / 128
+    skip = 1
     x = vertices[::skip, 0]
     y = vertices[::skip, 1]
     scale = 12.0 * (np.mean(np.abs(datax)) + np.mean(np.abs(datay)))

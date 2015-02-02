@@ -56,8 +56,8 @@ struct FieldDescriptor
     }
 };
 
-typedef std::vector<std::vector<double>> Function;
-typedef std::map<FieldDescriptor,Function> BCMap;
+typedef std::vector<std::vector<double>> BlockFunction;
+typedef std::map<FieldDescriptor,BlockFunction> BCMap;
 
 template <size_t dim>
 MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements);

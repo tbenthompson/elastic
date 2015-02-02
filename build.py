@@ -2,7 +2,7 @@ from tools.fabricate import *
 import subprocess
 import sys
 
-test_sources = ['test_compute', 'test_function', 'test_load', 'load', 'spec', 'compute']
+test_sources = ['test_compute', 'test_load', 'load', 'spec', 'compute']
 test_sources = ['src/' + f for f in test_sources]
 run_sources = ['main', 'load', 'spec', 'compute']
 run_sources = ['src/' + f for f in run_sources]
@@ -10,7 +10,7 @@ run_sources = ['src/' + f for f in run_sources]
 run_name = 'run'
 
 tbem_loc = '../devlib'
-cpp_flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
+cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
 cpp_flags.extend([
     '-I' + tbem_loc,
     '-I../lib/unittest-cpp/UnitTest++',

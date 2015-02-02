@@ -2,7 +2,6 @@
 #define __reqrqweklajfbna_BEM_PARTS_H
 #include "load.h"
 #include "spec.h"
-#include "function.h"
 #include "3bem/3bem.h"
 
 template <size_t dim>
@@ -17,7 +16,7 @@ struct BEM {
 };
 
 struct ComputedOperator {
-    const tbem::MatrixOperator op;
+    const tbem::BlockOperator op;
     const std::string src_mesh;
     const std::string function;
 };
@@ -55,7 +54,7 @@ compute_interior(const std::vector<tbem::ObsPt<dim>>& pts,
 struct LinearSystem {
     //TODO: Replace with ComputedIntegralEquation
     std::vector<ComputedOperator> lhs;
-    Function rhs;
+    BlockFunction rhs;
 };
 
 //TODO: better name
