@@ -12,7 +12,7 @@ c = 1.0
 I = (2.0 / 3.0) * c ** 3
 
 P = -40e6
-E = 80e9
+E = 0.1
 mu = 0.25
 G = G_from_E_mu(E, mu)
 
@@ -62,7 +62,7 @@ def plotter():
     plt.show()
 
 def create_file():
-    refine = 7
+    refine = 5
 
     es = []
     es.extend(line([[0, c], [0, -c]], refine, "displacement", disp_bc))
@@ -74,11 +74,11 @@ def create_file():
 
 def test_beam_bend():
     create_file()
-    run_file(input_filename, stdout_dest = subprocess.PIPE)
+    run_file(input_filename)
     disp_filename = 'test_data/beam_bend.disp_out'
-    check_field(disp_filename, disp_bc, False, 6)
+    check_field(disp_filename, disp_bc, False, -6)
     disp_intfilename = 'test_data/beam_bend.disp_outint'
-    check_field(disp_intfilename, disp_bc, False, 6)
+    check_field(disp_intfilename, disp_bc, False, -6, lambda x, y: x >= 0)
 
 if __name__ == "__main__":
     plotter()

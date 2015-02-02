@@ -97,16 +97,25 @@ def get_points(f):
         ]).T
         return vertices[:, 0], vertices[:, 1]
 
-def check_field(filename, solution, plot_diff, digits):
+def check_field(filename, solution, plot_diff, digits,
+    point_limiter = None):
+
+    if point_limiter is None:
+        point_limiter = lambda x, y: np.ones_like(x, dtype = np.bool)
+
     f = h5py.File(filename)
 
-    x, y = get_points(f)
-    datax = f['values0'][:, 0]
-    datay = f['values1'][:, 0]
+    x_in, y_in = get_points(f)
+    x = x_in[point_limiter(x_in, y_in)]
+    y = y_in[point_limiter(x_in, y_in)]
+    datax = f['values0'][point_limiter(x_in, y_in), 0]
+    datay = f['values1'][point_limiter(x_in, y_in), 0]
+
     exactx, exacty = solution(x, y)
     #TODO: It would be better to use norms here
     diffx = np.abs(exactx - datax)
     diffy = np.abs(exacty - datay)
+    print np.max(np.abs(diffx)) / np.max(np.abs(exactx))
     if plot_diff:
         plt.figure()
         plt.quiver(x, y, datax, datay)

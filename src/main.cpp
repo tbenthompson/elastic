@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     // //prep:
     // scale rows
     auto disp_rhs = disp_system.rhs;
-    auto trac_rhs = trac_system.rhs * (1.0 / bem_input.params.shear_modulus);
+    auto trac_rhs = trac_system.rhs;
 
     //reduce using constraints
     //stack rows
@@ -96,10 +96,6 @@ int main(int argc, char* argv[]) {
     int n_unknown_trac_dofs = disp_system.rhs[0].size();
     int n_unknown_disp_dofs = trac_system.rhs[0].size();
 
-    std::cout << disp_system.lhs[0].src_mesh << std::endl;
-    std::cout << disp_system.lhs[1].src_mesh << std::endl;
-    std::cout << trac_system.lhs[0].src_mesh << std::endl;
-    std::cout << trac_system.lhs[1].src_mesh << std::endl;
     BlockOperator lhs{
         4, 4,
         {
@@ -129,7 +125,6 @@ int main(int argc, char* argv[]) {
         bem_input.constraints, bem_input.constraints, lhs);
     auto combined_lhs = combine_components(condensed_lhs);
     std::cout << "Condition number: " << arma_cond(combined_lhs.ops[0]) << std::endl;
-    return 0;
 
     //solve:
     int count = 0;
@@ -169,7 +164,7 @@ int main(int argc, char* argv[]) {
             //two lines would be unnecessary
             //scale rows
             auto disp_eval_vec = -disp_eval.rhs;
-            auto trac_eval_vec = -trac_eval.rhs * (1.0 / bem_input.params.shear_modulus);
+            auto trac_eval_vec = -trac_eval.rhs;
 
             //reduce using constraints
             //stack rows
