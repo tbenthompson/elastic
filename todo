@@ -1,6 +1,6 @@
+** switch the shear_modulus back in beam_bend and pressured_cylinder
 ** why is beam_bend divergent?
 ** start thinking about preconditioning
-** condition number!
 ** quadrature order?
 ** cleaner interior evaluation
 ** simple refactorings on main.cpp (extract function, etc)
