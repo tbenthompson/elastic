@@ -5,6 +5,10 @@ import subprocess
 from mako.template import Template
 import matplotlib.pyplot as plt
 
+def square_pts(n):
+    np.linspace(-1.0, 1.0, n)
+    np.linspace(-1.0, 1.0, n)
+
 class Element(object):
     def __init__(self, pts, bc_type, bc, refine):
         self.pts = np.array(pts).astype(np.float32).tolist()
@@ -52,7 +56,7 @@ def circle(center, r, refine, bc_type, fnc, reverse):
     return es
 
 
-def exec_template(filename, **params):
+def bem_template(filename, **params):
     file_template = """
     {
         "shear_modulus": ${G},
@@ -72,7 +76,9 @@ def exec_template(filename, **params):
         ]
     }
     """
+    exec_template(file_template, filename, **params)
 
+def exec_template(file_template, filename, **params):
     text = Template(file_template).render(**params)
     with open(filename, 'w') as file:
         file.write(text)

@@ -53,20 +53,12 @@ int main(int argc, char* argv[]) {
 
     auto pts_filename = argv[2];
     auto pts_parsed = parse_json(load_file(pts_filename));
-    // auto pts = get_pts(pts_parsed);
+    auto pts = get_pts<2>(pts_parsed);
 
-    auto x_vals = linspace(-1, 1, 20);
-    auto y_vals = linspace(-1, 1, 20);
-    std::vector<Vec<double,2>> locs;
     std::vector<ObsPt<2>> obs_pts;
-    for (size_t i = 0; i < x_vals.size(); i++) {
-        for (size_t j = 0; j < y_vals.size(); j++) {
-            locs.push_back({x_vals[i], y_vals[j]});
-        }
-    }
-    for (size_t i = 0; i < locs.size(); i++) {
-        obs_pts.push_back({0.001, locs[i], {0, 1}, 
-            Vec<double,2>{0.5, 0.5} - locs[i]});
+    for (size_t i = 0; i < pts.size(); i++) {
+        obs_pts.push_back({0.001, pts[i], {0, 1}, 
+            Vec<double,2>{0.5, 0.5} - pts[i]});
     }
 
     auto interior = compute_interior(
@@ -74,5 +66,5 @@ int main(int argc, char* argv[]) {
     );
 
     HDFOutputter interior_disp_file(interior_disp_out_filename(input_filename));
-    out_volume(interior_disp_file, locs, interior);
+    out_volume(interior_disp_file, pts, interior);
 }
