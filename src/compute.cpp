@@ -1,4 +1,7 @@
 #include "compute.h"
+#include "spec.h"
+#include "data.h"
+#include "3bem/3bem.h"
 
 using namespace tbem;
 

@@ -3,7 +3,8 @@
 *.o
 *.pyc
 test
-run
+solve
+interior
 *.hdf5
 *disp_out*
 *trac_out*

@@ -5,12 +5,7 @@
 #include "3bem/util.h"
 #include "3bem/vec_ops.h"
 
-
 using namespace tbem;
-
-TEST(RemoveExtension) {
-    CHECK_EQUAL(remove_extension("abc.in"), "abc");
-}
 
 TEST(SimpleLoadGood) {
     auto doc = parse_json(load_file("test_data/good.in"));
@@ -119,6 +114,19 @@ TEST(Load3D) {
     auto doc = parse_json(load_file("test_data/3d_test.in"));
     auto meshes = get_meshes(get_elements<3>(doc));
     CHECK_EQUAL(meshes["traction"].n_facets(), 64);
+}
+
+TEST(LoadPts) {
+    auto doc = parse_json(load_file("test_data/pts.in"));
+    auto points = get_pts<2>(doc);
+    CHECK_EQUAL(points.size(), 2);
+    CHECK_ARRAY_EQUAL(&points[0], 
+        (Vec<Vec<double,2>,2>{{{{0.0, 1.0}}, {{1.0, 0.0}}}}), 2);
+}
+
+TEST(LoadPtsBad) {
+    auto doc = parse_json(load_file("test_data/bad_pts.in"));
+    CHECK_THROW(get_pts<2>(doc), std::invalid_argument);
 }
 
 int main() {

@@ -6,7 +6,6 @@
 #include "3bem/constraint.h"
 #include "3bem/mesh.h"
 
-std::string remove_extension(const std::string& filename); 
 std::string load_file(const std::string& filename);
 rapidjson::Document parse_json(const std::string& json);
 
@@ -65,5 +64,6 @@ MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements);
 template <size_t dim>
 BCMap get_bcs(const std::vector<Element<dim>>& elements);
 
-
+template <size_t dim>
+std::vector<tbem::Vec<double,dim>> get_pts(const rapidjson::Document& doc);
 #endif

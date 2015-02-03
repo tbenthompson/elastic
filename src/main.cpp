@@ -1,6 +1,9 @@
 #include "spec.h"
 #include "load.h"
 #include "compute.h"
+#include "filenames.h"
+#include "data.h"
+#include "3bem/3bem.h"
 #include "3bem/function.h"
 #include "3bem/armadillo_facade.h"
 
@@ -30,46 +33,41 @@ template <size_t dim>
 std::vector<ConstraintMatrix> form_constraints(const MeshMap<dim>& meshes,
     const BCMap& bcs)
 {
-    return {
-        form_traction_constraints(meshes, bcs),
-        form_traction_constraints(meshes, bcs),
-        form_displacement_constraints(meshes, bcs, 0),
-        form_displacement_constraints(meshes, bcs, 1)
-    };
+    std::vector<ConstraintMatrix> out;
+    for (size_t d = 0; d < dim; d++) {
+        out.push_back(form_traction_constraints(meshes, bcs));
+    }
+    for (size_t d = 0; d < dim; d++) {
+        out.push_back(form_displacement_constraints(meshes, bcs, d));
+    }
+    return out;
 }
 
-template <size_t dim>
-BEM<dim> parse_into_bem(const std::string& filename)
+ConcatenatedFunction concatenate_condense(const std::vector<ConstraintMatrix>& cms,
+    const std::vector<BlockFunction>& fncs) 
 {
-    auto doc = parse_json(load_file(filename));
-    auto params = get_parameters(doc);
-    auto elements = get_elements<dim>(doc);
-    auto meshes = get_meshes(elements);
-    auto bcs = get_bcs(elements);
+    std::vector<Function> condensed;
 
-    return {
-        params,
-        meshes, 
-        bcs,
-        get_elastic_kernels<dim>(params.shear_modulus, params.poisson_ratio),
-        QuadStrategy<dim>(params.obs_quad_order, params.src_far_quad_order,
-            params.n_singular_steps, params.far_threshold, params.near_tol),
-        {
-            get_displacement_BIE("displacement"),
-            get_traction_BIE("traction")
-        },
-        form_constraints(meshes, bcs)
-    };
+    size_t constraint_matrix_idx = 0;
+    for (size_t eqtn_idx = 0; eqtn_idx < fncs.size(); eqtn_idx++) {
+        const auto& f = fncs[eqtn_idx];
+        for (size_t d = 0; d < f.size(); d++) {
+            condensed.push_back(condense_vector(cms[constraint_matrix_idx], f[d]));
+            constraint_matrix_idx++;
+        }
+    }
+    return concatenate(condensed);
 }
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage is 'elastic_process filename'" << std::endl;
+        std::cout << "Usage is 'solve filename'" << std::endl;
         return 1;
     }
     
     auto filename = argv[1];
     auto bem_input = parse_into_bem<2>(filename);
+    auto constraint_matrices = form_constraints(bem_input.meshes, bem_input.bcs);
 
     auto disp_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[0]);
     auto trac_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[1]);
@@ -79,22 +77,14 @@ int main(int argc, char* argv[]) {
     auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
     auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
 
-    // //prep:
-    // scale rows
-    auto disp_rhs = disp_system.rhs;
-    auto trac_rhs = trac_system.rhs;
-
     //reduce using constraints
     //stack rows
-    auto stacked_rhs = concatenate({
-        condense_vector(bem_input.constraints[0], disp_rhs[0]),
-        condense_vector(bem_input.constraints[1], disp_rhs[1]),
-        condense_vector(bem_input.constraints[2], trac_rhs[0]),
-        condense_vector(bem_input.constraints[3], trac_rhs[1])
-    });
+    auto stacked_rhs = concatenate_condense(
+        constraint_matrices, {disp_system.rhs, trac_system.rhs}
+    );
 
-    int n_unknown_trac_dofs = disp_system.rhs[0].size();
-    int n_unknown_disp_dofs = trac_system.rhs[0].size();
+    auto n_unknown_trac_dofs = disp_system.rhs[0].size();
+    auto n_unknown_disp_dofs = trac_system.rhs[0].size();
 
     BlockOperator lhs{
         4, 4,
@@ -122,14 +112,14 @@ int main(int argc, char* argv[]) {
     };
 
     auto condensed_lhs = condense_block_operator(
-        bem_input.constraints, bem_input.constraints, lhs);
+        constraint_matrices, constraint_matrices, lhs);
     auto combined_lhs = combine_components(condensed_lhs);
     std::cout << "Condition number: " << arma_cond(combined_lhs.ops[0]) << std::endl;
 
     //solve:
     int count = 0;
     //TODO: Linear system tolerance should be a file parameter
-    auto reduced_soln = solve_system(stacked_rhs.data, 1e-10,
+    auto reduced_soln = solve_system(stacked_rhs.data, 1e-3,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             std::cout << "iteration " << count << std::endl;
             count++;
@@ -139,15 +129,15 @@ int main(int argc, char* argv[]) {
 
             //expand using constraints
             BlockFunction unknown_trac = {
-                distribute_vector(bem_input.constraints[0], unstacked_estimate[0],
+                distribute_vector(constraint_matrices[0], unstacked_estimate[0],
                                                  n_unknown_trac_dofs),
-                distribute_vector(bem_input.constraints[1], unstacked_estimate[1],
+                distribute_vector(constraint_matrices[1], unstacked_estimate[1],
                                                  n_unknown_trac_dofs)
             };
             BlockFunction unknown_disp = {
-                distribute_vector(bem_input.constraints[2], unstacked_estimate[2],
+                distribute_vector(constraint_matrices[2], unstacked_estimate[2],
                                                  n_unknown_disp_dofs),
-                distribute_vector(bem_input.constraints[3], unstacked_estimate[3],
+                distribute_vector(constraint_matrices[3], unstacked_estimate[3],
                                                  n_unknown_disp_dofs)
             };
 
@@ -169,10 +159,10 @@ int main(int argc, char* argv[]) {
             //reduce using constraints
             //stack rows
             auto evaluated_lhs = concatenate({
-                condense_vector(bem_input.constraints[0], disp_eval_vec[0]),
-                condense_vector(bem_input.constraints[1], disp_eval_vec[1]),
-                condense_vector(bem_input.constraints[2], trac_eval_vec[0]),
-                condense_vector(bem_input.constraints[3], trac_eval_vec[1])
+                condense_vector(constraint_matrices[0], disp_eval_vec[0]),
+                condense_vector(constraint_matrices[1], disp_eval_vec[1]),
+                condense_vector(constraint_matrices[2], trac_eval_vec[0]),
+                condense_vector(constraint_matrices[3], trac_eval_vec[1])
             });
 
             for (size_t comp = 0; comp < evaluated_lhs.components; comp++) {
@@ -193,55 +183,26 @@ int main(int argc, char* argv[]) {
 
     //expand using constraints
     BlockFunction soln_trac = {
-        distribute_vector(bem_input.constraints[0], unstacked_soln[0],
+        distribute_vector(constraint_matrices[0], unstacked_soln[0],
                 n_unknown_trac_dofs),
-        distribute_vector(bem_input.constraints[1], unstacked_soln[1],
+        distribute_vector(constraint_matrices[1], unstacked_soln[1],
                 n_unknown_trac_dofs)
     };
     BlockFunction soln_disp = {
-        distribute_vector(bem_input.constraints[2], unstacked_soln[2],
+        distribute_vector(constraint_matrices[2], unstacked_soln[2],
                 n_unknown_disp_dofs),
-        distribute_vector(bem_input.constraints[3], unstacked_soln[3],
+        distribute_vector(constraint_matrices[3], unstacked_soln[3],
                 n_unknown_disp_dofs)
     };
 
 
     //output
-    auto in_filename_root = remove_extension(filename);
-    auto out_filename_disp = in_filename_root + ".disp_out";
-    auto out_filename_trac = in_filename_root + ".trac_out";
     if (soln_disp[0].size() > 0) {
-        HDFOutputter disp_file(out_filename_disp);
+        HDFOutputter disp_file(disp_out_filename(filename));
         out_surface(disp_file, bem_input.meshes.at("traction"), soln_disp);
     }
     if (soln_trac[0].size() > 0) {
-        HDFOutputter trac_file(out_filename_trac);
+        HDFOutputter trac_file(trac_out_filename(filename));
         out_surface(trac_file, bem_input.meshes.at("displacement"), soln_trac);
     }
-
-    //interior eval
-    // long-term, use an input file containing the list of points
-    // find the nearest boundary point and make that the path to follow away
-    // for nearfield integration --> nearest neighbor problems are a real theme!
-    BCMap fields = bem_input.bcs; 
-    fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
-    fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
-
-    auto x_vals = linspace(-1, 1, 20);
-    auto y_vals = linspace(-1, 1, 20);
-    std::vector<Vec<double,2>> locs;
-    std::vector<ObsPt<2>> obs_pts;
-    for (size_t i = 0; i < x_vals.size(); i++) {
-        for (size_t j = 0; j < y_vals.size(); j++) {
-            locs.push_back({x_vals[i], y_vals[j]});
-        }
-    }
-    for (size_t i = 0; i < locs.size(); i++) {
-        obs_pts.push_back({0.001, locs[i], {0, 1}, 
-            Vec<double,2>{0.5, 0.5} - locs[i]});
-    }
-    auto interior = compute_interior(obs_pts, bem_input,
-        get_displacement_BIE("displacement"), fields);
-    HDFOutputter interior_disp_file(out_filename_disp + "int");
-    out_volume(interior_disp_file, locs, interior);
 }

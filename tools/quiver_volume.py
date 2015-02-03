@@ -27,10 +27,18 @@ def main(filename):
 
 
     plt.quiver(x, y, datax, datay, **opts)
-    # plt.plot([-0.5, 0.5], [-0.5, 0.5], 'b')
     plt.axis([-1.1, 1.1, -1.1, 1.1])
     plt.title(filename)
     plt.show()
+
+    # define grid.
+    # xi = np.linspace(-1.0,1.0,100)
+    # yi = np.linspace(-1.0,1.0,100)
+    # # grid the data.
+    # from scipy.interpolate import griddata
+    # zi = griddata((x, y), datay, (xi[None,:], yi[:,None]), method='cubic')
+    # plt.contourf(xi, yi, zi)
+    # plt.contour(xi, yi, zi)
 
 if __name__ == "__main__":
     main(sys.argv[1])

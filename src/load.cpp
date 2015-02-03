@@ -10,15 +10,6 @@
 
 using namespace tbem;
 
-std::string remove_extension(const std::string& filename) 
-{
-    size_t last_dot = filename.find_last_of(".");
-    if (last_dot == std::string::npos) {
-        return filename;
-    }
-    return filename.substr(0, last_dot); 
-}
-
 std::string load_file(const std::string& filename) {
     std::ifstream file;
     file.open(filename);
@@ -195,3 +186,30 @@ template
 BCMap get_bcs<2>(const std::vector<Element<2>>& elements);
 template 
 BCMap get_bcs<3>(const std::vector<Element<3>>& elements);
+
+template <size_t dim>
+std::vector<Vec<double,dim>> get_pts(const rapidjson::Document& doc) {
+    auto n_pts = doc.Size();
+    std::vector<Vec<double,dim>> out(n_pts);
+
+    std::string except_text = "Points must be in the form [Double, Double]";
+
+    for (std::size_t i = 0; i < n_pts; i++) {
+        auto& pt_json = doc[i];
+        if (!pt_json.IsArray() || pt_json.Capacity() != dim) {
+            throw std::invalid_argument(except_text);
+        }
+        for (int d = 0; d < dim; d++) {
+            if(!pt_json[d].IsDouble()) {
+                throw std::invalid_argument(except_text);
+            }
+            out[i][d] = pt_json[d].GetDouble();
+        }
+    }
+    return out;
+}
+template 
+std::vector<Vec<double,2>> get_pts(const rapidjson::Document& doc);
+
+template 
+std::vector<Vec<double,3>> get_pts(const rapidjson::Document& doc);
