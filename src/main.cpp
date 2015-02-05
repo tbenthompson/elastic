@@ -10,35 +10,15 @@
 using namespace tbem;
 
 template <size_t dim>
-ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes,
-    const BCMap& bcs) 
-{
-    return from_constraints({});
-}
-
-template <size_t dim>
-ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes, 
-    const BCMap& bcs, size_t which_component) 
-{
-    auto continuity = mesh_continuity(meshes.at("traction").begin());
-    auto cut_continuity = cut_at_intersection(
-        continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
-    );
-    auto constraints = convert_to_constraints(cut_continuity);
-    auto constraint_matrix = from_constraints(constraints);
-    return constraint_matrix;
-}
-
-template <size_t dim>
-std::vector<ConstraintMatrix> form_constraints(const MeshMap<dim>& meshes,
-    const BCMap& bcs)
+std::vector<ConstraintMatrix> 
+form_constraints(const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
+    const MeshMap<dim>& meshes)
 {
     std::vector<ConstraintMatrix> out;
-    for (size_t d = 0; d < dim; d++) {
-        out.push_back(form_traction_constraints(meshes, bcs));
-    }
-    for (size_t d = 0; d < dim; d++) {
-        out.push_back(form_displacement_constraints(meshes, bcs, d));
+    for (const auto& ie: int_eqtns) {
+        for (size_t d = 0; d < dim; d++) {
+            out.push_back(ie.constraint_builder(meshes, d));
+        }
     }
     return out;
 }
@@ -95,6 +75,19 @@ double condition_number(const LinearSystem& disp_system,
     return arma_cond(combined_lhs.ops[0]);
 }
 
+/* A jacobi diagonal preconditioner. Super simple.
+*/
+void precondition(BlockFunction& f, const BlockOperator& block_op) 
+{
+    for (size_t d = 0; d < 2; d++) {
+        const auto& op = block_op.ops[d * 2 + d];
+        assert(op.n_rows == op.n_cols);
+        for (size_t i = 0; i < f[d].size(); i++) {
+            f[d][i] /= op.data[i * op.n_cols + i];
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cout << "Usage is 'solve filename'" << std::endl;
@@ -103,20 +96,20 @@ int main(int argc, char* argv[]) {
     
     auto filename = argv[1];
     auto bem_input = parse_into_bem<2>(filename);
-    auto constraint_matrices = form_constraints(bem_input.meshes, bem_input.bcs);
+    auto constraint_matrices = form_constraints(bem_input.eqtn_specs, bem_input.meshes);
 
-    auto disp_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[0]);
-    auto trac_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[1]);
-    assert(disp_BIE_ops.size() == 6);
-    assert(trac_BIE_ops.size() == 6);
+    auto disp_system = separate(compute_integral_equation(bem_input, bem_input.eqtn_specs[0]), bem_input.bcs);
+    auto trac_system = separate(compute_integral_equation(bem_input, bem_input.eqtn_specs[1]), bem_input.bcs);
 
-    auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
-    auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
+    auto disp_rhs = disp_system.rhs;
+    auto trac_rhs = trac_system.rhs;
+    precondition(disp_rhs, disp_system.lhs[1].op);
+    precondition(trac_rhs, trac_system.lhs[0].op);
 
     //reduce using constraints
     //stack rows
     auto stacked_rhs = concatenate_condense(
-        constraint_matrices, {disp_system.rhs, trac_system.rhs}
+        constraint_matrices, {disp_rhs, trac_rhs}
     );
 
     auto n_unknown_trac_dofs = disp_system.rhs[0].size();
@@ -160,6 +153,8 @@ int main(int argc, char* argv[]) {
             //scale rows
             auto disp_eval_vec = -disp_eval.rhs;
             auto trac_eval_vec = -trac_eval.rhs;
+            precondition(disp_eval_vec, disp_system.lhs[1].op);
+            precondition(trac_eval_vec, trac_system.lhs[0].op);
 
             //reduce using constraints
             //stack rows

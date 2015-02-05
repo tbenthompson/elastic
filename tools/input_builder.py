@@ -5,10 +5,6 @@ import subprocess
 from mako.template import Template
 import matplotlib.pyplot as plt
 
-def square_pts(n):
-    np.linspace(-1.0, 1.0, n)
-    np.linspace(-1.0, 1.0, n)
-
 class Element(object):
     def __init__(self, pts, bc_type, bc, refine):
         self.pts = np.array(pts).astype(np.float32).tolist()
@@ -55,12 +51,15 @@ def circle(center, r, refine, bc_type, fnc, reverse):
 
     return es
 
-def points_grid(x_range, y_range, out_filename):
+def make_points(x_range, y_range):
     x_vals = np.linspace(*x_range)
     y_vals = np.linspace(*y_range)
     x_pts, y_pts = np.meshgrid(x_vals, y_vals)
     ps = zip(x_pts.flatten(), y_pts.flatten())
-    points_template(out_filename, ps)
+    return ps
+
+def points_grid(x_range, y_range, out_filename):
+    points_template(out_filename, make_points(x_range, y_range))
 
 def points_template(out_filename, ps):
     file_template = """
@@ -80,6 +79,7 @@ def bem_template(filename, **params):
     {
         "shear_modulus": ${G},
         "poisson_ratio": ${mu},
+        "solver_tol": ${solver_tol},
         "elements": [
         % for e in es:
             {
@@ -95,6 +95,8 @@ def bem_template(filename, **params):
         ]
     }
     """
+    if 'solver_tol' not in params:
+        params['solver_tol'] = 1e-6
     exec_template(file_template, filename, **params)
 
 def exec_template(file_template, filename, **params):

@@ -13,7 +13,7 @@ c = 1.0
 I = (2.0 / 3.0) * c ** 3
 
 P = -40e6
-E = 0.1
+E = 80e9
 mu = 0.25
 G = G_from_E_mu(E, mu)
 
@@ -82,11 +82,11 @@ def test_beam_bend():
     points()
     run(input_filename, stdout_dest = subprocess.PIPE)
     disp_filename = 'test_data/beam_bend.disp_out'
-    check_field(disp_filename, disp_bc, False, -6)
+    check_field(disp_filename, disp_bc, False, 6)
 
     interior_run(input_filename, pts_filename)
     disp_intfilename = 'test_data/beam_bend.disp_out_interior'
-    check_field(disp_intfilename, disp_bc, False, -6)
+    check_field(disp_intfilename, disp_bc, False, 6)
 
 if __name__ == "__main__":
     plotter()

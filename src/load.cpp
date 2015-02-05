@@ -65,7 +65,6 @@ Vec<Vec<double,dim>,dim> parse_tensor(const rapidjson::Value& e_json,
     return out;
 }
 
-//TODO: Should this be configurable?
 #define GETPARAM(TYPE, NAME) {\
     if (doc.HasMember(#NAME) && doc[#NAME].Is##TYPE()) {\
         out.NAME = doc[#NAME].Get##TYPE();\
@@ -82,6 +81,7 @@ Parameters get_parameters(const rapidjson::Document& doc) {
     GETPARAM(Double, shear_modulus);
     return out;
 }
+#undef GETPARAM
 
 template <size_t dim>
 std::vector<Element<dim>> get_elements(const rapidjson::Document& doc) {

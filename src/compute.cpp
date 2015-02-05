@@ -53,10 +53,10 @@ ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
 
 
 template <size_t dim>
-std::vector<ComputedOperator>
-compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_spec)
+ComputedIntegralEquation
+compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec<dim>& eqtn_spec)
 {
-    std::vector<ComputedOperator> integrals;
+    ComputedIntegralEquation integrals;
     for (const auto& term: eqtn_spec.terms) {
         integrals.push_back(compute_integral(bem, term));
     }
@@ -66,17 +66,17 @@ compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec& eqtn_
 }
 
 template 
-std::vector<ComputedOperator>
-compute_integral_equation(const BEM<2>& bem, const IntegralEquationSpec& eqtn_spec);
+ComputedIntegralEquation
+compute_integral_equation(const BEM<2>& bem, const IntegralEquationSpec<2>& eqtn_spec);
 template 
-std::vector<ComputedOperator>
-compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec& eqtn_spec);
+ComputedIntegralEquation
+compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec<3>& eqtn_spec);
 
-LinearSystem separate(const std::vector<ComputedOperator>& eqtn, const BCMap& bcs) {
+LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
     size_t components = eqtn[0].op.n_comp_rows;
     size_t dofs = eqtn[0].op.ops[0].n_rows;
     BlockFunction rhs = constant_function(components, dofs, 0.0);
-    std::vector<ComputedOperator> lhs;
+    ComputedIntegralEquation lhs;
 
     for (const auto& term: eqtn) {
         FieldDescriptor field_desc{term.src_mesh, term.function};

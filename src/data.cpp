@@ -18,8 +18,8 @@ BEM<dim> parse_into_bem(const std::string& filename)
         tbem::QuadStrategy<dim>(params.obs_quad_order, params.src_far_quad_order,
             params.n_singular_steps, params.far_threshold, params.near_tol),
         {
-            get_displacement_BIE("displacement"),
-            get_traction_BIE("traction")
+            get_displacement_BIE<dim>("displacement"),
+            get_traction_BIE<dim>("traction")
         }
     };
 }

@@ -5,6 +5,7 @@
 #include "kernels.h"
 #include "3bem/quadrature.h"
 
+template <size_t dim>
 struct IntegralEquationSpec;
 
 template <size_t dim>
@@ -14,7 +15,7 @@ struct BEM {
     const BCMap bcs;
     const KernelMap<dim> kernels;
     const tbem::QuadStrategy<dim> quad_strategy;
-    const std::vector<IntegralEquationSpec> eqtn_specs;
+    const std::vector<IntegralEquationSpec<dim>> eqtn_specs;
 };
 
 template <size_t dim>

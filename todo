@@ -1,5 +1,3 @@
-** simple diagonal scaling preconditioner
-** switch the shear_modulus back in beam_bend and pressured_cylinder
 ** simple refactorings on main.cpp (extract function, etc)
 ** gravity problem in plane strain -- valleys! (Danson 1981 paper)
 ** load 3D problems

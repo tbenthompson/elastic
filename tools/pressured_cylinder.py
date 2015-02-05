@@ -53,7 +53,7 @@ def plotter(a, b, disp_bc):
     plt.quiver(x, y, ux, uy)
     plt.show()
 
-def create_file(a, b, E, mu, input_filename, bc_types, bc_funcs):
+def create_file(solver_tol, a, b, E, mu, input_filename, bc_types, bc_funcs):
     refine = 7
 
     es = []
@@ -63,7 +63,7 @@ def create_file(a, b, E, mu, input_filename, bc_types, bc_funcs):
                      bc_funcs[bc_types['outer']], False))
 
     G = E / (2 * (1 + mu))
-    bem_template(input_filename, es = es, G = G, mu = mu)
+    bem_template(input_filename, es = es, G = G, mu = mu, solver_tol = solver_tol)
 
 def delete_files(input_filepath):
     dir, filename = input_filepath.split('/')
@@ -88,8 +88,9 @@ def pressured_cylinder(bc_types):
     b = 1.9
     p_a = 10e6
     p_b = -15e6
-    E = 0.05
+    E = 80e9
     mu = 0.25
+    solver_tol = 1e-10
     input_filename = 'test_data/pressured_cylinder.in'
     pts_filename = 'test_data/pressured_cylinder.in_pts'
 
@@ -105,19 +106,18 @@ def pressured_cylinder(bc_types):
     interior_disp_filename = in_root + '.disp_out_interior'
 
     delete_files(input_filename)
-    create_file(a, b, E, mu, input_filename,
-                bc_types, bc_funcs)
+    create_file(solver_tol, a, b, E, mu, input_filename, bc_types, bc_funcs)
     run(input_filename, stdout_dest = subprocess.PIPE)
     if 'displacement' in bc_types.values():
         check_field(traction_filename, trac_bc, False, -6)
     if 'traction' in bc_types.values():
-        check_field(displacement_filename, disp_bc, False, -6)
+        check_field(displacement_filename, disp_bc, False, 6)
 
     nt = 20
     nr = 20
     points(a, b, nt, nr, pts_filename)
     interior_run(input_filename, pts_filename)
-    check_field(interior_disp_filename, disp_bc, False, -6)
+    check_field(interior_disp_filename, disp_bc, False, 6)
 
 def test_trac_trac():
     pressured_cylinder(dict(inner = "traction", outer = "traction"))

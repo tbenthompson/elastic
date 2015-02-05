@@ -14,7 +14,7 @@ template <size_t dim>
 std::vector<std::vector<double>>
 compute_interior(const std::vector<tbem::ObsPt<dim>>& pts,
                  const BEM<dim>& bem,
-                 const IntegralEquationSpec& eqtn_spec,
+                 const IntegralEquationSpec<dim>& eqtn_spec,
                  const BCMap& bcs) {
     std::vector<std::vector<double>> results(dim, std::vector<double>(pts.size(), 0.0));
 #pragma omp parallel for
@@ -82,15 +82,15 @@ int main(int argc, char* argv[]) {
     }
 
     auto interior_disp = compute_interior(
-        obs_ptsx, bem_input, get_displacement_BIE("displacement"), fields
+        obs_ptsx, bem_input, get_displacement_BIE<2>("displacement"), fields
     );
 
     auto interior_sxx_sxy = compute_interior(
-        obs_ptsx, bem_input, get_traction_BIE("traction"), fields
+        obs_ptsx, bem_input, get_traction_BIE<2>("traction"), fields
     );
 
     auto interior_sxy_syy = compute_interior(
-        obs_ptsy, bem_input, get_traction_BIE("traction"), fields
+        obs_ptsy, bem_input, get_traction_BIE<2>("traction"), fields
     );
 
     BlockFunction interior_stress{
