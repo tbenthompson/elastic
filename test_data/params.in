@@ -4,6 +4,7 @@
     "n_singular_steps": 9,
     "far_threshold": 4.0,
     "near_tol": 1e-4,
+    "solver_tol": 1e-6,
     "poisson_ratio": 0.28,
     "shear_modulus": 22e9,
     "elements": [

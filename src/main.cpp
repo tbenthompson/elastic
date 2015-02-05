@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
 
     //solve:
     int count = 0;
-    auto reduced_soln = solve_system(stacked_rhs.data, 1e-6,
+    auto reduced_soln = solve_system(stacked_rhs.data, bem_input.params.solver_tol,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             std::cout << "iteration " << count << std::endl;
             count++;

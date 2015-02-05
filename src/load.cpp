@@ -77,6 +77,7 @@ Parameters get_parameters(const rapidjson::Document& doc) {
     GETPARAM(Int, n_singular_steps);
     GETPARAM(Double, far_threshold);
     GETPARAM(Double, near_tol);
+    GETPARAM(Double, solver_tol);
     GETPARAM(Double, poisson_ratio);
     GETPARAM(Double, shear_modulus);
     return out;

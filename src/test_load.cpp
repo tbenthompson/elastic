@@ -96,6 +96,7 @@ TEST(LoadParametersDefault) {
     CHECK_EQUAL(p.n_singular_steps, default_params.n_singular_steps);
     CHECK_EQUAL(p.far_threshold, default_params.far_threshold);
     CHECK_EQUAL(p.near_tol, default_params.near_tol);
+    CHECK_EQUAL(p.solver_tol, default_params.solver_tol);
     CHECK_EQUAL(p.poisson_ratio, default_params.poisson_ratio);
     CHECK_EQUAL(p.shear_modulus, default_params.shear_modulus);
 }
@@ -106,6 +107,7 @@ TEST(LoadParametersNotDefault) {
     CHECK_EQUAL(p.obs_quad_order, 4); CHECK_EQUAL(p.src_far_quad_order, 6);
     CHECK_EQUAL(p.n_singular_steps, 9); CHECK_EQUAL(p.far_threshold, 4.0);
     CHECK_EQUAL(p.near_tol, 1e-4);
+    CHECK_EQUAL(p.solver_tol, 1e-6);
     CHECK_EQUAL(p.poisson_ratio, 0.28);
     CHECK_EQUAL(p.shear_modulus, 22e9);
 }

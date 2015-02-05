@@ -16,10 +16,12 @@ struct Parameters {
     double far_threshold;
     double near_tol;
 
+    double solver_tol;
+
     double poisson_ratio;
     double shear_modulus;
 };
-const Parameters default_params{2, 2, 8, 3.0, 1e-4, 0.25, 30e9};
+const Parameters default_params{2, 2, 8, 3.0, 1e-4, 1e-6, 0.25, 30e9};
 
 Parameters get_parameters(const rapidjson::Document& doc);
 
