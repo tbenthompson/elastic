@@ -6,8 +6,11 @@ import os
 def prepend_dir(files, dirname = 'src'):
     return [os.path.join(dirname, f) for f in files]
 
-shared_sources = ['load', 'spec', 'kernels', 'compute', 'data', 'filenames', 'reload_soln']
-test_sources = prepend_dir(['test_filenames', 'test_load'] + shared_sources)
+shared_sources = [
+    'load', 'spec', 'kernels', 'compute', 'data',
+    'filenames', 'reload_soln', 'nearest_neighbor'
+]
+test_sources = prepend_dir(['test_filenames', 'test_load', 'test_nearest_neighbor'] + shared_sources)
 run_sources = prepend_dir(['main'] + shared_sources)
 interior_sources = prepend_dir(['interior'] + shared_sources)
 
@@ -68,6 +71,7 @@ def link():
 
 def tests():
     assert(sys.argv[1] == 'tests')
+    subprocess.call('./test', shell = True)
     args = ' '.join(sys.argv[2:])
     cmd = ' py.test -s --tb=short\
         tools/test_input_builder.py\

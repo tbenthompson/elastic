@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from input_builder import circle, exec_template, run_file, check_field
+from input_builder import circle, points_template, bem_template, run, \
+    interior_run, check_field
 import subprocess
 
 def build_disp_bc(a, b, p_a, p_b, E, mu):
@@ -26,14 +27,19 @@ def build_trac_bc(a, b, p_a, p_b, E, mu):
         return p_x, p_y
     return trac_bc
 
-def plotter(disp_bc):
-    nt = 20
-    nr = 5
+def concentric_circle_pts(a, b, nt, nr):
     t_vals = np.linspace(0.0, 2 * np.pi, nt)
     r_vals = np.linspace(a, b, nr)
     r, t = np.meshgrid(r_vals, t_vals)
     x = r * np.cos(t)
     y = r * np.sin(t)
+
+    return x,y
+
+def plotter(a, b, disp_bc):
+    nt = 20
+    nr = 5
+    x, y = concentric_circle_pts(a, b, nt, nr)
 
     ux, uy = disp_bc(x, y)
 
@@ -57,7 +63,7 @@ def create_file(a, b, E, mu, input_filename, bc_types, bc_funcs):
                      bc_funcs[bc_types['outer']], False))
 
     G = E / (2 * (1 + mu))
-    exec_template(input_filename, es = es, G = G, mu = mu)
+    bem_template(input_filename, es = es, G = G, mu = mu)
 
 def delete_files(input_filepath):
     dir, filename = input_filepath.split('/')
@@ -65,6 +71,11 @@ def delete_files(input_filepath):
     for f in os.listdir(dir):
         if root in f:
             os.remove(os.path.join(dir, f))
+
+def points(a, b, nt, nr, out_filename):
+    x, y = concentric_circle_pts(a, b, nt, nr)
+    pts = zip(x.flatten(), y.flatten())
+    points_template(out_filename, pts)
 
 def pressured_cylinder(bc_types):
     a = 0.3
@@ -74,6 +85,7 @@ def pressured_cylinder(bc_types):
     E = 0.05
     mu = 0.25
     input_filename = 'test_data/pressured_cylinder.in'
+    pts_filename = 'test_data/pressured_cylinder.in_pts'
 
     disp_bc = build_disp_bc(a, b, p_a, p_b, E, mu)
     trac_bc = build_trac_bc(a, b, p_a, p_b, E, mu)
@@ -84,17 +96,22 @@ def pressured_cylinder(bc_types):
     in_root, file_ext = os.path.splitext(input_filename)
     displacement_filename = in_root + '.disp_out'
     traction_filename = in_root + '.trac_out'
-    interior_disp_filename = in_root + '.disp_outint'
+    interior_disp_filename = in_root + '.disp_out_interior'
 
     delete_files(input_filename)
     create_file(a, b, E, mu, input_filename,
                 bc_types, bc_funcs)
-    run_file(input_filename, stdout_dest = subprocess.PIPE)
+    run(input_filename, stdout_dest = subprocess.PIPE)
     if 'displacement' in bc_types.values():
         check_field(traction_filename, trac_bc, False, -6)
     if 'traction' in bc_types.values():
         check_field(displacement_filename, disp_bc, False, -6)
-    # check_field(interior_disp_filename, disp_bc, False, -6)
+
+    nt = 20
+    nr = 20
+    points(a, b, nt, nr, pts_filename)
+    interior_run(input_filename, pts_filename)
+    check_field(interior_disp_filename, disp_bc, False, -6)
 
 def test_trac_trac():
     pressured_cylinder(dict(inner = "traction", outer = "traction"))

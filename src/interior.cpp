@@ -1,6 +1,7 @@
 #include "data.h"
 #include "spec.h"
 #include "filenames.h"
+#include "nearest_neighbor.h"
 #include "reload_soln.h"
 #include "3bem/3bem.h"
 
@@ -33,7 +34,6 @@ compute_interior(const std::vector<tbem::ObsPt<dim>>& pts,
     return results;
 }
 
-
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cout << "Usage is './interior input.in pts.in" 
@@ -44,8 +44,14 @@ int main(int argc, char* argv[]) {
     auto input_filename = argv[1];
     auto bem_input = parse_into_bem<2>(input_filename);
 
-    auto soln_disp = load_surface(disp_out_filename(input_filename));
-    auto soln_trac = load_surface(trac_out_filename(input_filename));
+    BlockFunction soln_disp(2);
+    if (bem_input.meshes.at("traction").n_facets() > 0) {
+        soln_disp = load_surface(disp_out_filename(input_filename));
+    }
+    BlockFunction soln_trac(2);
+    if (bem_input.meshes.at("displacement").n_facets() > 0) {
+        soln_trac = load_surface(trac_out_filename(input_filename));
+    }
 
     BCMap fields = bem_input.bcs; 
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
@@ -55,10 +61,20 @@ int main(int argc, char* argv[]) {
     auto pts_parsed = parse_json(load_file(pts_filename));
     auto pts = get_pts<2>(pts_parsed);
 
+    auto whole_mesh = Mesh<2>::create_union({
+        bem_input.meshes.at("traction"), 
+        bem_input.meshes.at("displacement"), 
+        bem_input.meshes.at("slip")
+    });
+
     std::vector<ObsPt<2>> obs_pts;
     for (size_t i = 0; i < pts.size(); i++) {
-        obs_pts.push_back({0.001, pts[i], {0, 1}, 
-            Vec<double,2>{0.5, 0.5} - pts[i]});
+        //find the nearest neighbor edge, len_scale = distance to the edge
+        //while direction = direction away from the edge
+        auto mesh_pt = nearest_pt(pts[i], whole_mesh);
+        auto dir = decide_richardson_dir(pts[i], mesh_pt);
+        auto length_scale = hypot(dir);
+        obs_pts.push_back({length_scale, pts[i], {0, 1}, normalized(dir)});
     }
 
     auto interior = compute_interior(

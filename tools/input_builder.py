@@ -55,6 +55,25 @@ def circle(center, r, refine, bc_type, fnc, reverse):
 
     return es
 
+def points_grid(x_range, y_range, out_filename):
+    x_vals = np.linspace(*x_range)
+    y_vals = np.linspace(*y_range)
+    x_pts, y_pts = np.meshgrid(x_vals, y_vals)
+    ps = zip(x_pts.flatten(), y_pts.flatten())
+    points_template(out_filename, ps)
+
+def points_template(out_filename, ps):
+    file_template = """
+    [
+        % for p in ps:
+        [${p[0]}, ${p[1]}]
+        % if loop.index != len(ps) - 1:
+        ,
+        % endif
+        % endfor
+    ]
+    """
+    exec_template(file_template, out_filename, ps = ps)
 
 def bem_template(filename, **params):
     file_template = """
@@ -83,10 +102,16 @@ def exec_template(file_template, filename, **params):
     with open(filename, 'w') as file:
         file.write(text)
 
-def run_file(filename, stdout_dest = None):
+def run(filename, stdout_dest = None):
+    execute('./solve ' + filename, stdout_dest)
+
+def interior_run(bem_filename, pts_filename, stdout_dest = None):
+    execute('./interior ' + bem_filename + ' ' + pts_filename, stdout_dest)
+
+def execute(cmd, stdout_dest):
     popen_params = dict(shell = True)
     popen_params['stdout'] = stdout_dest
-    process = subprocess.Popen('./run ' + filename, **popen_params)
+    process = subprocess.Popen(cmd, **popen_params)
     process.wait()
 
 def get_points(f):
@@ -121,7 +146,6 @@ def check_field(filename, solution, plot_diff, digits,
     #TODO: It would be better to use norms here
     diffx = np.abs(exactx - datax)
     diffy = np.abs(exacty - datay)
-    print np.max(np.abs(diffx)) / np.max(np.abs(exactx))
     if plot_diff:
         plt.figure()
         plt.quiver(x, y, datax, datay)

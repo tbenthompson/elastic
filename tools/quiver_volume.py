@@ -27,7 +27,11 @@ def main(filename):
 
 
     plt.quiver(x, y, datax, datay, **opts)
-    plt.axis([-1.1, 1.1, -1.1, 1.1])
+    view_factor = 0.2
+    plt.xlim(np.min(x) + (np.min(x) - np.mean(x)) * view_factor,
+              np.max(x) + (np.max(x) - np.mean(x)) * view_factor)
+    plt.ylim(np.min(y) + (np.min(y) - np.mean(y)) * view_factor,
+              np.max(y) + (np.max(y) - np.mean(y)) * view_factor)
     plt.title(filename)
     plt.show()
 

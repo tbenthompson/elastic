@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
     //solve:
     int count = 0;
     //TODO: Linear system tolerance should be a file parameter
-    auto reduced_soln = solve_system(stacked_rhs.data, 1e-3,
+    auto reduced_soln = solve_system(stacked_rhs.data, 1e-6,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             std::cout << "iteration " << count << std::endl;
             count++;

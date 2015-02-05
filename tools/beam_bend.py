@@ -1,7 +1,8 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from input_builder import Element, line, exec_template, run_file, check_field
+from input_builder import Element, line, bem_template, run, interior_run, \
+    points_grid , check_field
 import subprocess
 
 def G_from_E_mu(E, mu):
@@ -22,6 +23,7 @@ E_fic = E / (1 - mu ** 2)
 G_fic = G_from_E_mu(E_fic, mu_fic)
 
 input_filename = 'test_data/beam_bend.in'
+pts_filename = 'test_data/beam_bend.in_pts'
 
 def disp_bc(x, y):
     ux = (-P * x ** 2 * y) / (2 * E_fic * I) \
@@ -61,7 +63,7 @@ def plotter():
     plt.ylim([-1.1,1.1])
     plt.show()
 
-def create_file():
+def create_problem():
     refine = 5
 
     es = []
@@ -70,15 +72,21 @@ def create_file():
     es.extend(line([[L, -c], [L, c]], refine, "displacement", disp_bc))
     es.append(Element([[L, c], [0, c]], "traction", [[0, 0], [0, 0]], refine))
 
-    exec_template(input_filename, es = es, G = G, mu = mu)
+    bem_template(input_filename, es = es, G = G, mu = mu)
+
+def points():
+    points_grid([0, L, 20], [-c, c, 20], pts_filename)
 
 def test_beam_bend():
-    create_file()
-    run_file(input_filename)
+    create_problem()
+    points()
+    run(input_filename, stdout_dest = subprocess.PIPE)
     disp_filename = 'test_data/beam_bend.disp_out'
     check_field(disp_filename, disp_bc, False, -6)
-    disp_intfilename = 'test_data/beam_bend.disp_outint'
-    check_field(disp_intfilename, disp_bc, False, -6, lambda x, y: x >= 0)
+
+    interior_run(input_filename, pts_filename)
+    disp_intfilename = 'test_data/beam_bend.disp_out_interior'
+    check_field(disp_intfilename, disp_bc, False, -6)
 
 if __name__ == "__main__":
     plotter()

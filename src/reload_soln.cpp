@@ -1,11 +1,13 @@
 #include "reload_soln.h"
 #include <hdf5.h>
 #include <iostream>
+#include <cassert>
 
 std::string get_dataset_name(hid_t gid, size_t index) {
     const size_t max_len = 1024;
     char dataset_name[max_len];
-    H5Gget_objname_by_idx(gid, index, dataset_name, max_len);
+    auto name_length = H5Gget_objname_by_idx(gid, index, dataset_name, max_len);
+    (void)name_length;
     return std::string(dataset_name);
 }
 
@@ -13,7 +15,8 @@ size_t n_elements(hid_t dataset_id)
 {
     hsize_t shape[2];
     auto filespace = H5Dget_space(dataset_id);
-    H5Sget_simple_extent_dims(filespace, shape, NULL);
+    auto n_dims = H5Sget_simple_extent_dims(filespace, shape, NULL);
+    (void)n_dims;
     return shape[0];
 }
 
@@ -23,7 +26,13 @@ std::vector<double> load_function(hid_t file_id, const std::string& dataset_name
     auto dataset_id = H5Dopen(file_id, dataset_name_with_group.c_str(), H5P_DEFAULT);
 
     std::vector<double> out(n_elements(dataset_id));
-    H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, out.data());
+    auto error = H5Dread(
+        dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, out.data()
+    );
+    assert(error >= 0);
+
+    error = H5Dclose(dataset_id);
+    assert(error >= 0);
     return out;
 }
 
@@ -50,7 +59,8 @@ std::vector<std::vector<double>> load_surface(const std::string& filename)
     hid_t gid = H5Gopen(file_id, "/", H5P_DEFAULT);
 
     hsize_t n_objs;
-    H5Gget_num_objs(gid, &n_objs);
+    auto error = H5Gget_num_objs(gid, &n_objs);
+    assert(error >= 0);
 
     for (size_t i = 0; i < n_objs; i++) {
         auto dataset_name = get_dataset_name(gid, i);
@@ -61,6 +71,9 @@ std::vector<std::vector<double>> load_surface(const std::string& filename)
         out.resize(std::max(out.size(), dim + 1));
         out[dim] = load_function(file_id, dataset_name);
     }
+
+    error = H5Fclose(file_id);
+    assert(error >= 0);
 
     return out;
 };
