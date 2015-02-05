@@ -1,6 +1,0 @@
-#!/bin/bash
-python build.py
-./run data/block_squish_fault.in
-nohup python tools/quiver_surface.py data/block_squish_fault.disp_outx data/block_squish_fault.disp_outy &
-nohup python tools/quiver_surface.py data/block_squish_fault.trac_outx data/block_squish_fault.trac_outy &
-nohup python tools/quiver_volume.py data/block_squish_fault.disp_outintx data/block_squish_fault.disp_outinty &

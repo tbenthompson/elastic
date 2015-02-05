@@ -17,8 +17,9 @@ compute_interior(const std::vector<tbem::ObsPt<dim>>& pts,
                  const IntegralEquationSpec& eqtn_spec,
                  const BCMap& bcs) {
     std::vector<std::vector<double>> results(dim, std::vector<double>(pts.size(), 0.0));
-    for (const auto& term: eqtn_spec.terms) {
-        for (size_t i = 0; i < pts.size(); i++) {
+#pragma omp parallel for
+    for (size_t i = 0; i < pts.size(); i++) {
+        for (const auto& term: eqtn_spec.terms) {
             const auto& src_mesh = bem.meshes.at(term.src_mesh);
             const auto& kernel = bem.kernels.at(term.kernel);
             const auto& field = bcs.at(FieldDescriptor{term.src_mesh, term.function});
@@ -67,20 +68,38 @@ int main(int argc, char* argv[]) {
         bem_input.meshes.at("slip")
     });
 
-    std::vector<ObsPt<2>> obs_pts;
+    std::vector<ObsPt<2>> obs_ptsx;
+    std::vector<ObsPt<2>> obs_ptsy;
     for (size_t i = 0; i < pts.size(); i++) {
         //find the nearest neighbor edge, len_scale = distance to the edge
         //while direction = direction away from the edge
         auto mesh_pt = nearest_pt(pts[i], whole_mesh);
         auto dir = decide_richardson_dir(pts[i], mesh_pt);
-        auto length_scale = hypot(dir);
-        obs_pts.push_back({length_scale, pts[i], {0, 1}, normalized(dir)});
+        const double length_factor = 5.0;
+        auto length_scale = hypot(dir) / length_factor;
+        obs_ptsx.push_back({length_scale, pts[i], {1, 0}, normalized(dir)});
+        obs_ptsy.push_back({length_scale, pts[i], {0, 1}, normalized(dir)});
     }
 
-    auto interior = compute_interior(
-        obs_pts, bem_input, get_displacement_BIE("displacement"), fields
+    auto interior_disp = compute_interior(
+        obs_ptsx, bem_input, get_displacement_BIE("displacement"), fields
     );
 
+    auto interior_sxx_sxy = compute_interior(
+        obs_ptsx, bem_input, get_traction_BIE("traction"), fields
+    );
+
+    auto interior_sxy_syy = compute_interior(
+        obs_ptsy, bem_input, get_traction_BIE("traction"), fields
+    );
+
+    BlockFunction interior_stress{
+        interior_sxx_sxy[0], interior_sxx_sxy[1], interior_sxy_syy[1]
+    };
+
     HDFOutputter interior_disp_file(interior_disp_out_filename(input_filename));
-    out_volume(interior_disp_file, pts, interior);
+    out_volume(interior_disp_file, pts, interior_disp);
+
+    HDFOutputter interior_stress_file(interior_stress_out_filename(input_filename));
+    out_volume(interior_stress_file, pts, interior_stress);
 }

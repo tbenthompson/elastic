@@ -65,7 +65,14 @@ Vec<double,dim> decide_richardson_dir(const Vec<double,dim>& pt,
         facet_normal += unscaled_normal(mesh_pt.facets[i]); 
     }
     facet_normal /= (double)mesh_pt.facets.size();
-    return facet_normal;
+    auto which_side = which_side_point(mesh_pt.facets[0], pt);
+    if (which_side == INTERSECT) {
+        return facet_normal;
+    } else if (which_side == FRONT) {
+        return facet_normal;
+    } else {
+        return -facet_normal;
+    }
 }
 
 template Vec<double,2> 

@@ -1,0 +1,9 @@
+#!/bin/bash
+./solve data/block_squish_fault.in
+python tools/grid_points.py data/block_squish_fault.in_pts -1,1,200 -1,1,200 
+./interior data/block_squish_fault.in data/block_squish_fault.in_pts
+python tools/contour_volume.py data/block_squish_fault.disp_out_interior 0 0 &
+python tools/contour_volume.py data/block_squish_fault.disp_out_interior 1 0 &
+python tools/contour_volume.py data/block_squish_fault.stress_out_interior 0 1 &
+python tools/contour_volume.py data/block_squish_fault.stress_out_interior 1 1 &
+python tools/contour_volume.py data/block_squish_fault.stress_out_interior 2 1 &

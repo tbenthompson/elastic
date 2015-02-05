@@ -22,9 +22,6 @@ def main(filename):
         width = 0.003
     )
 
-    print datax[x < -0.99]
-    print datay[x < -0.99]
-
 
     plt.quiver(x, y, datax, datay, **opts)
     view_factor = 0.2
@@ -34,15 +31,6 @@ def main(filename):
               np.max(y) + (np.max(y) - np.mean(y)) * view_factor)
     plt.title(filename)
     plt.show()
-
-    # define grid.
-    # xi = np.linspace(-1.0,1.0,100)
-    # yi = np.linspace(-1.0,1.0,100)
-    # # grid the data.
-    # from scipy.interpolate import griddata
-    # zi = griddata((x, y), datay, (xi[None,:], yi[:,None]), method='cubic')
-    # plt.contourf(xi, yi, zi)
-    # plt.contour(xi, yi, zi)
 
 if __name__ == "__main__":
     main(sys.argv[1])

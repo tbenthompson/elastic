@@ -61,6 +61,14 @@ TEST(DecideRichardsonDirTouching) {
     CHECK_EQUAL(dir, (Vec<double,2>{-1, 0}));
 }
 
+TEST(DecideRichardsonDirOppositeNormal) {
+    Facet<2> f{{{0,-1},{1,-1}}};
+    Vec<double,2> p{0,-2};
+    NearestPoint<2> np{{f}, p, 0.0};
+    auto dir = decide_richardson_dir(p, np);
+    CHECK_EQUAL(dir, (Vec<double,2>{0, -1}));
+}
+
 TEST(DecideRichardsonDirIntersection) {
     Facet<2> f{{{0,0},{1,0}}};
     Facet<2> f2{{{0,1},{0,0}}};

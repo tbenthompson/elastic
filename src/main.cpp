@@ -59,33 +59,11 @@ ConcatenatedFunction concatenate_condense(const std::vector<ConstraintMatrix>& c
     return concatenate(condensed);
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "Usage is 'solve filename'" << std::endl;
-        return 1;
-    }
-    
-    auto filename = argv[1];
-    auto bem_input = parse_into_bem<2>(filename);
-    auto constraint_matrices = form_constraints(bem_input.meshes, bem_input.bcs);
 
-    auto disp_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[0]);
-    auto trac_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[1]);
-    assert(disp_BIE_ops.size() == 6);
-    assert(trac_BIE_ops.size() == 6);
-
-    auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
-    auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
-
-    //reduce using constraints
-    //stack rows
-    auto stacked_rhs = concatenate_condense(
-        constraint_matrices, {disp_system.rhs, trac_system.rhs}
-    );
-
-    auto n_unknown_trac_dofs = disp_system.rhs[0].size();
-    auto n_unknown_disp_dofs = trac_system.rhs[0].size();
-
+double condition_number(const LinearSystem& disp_system, 
+    const LinearSystem& trac_system,
+    const std::vector<ConstraintMatrix>& constraint_matrices)
+{
     BlockOperator lhs{
         4, 4,
         {
@@ -114,7 +92,35 @@ int main(int argc, char* argv[]) {
     auto condensed_lhs = condense_block_operator(
         constraint_matrices, constraint_matrices, lhs);
     auto combined_lhs = combine_components(condensed_lhs);
-    std::cout << "Condition number: " << arma_cond(combined_lhs.ops[0]) << std::endl;
+    return arma_cond(combined_lhs.ops[0]);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage is 'solve filename'" << std::endl;
+        return 1;
+    }
+    
+    auto filename = argv[1];
+    auto bem_input = parse_into_bem<2>(filename);
+    auto constraint_matrices = form_constraints(bem_input.meshes, bem_input.bcs);
+
+    auto disp_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[0]);
+    auto trac_BIE_ops = compute_integral_equation(bem_input, bem_input.eqtn_specs[1]);
+    assert(disp_BIE_ops.size() == 6);
+    assert(trac_BIE_ops.size() == 6);
+
+    auto disp_system = separate(disp_BIE_ops, bem_input.bcs);
+    auto trac_system = separate(trac_BIE_ops, bem_input.bcs);
+
+    //reduce using constraints
+    //stack rows
+    auto stacked_rhs = concatenate_condense(
+        constraint_matrices, {disp_system.rhs, trac_system.rhs}
+    );
+
+    auto n_unknown_trac_dofs = disp_system.rhs[0].size();
+    auto n_unknown_disp_dofs = trac_system.rhs[0].size();
 
     //solve:
     int count = 0;
