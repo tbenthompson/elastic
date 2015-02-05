@@ -17,7 +17,7 @@ interior_sources = prepend_dir(['interior'] + shared_sources)
 run_exec_name = 'solve'
 interior_exec_name = 'interior'
 
-tbem_loc = '../devlib'
+tbem_loc = '../stablelib'
 
 def get_cpp_flags(tbem_loc):
     cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
@@ -53,8 +53,15 @@ def build():
     link()
 
 def compile():
-    for source in (test_sources + run_sources + interior_sources):
-        run(compiler, '-c', source + '.cpp', '-o', source + '.o', cpp_flags)
+    compile_list(test_sources)
+    after()
+    compile_list(run_sources)
+    after()
+    compile_list(interior_sources)
+
+def compile_list(srces):
+    for s in srces:
+        run(compiler, '-c', s + '.cpp', '-o', s + '.o', cpp_flags)
 
 def obj_files(srces):
     return [s + '.o' for s in srces]

@@ -73,7 +73,13 @@ def delete_files(input_filepath):
             os.remove(os.path.join(dir, f))
 
 def points(a, b, nt, nr, out_filename):
-    x, y = concentric_circle_pts(a, b, nt, nr)
+    # As a result of the discretization, points on the boundary of the
+    # circle that are not vertices in the mesh will be outside the
+    # cylinder. Use slightly shifted circle sizes to shift the points
+    # inside.
+    inside_a = a + 1e-3
+    inside_b = b - 1e-3
+    x, y = concentric_circle_pts(inside_a, inside_b, nt, nr)
     pts = zip(x.flatten(), y.flatten())
     points_template(out_filename, pts)
 
