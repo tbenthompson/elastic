@@ -9,19 +9,9 @@ std::string remove_extension(const std::string& filename)
     return filename.substr(0, last_dot); 
 }
 
-std::string disp_out_filename(const std::string& filename) {
-    auto in_filename_root = remove_extension(filename);
-    return in_filename_root + ".disp_out";
-}
-
 std::string interior_disp_out_filename(const std::string& filename) {
     auto in_filename_root = remove_extension(filename);
     return in_filename_root + ".disp_out_interior";
-}
-
-std::string trac_out_filename(const std::string& filename) {
-    auto in_filename_root = remove_extension(filename);
-    return in_filename_root + ".trac_out";
 }
 
 std::string interior_stress_out_filename(const std::string& filename) {

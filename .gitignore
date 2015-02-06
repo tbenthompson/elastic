@@ -7,6 +7,11 @@ solve
 interior
 *.hdf5
 *disp_out*
-*trac_out*
+*.trac_out*
+*.slip_out
+*.stress_out_interior
+*.in_pts
 full_int_eqtns/*
 !full_int_eqtns/*.tex
+test_data/beam_bend.in
+test_data/pressured_cylinder.in

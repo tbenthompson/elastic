@@ -1,6 +1,7 @@
 from tools.fabricate import *
 import subprocess
 import sys
+import shutil
 import os
 
 def prepend_dir(files, dirname = 'src'):
@@ -79,6 +80,8 @@ def link():
 def tests():
     assert(sys.argv[1] == 'tests')
     subprocess.call('./test', shell = True)
+    if os.path.exists('tools/__pycache__'):
+        shutil.rmtree('tools/__pycache__')
     args = ' '.join(sys.argv[2:])
     cmd = ' py.test -s --tb=short\
         tools/test_input_builder.py\

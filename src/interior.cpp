@@ -53,10 +53,15 @@ int main(int argc, char* argv[]) {
     if (bem_input.meshes.at("displacement").n_facets() > 0) {
         soln_trac = load_surface(trac_out_filename(input_filename));
     }
+    BlockFunction soln_slip(2);
+    if (bem_input.meshes.at("crack_traction").n_facets() > 0) {
+        soln_slip = load_surface(slip_out_filename(input_filename));
+    }
 
     BCMap fields = bem_input.bcs; 
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
+    fields[FieldDescriptor{"crack_traction", "slip"}] = soln_slip;
 
     auto pts_filename = argv[2];
     auto pts_parsed = parse_json(load_file(pts_filename));
@@ -65,7 +70,8 @@ int main(int argc, char* argv[]) {
     auto whole_mesh = Mesh<2>::create_union({
         bem_input.meshes.at("traction"), 
         bem_input.meshes.at("displacement"), 
-        bem_input.meshes.at("slip")
+        bem_input.meshes.at("slip"),
+        bem_input.meshes.at("crack_traction")
     });
 
     std::vector<ObsPt<2>> obs_ptsx;

@@ -6,5 +6,5 @@ TEST(RemoveExtension) {
 }
 
 TEST(DispOutFilename) {
-    CHECK_EQUAL(disp_out_filename("def.in"), "def.disp_out");
+    CHECK_EQUAL(interior_disp_out_filename("def.in"), "def.disp_out_interior");
 }

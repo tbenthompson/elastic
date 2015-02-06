@@ -42,6 +42,11 @@ struct IntegralEquationSpec {
     MassSpec mass;
     std::vector<IntegralSpec> terms;
     ConstraintBuilder<dim> constraint_builder;
+    std::function<std::string(const std::string&)> get_output_filename;
+
+    std::string obs_mesh() const {
+        return mass.obs_mesh;
+    }
 };
 
 template <size_t dim>
@@ -49,6 +54,18 @@ IntegralEquationSpec<dim> get_displacement_BIE(const std::string& obs_mesh);
 
 template <size_t dim>
 IntegralEquationSpec<dim> get_traction_BIE(const std::string& obs_mesh);
+
+template <size_t dim>
+IntegralEquationSpec<dim> get_crack_traction_BIE(const std::string& obs_mesh);
+
+template <size_t dim>
+std::vector<IntegralEquationSpec<dim>> get_all_BIEs() {
+    return {
+        get_displacement_BIE<dim>("displacement"),
+        get_traction_BIE<dim>("traction"),
+        get_crack_traction_BIE<dim>("crack_traction")
+    };
+}
 
 std::vector<std::string> get_mesh_types();
 std::vector<std::string> get_bc_types();

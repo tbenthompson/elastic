@@ -10,30 +10,29 @@
 using namespace tbem;
 
 template <size_t dim>
-std::vector<ConstraintMatrix> 
+std::vector<std::vector<ConstraintMatrix>>
 form_constraints(const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
     const MeshMap<dim>& meshes)
 {
-    std::vector<ConstraintMatrix> out;
-    for (const auto& ie: int_eqtns) {
+    std::vector<std::vector<ConstraintMatrix>> out(int_eqtns.size());
+    for (size_t i = 0; i < int_eqtns.size(); i++) {
         for (size_t d = 0; d < dim; d++) {
-            out.push_back(ie.constraint_builder(meshes, d));
+            out[i].push_back(int_eqtns[i].constraint_builder(meshes, d));
         }
     }
     return out;
 }
 
-ConcatenatedFunction concatenate_condense(const std::vector<ConstraintMatrix>& cms,
+ConcatenatedFunction
+concatenate_condense(const std::vector<std::vector<ConstraintMatrix>>& cms,
     const std::vector<BlockFunction>& fncs) 
 {
     std::vector<Function> condensed;
 
-    size_t constraint_matrix_idx = 0;
     for (size_t eqtn_idx = 0; eqtn_idx < fncs.size(); eqtn_idx++) {
         const auto& f = fncs[eqtn_idx];
         for (size_t d = 0; d < f.size(); d++) {
-            condensed.push_back(condense_vector(cms[constraint_matrix_idx], f[d]));
-            constraint_matrix_idx++;
+            condensed.push_back(condense_vector(cms[eqtn_idx][d], f[d]));
         }
     }
     return concatenate(condensed);
@@ -88,32 +87,37 @@ void precondition(BlockFunction& f, const BlockOperator& block_op)
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "Usage is 'solve filename'" << std::endl;
-        return 1;
+size_t find_diagonal_index(const LinearSystem& system, const std::string& obs_mesh) {
+    for (size_t op_idx = 0; op_idx < system.lhs.size(); op_idx++) {
+        if (system.lhs[op_idx].src_mesh == obs_mesh) {
+            return op_idx;
+        }
     }
-    
-    auto filename = argv[1];
-    auto bem_input = parse_into_bem<2>(filename);
+    return -1;
+}
+
+template <size_t dim>
+void solve(const std::string& filename) 
+{
+    auto bem_input = parse_into_bem<dim>(filename);
     auto constraint_matrices = form_constraints(bem_input.eqtn_specs, bem_input.meshes);
 
-    auto disp_system = separate(compute_integral_equation(bem_input, bem_input.eqtn_specs[0]), bem_input.bcs);
-    auto trac_system = separate(compute_integral_equation(bem_input, bem_input.eqtn_specs[1]), bem_input.bcs);
-
-    auto disp_rhs = disp_system.rhs;
-    auto trac_rhs = trac_system.rhs;
-    precondition(disp_rhs, disp_system.lhs[1].op);
-    precondition(trac_rhs, trac_system.lhs[0].op);
+    size_t n_eqtns = bem_input.eqtn_specs.size();
+    std::vector<LinearSystem> systems(n_eqtns);
+    std::vector<BlockFunction> rhs(n_eqtns);
+    std::vector<int> diag_idx(n_eqtns);
+    for (size_t i = 0; i < n_eqtns; i++) {
+        auto computed = compute_integral_equation(bem_input, bem_input.eqtn_specs[i]);
+        systems[i] = separate(computed, bem_input.bcs),
+        rhs[i] = systems[i].rhs;
+        diag_idx[i] = find_diagonal_index(systems[i],
+            bem_input.eqtn_specs[i].obs_mesh());
+        precondition(rhs[i], systems[i].lhs[diag_idx[i]].op);
+    }
 
     //reduce using constraints
     //stack rows
-    auto stacked_rhs = concatenate_condense(
-        constraint_matrices, {disp_rhs, trac_rhs}
-    );
-
-    auto n_unknown_trac_dofs = disp_system.rhs[0].size();
-    auto n_unknown_disp_dofs = trac_system.rhs[0].size();
+    auto stacked_rhs = concatenate_condense(constraint_matrices, rhs);
 
     //solve:
     int count = 0;
@@ -126,44 +130,37 @@ int main(int argc, char* argv[]) {
             auto unstacked_estimate = expand(stacked_rhs, x);
 
             //expand using constraints
-            BlockFunction unknown_trac = {
-                distribute_vector(constraint_matrices[0], unstacked_estimate[0],
-                                                 n_unknown_trac_dofs),
-                distribute_vector(constraint_matrices[1], unstacked_estimate[1],
-                                                 n_unknown_trac_dofs)
-            };
-            BlockFunction unknown_disp = {
-                distribute_vector(constraint_matrices[2], unstacked_estimate[2],
-                                                 n_unknown_disp_dofs),
-                distribute_vector(constraint_matrices[3], unstacked_estimate[3],
-                                                 n_unknown_disp_dofs)
-            };
-
-            //apply operators
             //TODO: better name than BCMap, FunctionMap?
             BCMap unknowns; 
-            unknowns[FieldDescriptor{"displacement", "traction"}] = unknown_trac;
-            unknowns[FieldDescriptor{"traction", "displacement"}] = unknown_disp;
-            auto disp_eval = separate(disp_system.lhs, unknowns);
-            auto trac_eval = separate(trac_system.lhs, unknowns);
-            assert(disp_eval.lhs.size() == 0);
-            assert(trac_eval.lhs.size() == 0);
-            //TODO: If separate is split into a "evaluate_possible" function, these
-            //two lines would be unnecessary
+            for (size_t i = 0; i < n_eqtns; i++) {
+                BlockFunction unknown_field(dim);
+                for (size_t d = 0; d < dim; d++) {
+                    const auto& cm = constraint_matrices[i][d];
+                    const auto& reduced_data = unstacked_estimate[i * dim + d];
+                    auto n_dofs = systems[i].rhs[d].size();
+                    unknown_field[d] = distribute_vector(cm, reduced_data, n_dofs);
+                }
+                auto src_mesh = bem_input.eqtn_specs[i].obs_mesh();
+                auto field_name = systems[i].lhs[diag_idx[i]].function;
+                unknowns[FieldDescriptor{src_mesh, field_name}] = unknown_field;
+            }
+
+            //apply operators
+            std::vector<BlockFunction> eval(n_eqtns);
+            for (size_t i = 0; i < n_eqtns; i++) {
+                //TODO: If separate is split into a "evaluate_possible" function, these
+                //two lines would be unnecessary
+                auto fully_evaluated_system = separate(systems[i].lhs, unknowns);
+                assert(fully_evaluated_system.lhs.size() == 0);
+                auto eval_vec = -fully_evaluated_system.rhs;
+                precondition(eval_vec, systems[i].lhs[diag_idx[i]].op);
+                eval[i] = eval_vec;
+            }
             //scale rows
-            auto disp_eval_vec = -disp_eval.rhs;
-            auto trac_eval_vec = -trac_eval.rhs;
-            precondition(disp_eval_vec, disp_system.lhs[1].op);
-            precondition(trac_eval_vec, trac_system.lhs[0].op);
 
             //reduce using constraints
             //stack rows
-            auto evaluated_lhs = concatenate({
-                condense_vector(constraint_matrices[0], disp_eval_vec[0]),
-                condense_vector(constraint_matrices[1], disp_eval_vec[1]),
-                condense_vector(constraint_matrices[2], trac_eval_vec[0]),
-                condense_vector(constraint_matrices[3], trac_eval_vec[1])
-            });
+            auto evaluated_lhs = concatenate_condense(constraint_matrices, eval);
 
             for (size_t comp = 0; comp < evaluated_lhs.components; comp++) {
                 assert(evaluated_lhs.component_lengths[comp] == 
@@ -182,27 +179,29 @@ int main(int argc, char* argv[]) {
     auto unstacked_soln = expand(stacked_rhs, reduced_soln);
 
     //expand using constraints
-    BlockFunction soln_trac = {
-        distribute_vector(constraint_matrices[0], unstacked_soln[0],
-                n_unknown_trac_dofs),
-        distribute_vector(constraint_matrices[1], unstacked_soln[1],
-                n_unknown_trac_dofs)
-    };
-    BlockFunction soln_disp = {
-        distribute_vector(constraint_matrices[2], unstacked_soln[2],
-                n_unknown_disp_dofs),
-        distribute_vector(constraint_matrices[3], unstacked_soln[3],
-                n_unknown_disp_dofs)
-    };
-
-
     //output
-    if (soln_disp[0].size() > 0) {
-        HDFOutputter disp_file(disp_out_filename(filename));
-        out_surface(disp_file, bem_input.meshes.at("traction"), soln_disp);
+    for (size_t i = 0; i < n_eqtns; i++) {
+        BlockFunction soln(dim);
+        for (size_t d = 0; d < dim; d++) {
+            const auto& cm = constraint_matrices[i][d];
+            const auto& reduced_data = unstacked_soln[i * dim + d];
+            auto n_dofs = systems[i].rhs[d].size();
+            soln[d] = distribute_vector(cm, reduced_data, n_dofs);
+        }
+        HDFOutputter file(bem_input.eqtn_specs[i].get_output_filename(filename));
+        auto obs_mesh = bem_input.eqtn_specs[i].obs_mesh();
+        if (soln[0].size() > 0) {
+            out_surface(file, bem_input.meshes.at(obs_mesh), soln);
+        }
     }
-    if (soln_trac[0].size() > 0) {
-        HDFOutputter trac_file(trac_out_filename(filename));
-        out_surface(trac_file, bem_input.meshes.at("displacement"), soln_trac);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage is 'solve filename'" << std::endl;
+        return 1;
     }
+    
+    auto filename = argv[1];
+    solve<2>(filename);
 }
