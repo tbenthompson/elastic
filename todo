@@ -1,8 +1,10 @@
+** refactor the interior tool to allow more integral equations
+** put the unknown functions in the integral equation definition in spec
 ** extract functions in main and write some simple tests
-** crack problems
 ** zero-opening crack problems
 ** gravity problem -- valleys! (Danson 1981 paper)
 ** load 3D problems
 ** calculate and output the tractions on the slip_mesh.
 ** test rotational invariance
 ** test rigid body motion
+** test a crack by itself

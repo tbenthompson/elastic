@@ -188,9 +188,9 @@ void solve(const std::string& filename)
             auto n_dofs = systems[i].rhs[d].size();
             soln[d] = distribute_vector(cm, reduced_data, n_dofs);
         }
-        HDFOutputter file(bem_input.eqtn_specs[i].get_output_filename(filename));
         auto obs_mesh = bem_input.eqtn_specs[i].obs_mesh();
         if (soln[0].size() > 0) {
+            HDFOutputter file(bem_input.eqtn_specs[i].get_output_filename(filename));
             out_surface(file, bem_input.meshes.at(obs_mesh), soln);
         }
     }

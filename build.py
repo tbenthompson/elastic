@@ -87,6 +87,7 @@ def tests():
         tools/test_input_builder.py\
         tools/pressured_cylinder.py\
         tools/beam_bend.py\
+        tools/test_crack.py\
         ' + args
     print cmd
     subprocess.call(cmd, shell = True)

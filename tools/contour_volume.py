@@ -12,7 +12,7 @@ def main(filename, which_field, log_scale):
     y = locs[:, 1]
     data = f['values' + str(which_field)][:, 0]
     if log_scale == 1:
-        data = np.log(np.abs(data))
+        data = np.log10(np.abs(data))
 
     xrange = [np.min(x), np.max(x)]
     yrange = [np.min(y), np.max(y)]
