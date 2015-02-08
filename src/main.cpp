@@ -17,7 +17,8 @@ form_constraints(const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
     std::vector<std::vector<ConstraintMatrix>> out(int_eqtns.size());
     for (size_t i = 0; i < int_eqtns.size(); i++) {
         for (size_t d = 0; d < dim; d++) {
-            out[i].push_back(int_eqtns[i].constraint_builder(meshes, d));
+            auto constraints = int_eqtns[i].constraint_builder(meshes, d);
+            out[i].push_back(from_constraints(constraints));
         }
     }
     return out;
@@ -27,6 +28,7 @@ ConcatenatedFunction
 concatenate_condense(const std::vector<std::vector<ConstraintMatrix>>& cms,
     const std::vector<BlockFunction>& fncs) 
 {
+    // std::vector<double>
     std::vector<Function> condensed;
 
     for (size_t eqtn_idx = 0; eqtn_idx < fncs.size(); eqtn_idx++) {
@@ -35,6 +37,7 @@ concatenate_condense(const std::vector<std::vector<ConstraintMatrix>>& cms,
             condensed.push_back(condense_vector(cms[eqtn_idx][d], f[d]));
         }
     }
+
     return concatenate(condensed);
 }
 
@@ -141,7 +144,7 @@ void solve(const std::string& filename)
                     unknown_field[d] = distribute_vector(cm, reduced_data, n_dofs);
                 }
                 auto src_mesh = bem_input.eqtn_specs[i].obs_mesh();
-                auto field_name = systems[i].lhs[diag_idx[i]].function;
+                auto field_name = bem_input.eqtn_specs[i].unknown_field;
                 unknowns[FieldDescriptor{src_mesh, field_name}] = unknown_field;
             }
 

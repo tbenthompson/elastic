@@ -50,10 +50,7 @@ struct FieldDescriptor
         if (where > fd.where) {
             return false;
         }
-        if (what < fd.what) {
-            return true;
-        }
-        return false;
+        return what < fd.what;
     }
 };
 

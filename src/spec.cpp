@@ -10,11 +10,14 @@ std::string trac_out_filename(const std::string& filename) {
     return in_filename_root + ".trac_out";
 }
 
+
 template <size_t dim>
-ConstraintMatrix form_traction_constraints(const MeshMap<dim>& meshes, size_t d)
+std::vector<ConstraintEQ> form_traction_constraints(
+    const MeshMap<dim>& meshes, size_t d)
 {
-    return from_constraints({});
+    return {};
 }
+
 
 std::vector<IntegralSpec> displacement_BIE_terms(std::string obs_mesh) {
     IntegralSpec uut{obs_mesh, "displacement", "traction", "displacement", -1};
@@ -32,6 +35,7 @@ template <size_t dim>
 IntegralEquationSpec<dim> get_displacement_BIE(const std::string& obs_mesh) {
 
     return {
+        "traction",
         {obs_mesh, "displacement", 1},
         displacement_BIE_terms(obs_mesh),
         form_traction_constraints<dim>,
@@ -45,15 +49,15 @@ std::string disp_out_filename(const std::string& filename) {
 }
 
 template <size_t dim>
-ConstraintMatrix form_displacement_constraints(const MeshMap<dim>& meshes, size_t d)
+std::vector<ConstraintEQ> form_displacement_constraints(
+        const MeshMap<dim>& meshes, size_t d)
 {
     auto continuity = mesh_continuity(meshes.at("traction").begin());
     auto cut_continuity = cut_at_intersection(cut_at_intersection(
         continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
     ), meshes.at("traction").begin(), meshes.at("crack_traction").begin());
     auto constraints = convert_to_constraints(cut_continuity);
-    auto constraint_matrix = from_constraints(constraints);
-    return constraint_matrix;
+    return constraints;
 }
 
 std::vector<IntegralSpec> traction_BIE_terms(std::string obs_mesh) {
@@ -63,7 +67,7 @@ std::vector<IntegralSpec> traction_BIE_terms(std::string obs_mesh) {
     IntegralSpec tta{obs_mesh, "traction", "adjoint_traction", "traction", 1};
     IntegralSpec tsh{obs_mesh, "slip", "hypersingular", "slip", 1};
     IntegralSpec tch{obs_mesh, "crack_traction", "hypersingular", "slip", 1};
-    // IntegralSpec tfh{obs_mesh, "free_slip", "hypersingular", "slip", 1};
+    IntegralSpec tfh{obs_mesh, "free_slip", "hypersingular", "slip", 1};
     return {tuh, tth, tsh, tua, tta, tch};
 }
 
@@ -71,6 +75,7 @@ template <size_t dim>
 IntegralEquationSpec<dim> get_traction_BIE(const std::string& obs_mesh) {
 
     return {
+        "displacement",
         {obs_mesh, "traction", 1},
         traction_BIE_terms(obs_mesh),
         form_displacement_constraints<dim>,
@@ -79,12 +84,12 @@ IntegralEquationSpec<dim> get_traction_BIE(const std::string& obs_mesh) {
 }
 
 template <size_t dim>
-ConstraintMatrix form_slip_constraints(const MeshMap<dim>& meshes, size_t d)
+std::vector<ConstraintEQ> form_slip_constraints(
+    const MeshMap<dim>& meshes, size_t d)
 {
     auto continuity = mesh_continuity(meshes.at("crack_traction").begin());
     auto constraints = convert_to_constraints(continuity);
-    auto constraint_matrix = from_constraints(constraints);
-    return constraint_matrix;
+    return constraints;
 }
 
 std::string slip_out_filename(const std::string& filename) {
@@ -95,6 +100,7 @@ std::string slip_out_filename(const std::string& filename) {
 template <size_t dim>
 IntegralEquationSpec<dim> get_crack_traction_BIE(const std::string& obs_mesh) {
     return {
+        "slip",
         {obs_mesh, "crack_traction", 1},
         traction_BIE_terms(obs_mesh),
         form_slip_constraints<dim>,
@@ -104,7 +110,7 @@ IntegralEquationSpec<dim> get_crack_traction_BIE(const std::string& obs_mesh) {
 
 std::vector<std::string> get_mesh_types() {
     return {
-        "traction", "displacement", "slip", "crack_traction", "free_slip"
+        "traction", "displacement", "slip", "crack_traction"
     };
 }
 

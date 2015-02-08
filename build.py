@@ -9,9 +9,16 @@ def prepend_dir(files, dirname = 'src'):
 
 shared_sources = [
     'load', 'spec', 'kernels', 'compute', 'data',
-    'filenames', 'reload_soln', 'nearest_neighbor'
+    'filenames', 'reload_soln', 'nearest_neighbor',
+    'block_dof_map'
 ]
-test_sources = prepend_dir(['test_filenames', 'test_load', 'test_nearest_neighbor'] + shared_sources)
+test_files = [
+    'test_filenames',
+    'test_load',
+    'test_nearest_neighbor',
+    'test_block_dof_map'
+]
+test_sources = prepend_dir(test_files + shared_sources)
 run_sources = prepend_dir(['main'] + shared_sources)
 interior_sources = prepend_dir(['interior'] + shared_sources)
 

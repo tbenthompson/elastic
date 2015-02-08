@@ -5,8 +5,13 @@
 #include <iostream>
 #include <functional>
 #include <map>
+#include "block_dof_map.h"
 #include "3bem/constraint_matrix.h"
 #include "3bem/mesh.h"
+
+//Forward declarations
+template <size_t dim>
+using MeshMap = std::map<std::string, tbem::Mesh<dim>>;
 
 struct IntegralSpec 
 {
@@ -30,15 +35,13 @@ struct MassSpec {
 };
 
 template <size_t dim>
-using MeshMap = std::map<std::string, tbem::Mesh<dim>>;
-
-template <size_t dim>
-using ConstraintBuilder =
-    std::function<tbem::ConstraintMatrix(const MeshMap<dim>&, size_t d)>;
+using ConstraintBuilder = std::function<std::vector<tbem::ConstraintEQ>
+    (const MeshMap<dim>&, size_t d)>;
 
 // The convention will be that sum of the mass and the terms is equal to 0.
 template <size_t dim>
 struct IntegralEquationSpec {
+    std::string unknown_field;
     MassSpec mass;
     std::vector<IntegralSpec> terms;
     ConstraintBuilder<dim> constraint_builder;
