@@ -5,13 +5,15 @@
 #include <iostream>
 #include <functional>
 #include <map>
-#include "block_dof_map.h"
 #include "3bem/constraint_matrix.h"
 #include "3bem/mesh.h"
 
 //Forward declarations
 template <size_t dim>
 using MeshMap = std::map<std::string, tbem::Mesh<dim>>;
+namespace tbem {
+    struct BlockDOFMap;
+}
 
 struct IntegralSpec 
 {
@@ -35,8 +37,9 @@ struct MassSpec {
 };
 
 template <size_t dim>
-using ConstraintBuilder = std::function<std::vector<tbem::ConstraintEQ>
-    (const MeshMap<dim>&, size_t d)>;
+using ConstraintBuilder = std::function<std::vector<tbem::ConstraintEQ>(
+    const std::map<std::string,size_t>&, const tbem::BlockDOFMap&,
+    const MeshMap<dim>&, size_t d)>;
 
 // The convention will be that sum of the mass and the terms is equal to 0.
 template <size_t dim>
@@ -62,11 +65,15 @@ template <size_t dim>
 IntegralEquationSpec<dim> get_crack_traction_BIE(const std::string& obs_mesh);
 
 template <size_t dim>
+IntegralEquationSpec<dim> get_free_slip_BIE(const std::string& obs_mesh);
+
+template <size_t dim>
 std::vector<IntegralEquationSpec<dim>> get_all_BIEs() {
     return {
         get_displacement_BIE<dim>("displacement"),
         get_traction_BIE<dim>("traction"),
-        get_crack_traction_BIE<dim>("crack_traction")
+        get_crack_traction_BIE<dim>("crack_traction"),
+        get_free_slip_BIE<dim>("free_slip_traction")
     };
 }
 

@@ -77,3 +77,12 @@ TEST(DecideRichardsonDirIntersection) {
     auto dir = decide_richardson_dir(p, np);
     CHECK_EQUAL(dir, (Vec<double,2>{0.5, 0.5}));
 }
+
+TEST(DecideRichardsonDirOppositeNormalsCancel) {
+    Facet<2> f{{{1,-1},{1,1}}};
+    Facet<2> f2{{{-1,1},{-1,-1}}};
+    Vec<double,2> p{0,0};
+    NearestPoint<2> np{{f,f2}, p, 0.0};
+    auto dir = decide_richardson_dir(p, np);
+    CHECK((dir[0] != 0.0) || (dir[1] != 0.0));
+}

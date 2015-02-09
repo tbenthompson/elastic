@@ -10,71 +10,58 @@
 using namespace tbem;
 
 template <size_t dim>
-std::vector<std::vector<ConstraintMatrix>>
-form_constraints(const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
+ConstraintMatrix
+form_constraints(const BlockDOFMap& dof_map,
+    const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
     const MeshMap<dim>& meshes)
 {
-    std::vector<std::vector<ConstraintMatrix>> out(int_eqtns.size());
+    std::map<std::string,size_t> eqtn_component_map;
+    for (size_t i = 0; i < int_eqtns.size(); i++) {
+        eqtn_component_map[int_eqtns[i].obs_mesh()] = i * dim;
+    }
+
+    std::vector<ConstraintEQ> out;
     for (size_t i = 0; i < int_eqtns.size(); i++) {
         for (size_t d = 0; d < dim; d++) {
-            auto constraints = int_eqtns[i].constraint_builder(meshes, d);
-            out[i].push_back(from_constraints(constraints));
+            auto constraints = 
+                int_eqtns[i].constraint_builder(eqtn_component_map, dof_map, meshes, d);
+            for (size_t c_idx = 0; c_idx < constraints.size(); c_idx++) {
+                out.push_back(constraints[c_idx]);
+            }
         }
     }
-    return out;
+    return from_constraints(out);
 }
 
-ConcatenatedFunction
-concatenate_condense(const std::vector<std::vector<ConstraintMatrix>>& cms,
+template <size_t dim>
+BlockDOFMap form_dof_map(const std::vector<IntegralEquationSpec<dim>>& int_eqtns,
+    const MeshMap<dim>& meshes) 
+{
+    std::vector<size_t> components;
+    for (size_t i = 0; i < int_eqtns.size(); i++) {
+        const auto& obs_mesh = meshes.at(int_eqtns[i].obs_mesh());
+        for (size_t d = 0; d < dim; d++) {
+            components.push_back(obs_mesh.n_dofs());
+        }
+    }
+
+    return build_block_dof_map(components);
+}
+
+std::vector<double>
+concatenate_condense(const BlockDOFMap& dof_map,
+    const ConstraintMatrix& cm,
     const std::vector<BlockFunction>& fncs) 
 {
-    // std::vector<double>
-    std::vector<Function> condensed;
-
-    for (size_t eqtn_idx = 0; eqtn_idx < fncs.size(); eqtn_idx++) {
-        const auto& f = fncs[eqtn_idx];
-        for (size_t d = 0; d < f.size(); d++) {
-            condensed.push_back(condense_vector(cms[eqtn_idx][d], f[d]));
+    BlockFunction flattened;
+    //TODO: This should be avoidable.
+    for (size_t i = 0; i < fncs.size(); i++) {
+        for (size_t d = 0; d < fncs[i].size(); d++) {
+            flattened.push_back(fncs[i][d]);
         }
     }
 
-    return concatenate(condensed);
-}
-
-
-double condition_number(const LinearSystem& disp_system, 
-    const LinearSystem& trac_system,
-    const std::vector<ConstraintMatrix>& constraint_matrices)
-{
-    BlockOperator lhs{
-        4, 4,
-        {
-            disp_system.lhs[1].op.ops[0],
-            disp_system.lhs[1].op.ops[1],
-            disp_system.lhs[0].op.ops[0],
-            disp_system.lhs[0].op.ops[1],
-
-            disp_system.lhs[1].op.ops[2],
-            disp_system.lhs[1].op.ops[3],
-            disp_system.lhs[0].op.ops[2],
-            disp_system.lhs[0].op.ops[3],
-
-            trac_system.lhs[1].op.ops[0],
-            trac_system.lhs[1].op.ops[1],
-            trac_system.lhs[0].op.ops[0],
-            trac_system.lhs[0].op.ops[1],
-
-            trac_system.lhs[1].op.ops[2],
-            trac_system.lhs[1].op.ops[3],
-            trac_system.lhs[0].op.ops[2],
-            trac_system.lhs[0].op.ops[3],
-        }
-    };
-
-    auto condensed_lhs = condense_block_operator(
-        constraint_matrices, constraint_matrices, lhs);
-    auto combined_lhs = combine_components(condensed_lhs);
-    return arma_cond(combined_lhs.ops[0]);
+    return condense_vector(cm, concatenate(dof_map, flattened));
 }
 
 /* A jacobi diagonal preconditioner. Super simple.
@@ -103,7 +90,8 @@ template <size_t dim>
 void solve(const std::string& filename) 
 {
     auto bem_input = parse_into_bem<dim>(filename);
-    auto constraint_matrices = form_constraints(bem_input.eqtn_specs, bem_input.meshes);
+    auto dof_map = form_dof_map(bem_input.eqtn_specs, bem_input.meshes);
+    auto constraint_matrix = form_constraints(dof_map, bem_input.eqtn_specs, bem_input.meshes);
 
     size_t n_eqtns = bem_input.eqtn_specs.size();
     std::vector<LinearSystem> systems(n_eqtns);
@@ -115,22 +103,24 @@ void solve(const std::string& filename)
         rhs[i] = systems[i].rhs;
         diag_idx[i] = find_diagonal_index(systems[i],
             bem_input.eqtn_specs[i].obs_mesh());
+        assert(diag_idx[i] != -1);
         precondition(rhs[i], systems[i].lhs[diag_idx[i]].op);
     }
 
     //reduce using constraints
     //stack rows
-    auto stacked_rhs = concatenate_condense(constraint_matrices, rhs);
+    auto stacked_rhs = concatenate_condense(dof_map, constraint_matrix, rhs);
 
     //solve:
     int count = 0;
-    auto reduced_soln = solve_system(stacked_rhs.data, bem_input.params.solver_tol,
+    auto reduced_soln = solve_system(stacked_rhs, bem_input.params.solver_tol,
         [&] (std::vector<double>& x, std::vector<double>& y) {
             std::cout << "iteration " << count << std::endl;
             count++;
 
             //unstack_rows
-            auto unstacked_estimate = expand(stacked_rhs, x);
+            auto distributed = distribute_vector(constraint_matrix, x, dof_map.n_dofs);
+            auto unstacked_estimate = expand(dof_map, distributed);
 
             //expand using constraints
             //TODO: better name than BCMap, FunctionMap?
@@ -138,10 +128,7 @@ void solve(const std::string& filename)
             for (size_t i = 0; i < n_eqtns; i++) {
                 BlockFunction unknown_field(dim);
                 for (size_t d = 0; d < dim; d++) {
-                    const auto& cm = constraint_matrices[i][d];
-                    const auto& reduced_data = unstacked_estimate[i * dim + d];
-                    auto n_dofs = systems[i].rhs[d].size();
-                    unknown_field[d] = distribute_vector(cm, reduced_data, n_dofs);
+                    unknown_field[d] = unstacked_estimate[i * dim + d];
                 }
                 auto src_mesh = bem_input.eqtn_specs[i].obs_mesh();
                 auto field_name = bem_input.eqtn_specs[i].unknown_field;
@@ -163,33 +150,25 @@ void solve(const std::string& filename)
 
             //reduce using constraints
             //stack rows
-            auto evaluated_lhs = concatenate_condense(constraint_matrices, eval);
-
-            for (size_t comp = 0; comp < evaluated_lhs.components; comp++) {
-                assert(evaluated_lhs.component_lengths[comp] == 
-                    stacked_rhs.component_lengths[comp]);
-            }
-            assert(y.size() == evaluated_lhs.data.size());
+            auto evaluated_lhs = concatenate_condense(dof_map, constraint_matrix, eval);
 
             for (size_t i = 0; i < y.size(); i++) {
-                y[i] = evaluated_lhs.data[i];
+                y[i] = evaluated_lhs[i];
             }
         }
     );
     
     //handle soln:
     //unstack rows
-    auto unstacked_soln = expand(stacked_rhs, reduced_soln);
+    auto full_soln = distribute_vector(constraint_matrix, reduced_soln, dof_map.n_dofs);
+    auto unstacked_soln = expand(dof_map, full_soln);
 
     //expand using constraints
     //output
     for (size_t i = 0; i < n_eqtns; i++) {
         BlockFunction soln(dim);
         for (size_t d = 0; d < dim; d++) {
-            const auto& cm = constraint_matrices[i][d];
-            const auto& reduced_data = unstacked_soln[i * dim + d];
-            auto n_dofs = systems[i].rhs[d].size();
-            soln[d] = distribute_vector(cm, reduced_data, n_dofs);
+            soln[d] = unstacked_soln[i * dim + d];
         }
         auto obs_mesh = bem_input.eqtn_specs[i].obs_mesh();
         if (soln[0].size() > 0) {

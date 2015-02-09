@@ -57,11 +57,16 @@ int main(int argc, char* argv[]) {
     if (bem_input.meshes.at("crack_traction").n_facets() > 0) {
         soln_slip = load_surface(slip_out_filename(input_filename));
     }
+    BlockFunction soln_free_slip(2);
+    if (bem_input.meshes.at("free_slip_traction").n_facets() > 0) {
+        soln_free_slip = load_surface(free_slip_out_filename(input_filename));
+    }
 
     BCMap fields = bem_input.bcs; 
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
     fields[FieldDescriptor{"crack_traction", "slip"}] = soln_slip;
+    fields[FieldDescriptor{"free_slip_traction", "free_slip"}] = soln_free_slip;
 
     auto pts_filename = argv[2];
     auto pts_parsed = parse_json(load_file(pts_filename));
@@ -71,7 +76,8 @@ int main(int argc, char* argv[]) {
         bem_input.meshes.at("traction"), 
         bem_input.meshes.at("displacement"), 
         bem_input.meshes.at("slip"),
-        bem_input.meshes.at("crack_traction")
+        bem_input.meshes.at("crack_traction"),
+        bem_input.meshes.at("free_slip_traction")
     });
 
     std::vector<ObsPt<2>> obs_ptsx;
@@ -83,6 +89,10 @@ int main(int argc, char* argv[]) {
         auto dir = decide_richardson_dir(pts[i], mesh_pt);
         const double length_factor = 5.0;
         auto length_scale = hypot(dir) / length_factor;
+        if (dir[0] == 0.0 && dir[1] == 0.0) {
+            std::cout << pts[i] << " " << mesh_pt.pt << std::endl;
+            std::cout << "WHOA!" << std::endl;
+        }
         obs_ptsx.push_back({length_scale, pts[i], {1, 0}, normalized(dir)});
         obs_ptsy.push_back({length_scale, pts[i], {0, 1}, normalized(dir)});
     }

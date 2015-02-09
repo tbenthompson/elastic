@@ -64,6 +64,9 @@ Vec<double,dim> decide_richardson_dir(const Vec<double,dim>& pt,
     for (size_t i = 0; i < mesh_pt.facets.size(); i++) {
         facet_normal += unscaled_normal(mesh_pt.facets[i]); 
     }
+    if (all(facet_normal == 0.0)) {
+        facet_normal = unscaled_normal(mesh_pt.facets[0]);
+    }
     facet_normal /= (double)mesh_pt.facets.size();
 
     auto which_side = which_side_point(mesh_pt.facets[0], pt);

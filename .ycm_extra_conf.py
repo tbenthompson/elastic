@@ -7,6 +7,7 @@ import ycm_core
 tbem_loc = '../stablelib'
 flags = '-Wall -std=c++11 -Og -DDEBUG'.split()
 flags.extend([
+    '-I./src',
     '-I' + tbem_loc,
     '-I../lib/unittest-cpp/UnitTest++',
     '-I../lib/rapidjson/include',

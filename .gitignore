@@ -9,6 +9,7 @@ interior
 *disp_out*
 *.trac_out*
 *.slip_out
+*.free_slip_out
 *.stress_out_interior
 *.in_pts
 full_int_eqtns/*
