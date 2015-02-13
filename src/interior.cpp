@@ -15,7 +15,7 @@ std::vector<std::vector<double>>
 compute_interior(const std::vector<tbem::ObsPt<dim>>& pts,
                  const BEM<dim>& bem,
                  const IntegralEquationSpec<dim>& eqtn_spec,
-                 const BCMap& bcs) {
+                 const FunctionMap& bcs) {
     std::vector<std::vector<double>> results(dim, std::vector<double>(pts.size(), 0.0));
 #pragma omp parallel for
     for (size_t i = 0; i < pts.size(); i++) {
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
         soln_free_slip = load_surface(free_slip_out_filename(input_filename));
     }
 
-    BCMap fields = bem_input.bcs; 
+    FunctionMap fields = bem_input.bcs; 
     fields[FieldDescriptor{"displacement", "traction"}] = soln_trac;
     fields[FieldDescriptor{"traction", "displacement"}] = soln_disp;
     fields[FieldDescriptor{"crack_traction", "slip"}] = soln_slip;

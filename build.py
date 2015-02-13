@@ -7,23 +7,53 @@ import os
 def prepend_dir(files, dirname = 'src'):
     return [os.path.join(dirname, f) for f in files]
 
+tbem_loc = '../stablelib'
+shared_link_flags = [
+    '-Wl,-rpath=' + tbem_loc + '/build',
+    '-L' + tbem_loc + '/build/',
+    '-l3bem',
+    '-lhdf5',
+    '-fopenmp'
+]
+compiler = 'mpic++'
+
+
 shared_sources = [
     'load', 'spec', 'kernels', 'compute', 'data',
     'filenames', 'reload_soln', 'nearest_neighbor'
 ]
+
 test_files = [
     'test_filenames',
     'test_load',
-    'test_nearest_neighbor'
+    'test_nearest_neighbor',
+    'test_compute'
 ]
-test_sources = prepend_dir(test_files + shared_sources)
-run_sources = prepend_dir(['main'] + shared_sources)
-interior_sources = prepend_dir(['interior'] + shared_sources)
+test_link_flags = [
+    '-L../lib/unittest-cpp/builds',
+    '-lUnitTest++'
+]
 
-run_exec_name = 'solve'
-interior_exec_name = 'interior'
+executables = []
 
-tbem_loc = '../stablelib'
+test = dict()
+test['sources'] = prepend_dir(test_files + shared_sources)
+test['exec_name'] = 'test'
+test['link_flags'] = shared_link_flags + test_link_flags
+executables.append(test)
+
+for d in ['2','3']:
+    solver = dict()
+    solver['sources'] = prepend_dir(['solve' + d + 'd'] + shared_sources)
+    solver['exec_name'] = 'solve' + d + 'd'
+    solver['link_flags'] = shared_link_flags
+    executables.append(solver)
+
+interior = dict()
+interior['sources'] = prepend_dir(['interior'] + shared_sources)
+interior['exec_name'] = 'interior'
+interior['link_flags'] = shared_link_flags
+executables.append(interior)
 
 def get_cpp_flags(tbem_loc):
     cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
@@ -35,39 +65,19 @@ def get_cpp_flags(tbem_loc):
     ])
     return cpp_flags
 
-cpp_flags = get_cpp_flags(tbem_loc)
-
-link_flags = [
-    '-Wl,-rpath=' + tbem_loc + '/build',
-    '-L' + tbem_loc + '/build/',
-    '-l3bem',
-    '-lhdf5',
-    '-fopenmp'
-]
-
-test_link_flags = link_flags + [
-    '-L../lib/unittest-cpp/builds',
-    '-lUnitTest++'
-]
-
-run_link_flags = link_flags
-
-compiler = 'mpic++'
 
 def build():
     compile()
     link()
 
 def compile():
-    compile_list(test_sources)
-    after()
-    compile_list(run_sources)
-    after()
-    compile_list(interior_sources)
+    for e in executables:
+        compile_list(e['sources'])
+        after()
 
 def compile_list(srces):
     for s in srces:
-        run(compiler, '-c', s + '.cpp', '-o', s + '.o', cpp_flags)
+        run(compiler, '-c', s + '.cpp', '-o', s + '.o', get_cpp_flags(tbem_loc))
 
 def obj_files(srces):
     return [s + '.o' for s in srces]
@@ -78,9 +88,8 @@ def link_exec(srces, name, flags):
 
 def link():
     after()
-    link_exec(test_sources, 'test', test_link_flags)
-    link_exec(run_sources, run_exec_name, run_link_flags)
-    link_exec(interior_sources, interior_exec_name, run_link_flags)
+    for e in executables:
+        link_exec(e['sources'], e['exec_name'], e['link_flags'])
 
 def tests():
     assert(sys.argv[1] == 'tests')

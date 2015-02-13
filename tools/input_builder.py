@@ -104,11 +104,19 @@ def exec_template(file_template, filename, **params):
     with open(filename, 'w') as file:
         file.write(text)
 
-def run(filename, stdout_dest = None):
-    execute('./solve ' + filename, stdout_dest)
+
+def get_config():
+    config = dict()
+    config['solver_2d'] = './solve2d'
+    config['solver_3d'] = './solve3d'
+    config['interior_2d'] = './interior'
+    return config
+
+def run(filename, dim = 2, stdout_dest = None):
+    execute(get_config()['solver_' + str(dim) + 'd'] + ' ' + filename, stdout_dest)
 
 def interior_run(bem_filename, pts_filename, stdout_dest = None):
-    execute('./interior ' + bem_filename + ' ' + pts_filename, stdout_dest)
+    execute(get_config()['interior_2d'] + ' ' + bem_filename + ' ' + pts_filename, stdout_dest)
 
 def execute(cmd, stdout_dest):
     popen_params = dict(shell = True)

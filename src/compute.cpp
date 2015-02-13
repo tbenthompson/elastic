@@ -35,7 +35,12 @@ ComputedOperator compute_integral(const BEM<dim>& bem, const IntegralSpec& op_sp
     auto problem = make_problem(src_mesh, obs_mesh, *kernel);
     auto op = mesh_to_mesh_operator(problem, bem.quad_strategy);
 
-    return {op * op_spec.multiplier, op_spec.src_mesh, op_spec.function};
+    return {
+        op * op_spec.multiplier,
+        op_spec.obs_mesh,
+        op_spec.src_mesh,
+        op_spec.function
+    };
 }
 
 template <size_t dim>
@@ -48,15 +53,20 @@ ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
     auto problem = make_problem(obs_mesh, obs_mesh, identity);
     auto mass_op = mass_operator(problem, bem.quad_strategy);
 
-    return {mass_op * op_spec.multiplier, op_spec.obs_mesh, op_spec.function};
+    return {
+        mass_op * op_spec.multiplier,
+        op_spec.obs_mesh,
+        op_spec.obs_mesh,
+        op_spec.function
+    };
 }
 
 
 template <size_t dim>
-ComputedIntegralEquation
+ComputedEquation
 compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec<dim>& eqtn_spec)
 {
-    ComputedIntegralEquation integrals;
+    ComputedEquation integrals;
     for (const auto& term: eqtn_spec.terms) {
         integrals.push_back(compute_integral(bem, term));
     }
@@ -66,30 +76,32 @@ compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec<dim>& 
 }
 
 template 
-ComputedIntegralEquation
+ComputedEquation
 compute_integral_equation(const BEM<2>& bem, const IntegralEquationSpec<2>& eqtn_spec);
 template 
-ComputedIntegralEquation
+ComputedEquation
 compute_integral_equation(const BEM<3>& bem, const IntegralEquationSpec<3>& eqtn_spec);
 
-LinearSystem separate(const ComputedIntegralEquation& eqtn, const BCMap& bcs) {
+LinearSystem 
+evaluate_computable_terms(const ComputedEquation& eqtn, const FunctionMap& fields)
+{
     size_t components = eqtn[0].op.n_comp_rows;
     size_t dofs = eqtn[0].op.ops[0].n_rows;
-    BlockFunction rhs = constant_function(components, dofs, 0.0);
-    ComputedIntegralEquation lhs;
+    BlockFunction evaluated_terms = constant_function(components, dofs, 0.0);
+    ComputedEquation lhs;
 
     for (const auto& term: eqtn) {
         FieldDescriptor field_desc{term.src_mesh, term.function};
-        auto it = bcs.find(field_desc);
-        if (it == bcs.end()) {
+        auto it = fields.find(field_desc);
+        if (it == fields.end()) {
             lhs.push_back(term);
         } else 
         {
             const auto& bc = it->second;
 
             //negate because the term is shifted to the other side of the equation.
-            rhs -= apply_operator(term.op, bc);
+            evaluated_terms -= apply_operator(term.op, bc);
         }
     }
-    return {lhs, rhs};
+    return {lhs, evaluated_terms};
 }

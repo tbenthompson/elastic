@@ -55,13 +55,13 @@ struct FieldDescriptor
 };
 
 typedef std::vector<std::vector<double>> BlockFunction;
-typedef std::map<FieldDescriptor,BlockFunction> BCMap;
+typedef std::map<FieldDescriptor,BlockFunction> FunctionMap;
 
 template <size_t dim>
 MeshMap<dim> get_meshes(const std::vector<Element<dim>>& elements);
 
 template <size_t dim>
-BCMap get_bcs(const std::vector<Element<dim>>& elements);
+FunctionMap get_bcs(const std::vector<Element<dim>>& elements);
 
 template <size_t dim>
 std::vector<tbem::Vec<double,dim>> get_pts(const rapidjson::Document& doc);

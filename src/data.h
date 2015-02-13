@@ -12,7 +12,7 @@ template <size_t dim>
 struct BEM {
     const Parameters params;
     const MeshMap<dim> meshes;
-    const BCMap bcs;
+    const FunctionMap bcs;
     const KernelMap<dim> kernels;
     const tbem::QuadStrategy<dim> quad_strategy;
     const std::vector<IntegralEquationSpec<dim>> eqtn_specs;

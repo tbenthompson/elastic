@@ -150,7 +150,7 @@ template
 MeshMap<3> get_meshes(const std::vector<Element<3>>& elements);
 
 template <size_t dim>
-BCMap get_bcs(const std::vector<Element<dim>>& elements) {
+FunctionMap get_bcs(const std::vector<Element<dim>>& elements) {
     std::unordered_map<std::string,std::vector<Mesh<dim>>> bc_sets;
     for (auto e: elements) {
         auto bc = Mesh<dim>{{e.bc}};
@@ -159,7 +159,7 @@ BCMap get_bcs(const std::vector<Element<dim>>& elements) {
         bc_sets[e.bc_type].push_back(refined_bc);
     }
 
-    BCMap bc_map;
+    FunctionMap bc_map;
     for (auto it = bc_sets.begin(); it != bc_sets.end(); ++it) {
         FieldDescriptor key{it->first, it->first};
         auto union_mesh = Mesh<dim>::create_union(it->second);
@@ -184,9 +184,9 @@ BCMap get_bcs(const std::vector<Element<dim>>& elements) {
 }
 
 template 
-BCMap get_bcs<2>(const std::vector<Element<2>>& elements);
+FunctionMap get_bcs<2>(const std::vector<Element<2>>& elements);
 template 
-BCMap get_bcs<3>(const std::vector<Element<3>>& elements);
+FunctionMap get_bcs<3>(const std::vector<Element<3>>& elements);
 
 template <size_t dim>
 std::vector<Vec<double,dim>> get_pts(const rapidjson::Document& doc) {

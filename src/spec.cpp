@@ -92,9 +92,13 @@ std::vector<ConstraintEQ> form_displacement_constraints(
         size_t d)
 {
     auto continuity = mesh_continuity(meshes.at("traction").begin());
-    auto cut_continuity = cut_at_intersection(cut_at_intersection(
-        continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
-    ), meshes.at("traction").begin(), meshes.at("crack_traction").begin());
+    auto cut_continuity = 
+        cut_at_intersection(
+            cut_at_intersection(
+                cut_at_intersection(
+                    continuity, meshes.at("traction").begin(), meshes.at("slip").begin()
+                ), meshes.at("traction").begin(), meshes.at("crack_traction").begin()
+            ), meshes.at("traction").begin(), meshes.at("free_slip_traction").begin());
     auto constraints = convert_to_constraints(cut_continuity);
     auto shift_dof = dof_map.start_positions[component_map.at("traction") + d];
     return shift_constraints(constraints, shift_dof);

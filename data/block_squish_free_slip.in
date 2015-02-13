@@ -1,4 +1,6 @@
 {
+    "solver_tol": 1e-14,
+    "shear_modulus": 1.0,
     "elements": [
         {
             "pts": [
@@ -51,6 +53,18 @@
         {
             "pts": [
                 [0.0, 0.0],
+                [0.25, 1.0]
+            ],
+            "bc_type": "free_slip_traction",
+            "bc": [
+                [0.0, 0.0],
+                [0.0, 0.0]
+            ],
+            "refine": 5
+        },
+        {
+            "pts": [
+                [0.0, 0.0],
                 [1.0, 1.0]
             ],
             "bc_type": "free_slip_traction",
@@ -58,19 +72,7 @@
                 [0.0, 0.0],
                 [0.0, 0.0]
             ],
-            "refine": 7
-        },
-        {
-            "pts": [
-                [1.0, -1.0],
-                [-0.0, -0.0]
-            ],
-            "bc_type": "free_slip_traction",
-            "bc": [
-                [0.0, 0.0],
-                [0.0, 0.0]
-            ],
-            "refine": 7
+            "refine": 5
         }
     ]
 }
