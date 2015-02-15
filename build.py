@@ -56,12 +56,13 @@ interior['link_flags'] = shared_link_flags
 executables.append(interior)
 
 def get_cpp_flags(tbem_loc):
-    cpp_flags = '-Wall -std=c++11 -O3 -DDEBUG'.split()
+    cpp_flags = '-Wall -std=c++11 -fopenmp \
+        -DDEBUG=1 -Ofast -funroll-loops'.split()
+
     cpp_flags.extend([
         '-I' + tbem_loc,
         '-I../lib/unittest-cpp/UnitTest++',
         '-I../lib/rapidjson/include',
-        '-fopenmp'
     ])
     return cpp_flags
 
@@ -108,6 +109,10 @@ def tests():
 
 def clean():
     autoclean()
+
+def rebuild():
+    clean()
+    build()
 
 if __name__ == "__main__":
     main(parallel_ok = True, jobs = 12)

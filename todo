@@ -1,9 +1,10 @@
+** problems with vertical free slip boundaries
+** 3d sphere compression lame problem tests
+** some tools that perform automated refinement and produce a convergence plot
+-- some other tools for automated debugging of specific problems
+** 3d assembly hanging for the cube problem
 ** refactor the interior tool to allow more integral equations
 ** extract functions in main and write some simple tests
-** test zero-opening crack problems
 ** gravity problem -- valleys! (Danson 1981 paper)
-** load 3D problems
-** calculate and output the tractions on the slip_mesh.
 ** test rotational invariance
 ** test rigid body motion
-** test a crack by itself

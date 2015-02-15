@@ -33,7 +33,7 @@ def main():
             es.append(Element([pts[1], pts[0], pts[2]], bc_type, [bc, bc, bc], 0))
 
 
-    filename = "data/box3d.in"
+    filename = "test_data/box3d.in"
     bem_template(filename, es = es, G = 1.0, mu = 0.25, solver_tol = 1e-6)
     run(filename, dim = 3)
 

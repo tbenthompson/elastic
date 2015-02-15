@@ -5,14 +5,16 @@ import matplotlib.pyplot as plt
 import sys
 from scipy.interpolate import griddata
 
-def main(filename, which_field, log_scale):
+def main(filename, which_field, scale):
     f = h5py.File(filename)
     locs = f['locations']
     x = locs[:, 0]
     y = locs[:, 1]
     data = f['values' + str(which_field)][:, 0]
-    if log_scale == 1:
+    if scale == 1:
         data = np.log10(np.abs(data))
+    elif scale == 2:
+        data = np.sign(data) * (np.abs(data) ** (1.0 / 2.0))
 
     xrange = [np.min(x), np.max(x)]
     yrange = [np.min(y), np.max(y)]
@@ -39,8 +41,10 @@ def main(filename, which_field, log_scale):
     plt.xlim(*xlims)
     plt.ylim(*ylims)
     title_str = filename + ' component: ' + str(which_field)
-    if log_scale == 1:
+    if scale == 1:
         title_str += ' LOG SCALE'
+    elif scale == 2:
+        title_str += ' CUBE ROOT SCALE'
     plt.title(title_str)
     plt.show()
 
