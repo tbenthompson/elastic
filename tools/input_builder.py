@@ -51,6 +51,48 @@ def circle(center, r, refine, bc_type, fnc, reverse):
 
     return es
 
+####TODO: This code is duplicated with mesh_gen.cpp in the library
+def sphere_midpt(pt1, pt2, center, r):
+    midpt = (np.array(pt1) + np.array(pt2)) / 2
+    return (r / np.linalg.norm(midpt - center)) * (midpt - center) + center
+
+def sphere(center, r, refine, bc_type, fnc, reverse):
+    verts = [
+        [0.0, -r, 0.0], [r, 0.0, 0.0], [0.0, 0.0, r],
+        [-r, 0.0, 0.0], [0.0, 0.0, -r], [0.0, r, 0.0]
+    ]
+    faces = [
+        [1, 0, 2], [2, 0, 3], [3, 0, 4], [4, 0, 1],
+        [5, 1, 2], [5, 2, 3], [5, 3, 4], [5, 4, 1]
+    ]
+
+    ## TODO: This code refines and is duplicated in mesh.cpp
+    ## TODO: THEME: Need some sort of lightweight python-cpp integration
+    for i in range(refine):
+        new_faces = []
+        for f in faces:
+            midpts = [
+                sphere_midpt(verts[f[0]], verts[f[1]], center, r),
+                sphere_midpt(verts[f[1]], verts[f[2]], center, r),
+                sphere_midpt(verts[f[2]], verts[f[0]], center, r)
+            ]
+            midptidx = [len(verts) + i for i in range(3)]
+            verts.extend(midpts)
+            new_faces.append([f[0], midptidx[0], midptidx[2]])
+            new_faces.append([f[1], midptidx[1], midptidx[0]])
+            new_faces.append([f[2], midptidx[2], midptidx[1]])
+            new_faces.append([midptidx[0], midptidx[1], midptidx[2]])
+        faces = new_faces
+
+    es = []
+    for f in faces:
+        vs = [verts[f[i]] for i in range(3)]
+        if reverse:
+            vs = [vs[1], vs[0], vs[2]]
+        bcs = [fnc(*v) for v in vs]
+        es.append(Element(vs, bc_type, bcs, 0))
+    return es
+
 def make_points(x_range, y_range):
     x_vals = np.linspace(*x_range)
     y_vals = np.linspace(*y_range)
@@ -129,6 +171,11 @@ def get_points(f):
         x = f['locations'][:, 0]
         y = f['locations'][:, 1]
         return x, y
+    elif f['locations'].shape[1] == 3:
+        x = f['locations'][:, 0]
+        y = f['locations'][:, 1]
+        z = f['locations'][:, 2]
+        return x, y, z
     elif f['locations'].shape[1] == 4:
         x_index = [0, 2]
         y_index = [1, 3]
@@ -137,32 +184,31 @@ def get_points(f):
             f['locations'][:, y_index].flatten()
         ]).T
         return vertices[:, 0], vertices[:, 1]
+    elif f['locations'].shape[1] == 9:
+        x_index = [0, 3, 6]
+        y_index = [1, 4, 7]
+        z_index = [2, 5, 8]
+        vertices = np.array([
+            f['locations'][:, x_index].flatten(),
+            f['locations'][:, y_index].flatten(),
+            f['locations'][:, z_index].flatten()
+        ]).T
+        return vertices[:, 0], vertices[:, 1], vertices[:, 2]
 
-def check_field(filename, solution, plot_diff, digits,
-    point_limiter = None):
+def check_field(filename, solution, plot_diff, digits, point_limiter = None):
 
     if point_limiter is None:
         point_limiter = lambda x, y: np.ones_like(x, dtype = np.bool)
 
     f = h5py.File(filename)
 
-    x_in, y_in = get_points(f)
-    x = x_in[point_limiter(x_in, y_in)]
-    y = y_in[point_limiter(x_in, y_in)]
-    datax = f['values0'][point_limiter(x_in, y_in), 0]
-    datay = f['values1'][point_limiter(x_in, y_in), 0]
-
-    exactx, exacty = solution(x, y)
-    #TODO: It would be better to use norms here
-    diffx = np.abs(exactx - datax)
-    diffy = np.abs(exacty - datay)
-    if plot_diff:
-        plt.figure()
-        plt.quiver(x, y, datax, datay)
-        plt.figure()
-        plt.quiver(x, y, exactx, exacty)
-        plt.figure()
-        plt.quiver(x, y, exactx - datax, exacty - datay)
-        plt.show()
-    np.testing.assert_almost_equal(diffx, np.zeros_like(diffx), digits)
-    np.testing.assert_almost_equal(diffy, np.zeros_like(diffy), digits)
+    pts = get_points(f)
+    data = []
+    exact = []
+    diff = []
+    exact = solution(*pts)
+    for d in range(len(pts)):
+        data = f['values' + str(d)][:, 0]
+        diff = np.abs(exact[d] - data)
+        print zip(data, exact[d])
+        np.testing.assert_almost_equal(diff, np.zeros_like(diff), digits)

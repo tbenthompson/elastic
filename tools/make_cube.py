@@ -16,9 +16,9 @@ def main():
         # bottom
         [[4, 5, 1], [1, 0, 4], "traction", [0.0, 0.0, 0.0]],
         # left
-        [[4, 0, 3], [3, 7, 4], "displacement", [0.0, 0.0, 0.0]],
+        [[4, 0, 3], [3, 7, 4], "displacement", [1.0, 0.0, 0.0]],
         # right
-        [[1, 5, 6], [6, 2, 1], "displacement", [1.0, 0.0, 0.0]],
+        [[1, 5, 6], [6, 2, 1], "displacement", [0.0, 0.0, 0.0]],
     ]
 
     es = []
@@ -27,11 +27,9 @@ def main():
         bc = f[3]
         for t in [0, 1]:
             pts = [vertices[p_idx] for p_idx in f[t]]
-            to_zero = -(pts[0] + pts[1] + pts[2]) / 3.0
-            normal = np.cross(pts[0] - pts[1], pts[2] - pts[1])
-            print np.sign(np.dot(normal, to_zero))
-            es.append(Element([pts[1], pts[0], pts[2]], bc_type, [bc, bc, bc], 0))
-
+            # Flip the order to make sure the normal points inward.
+            tri = [pts[1], pts[0], pts[2]]
+            es.append(Element(tri, bc_type, [bc, bc, bc], 3))
 
     filename = "test_data/box3d.in"
     bem_template(filename, es = es, G = 1.0, mu = 0.25, solver_tol = 1e-6)

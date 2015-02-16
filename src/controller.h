@@ -159,9 +159,12 @@ void solve(const std::string& filename)
     auto bem_input = parse_into_bem<dim>(filename);
     auto dof_map = form_dof_map(bem_input.eqtn_specs, bem_input.meshes);
     auto constraint_matrix = form_constraints(dof_map, bem_input.eqtn_specs, bem_input.meshes);
+    std::cout << "Formed constraints." << std::endl;
 
     auto systems = compute_linear_systems(bem_input);
+    std::cout << "Matrix assembled." << std::endl;
     auto rhs = preconditioned_rhs(systems, constraint_matrix, dof_map, dim);
+    std::cout << "RHS Assembled." << std::endl;
 
     int count = 0;
     auto reduced_soln = solve_system(rhs, bem_input.params.solver_tol,

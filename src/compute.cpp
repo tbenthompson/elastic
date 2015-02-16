@@ -61,6 +61,21 @@ ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
     };
 }
 
+template <size_t dim>
+void print_operator(std::ostream& os, const BEM<dim>& bem_input, const IntegralSpec& term) 
+{
+    if (bem_input.meshes.at(term.obs_mesh).n_facets() == 0) {
+        return;
+    }
+    if (bem_input.meshes.at(term.src_mesh).n_facets() == 0) {
+        return;
+    }
+    os << "Computing operator: " << std::endl;
+    os << "    Observation mesh: " << term.obs_mesh << std::endl;
+    os << "    Source mesh: " << term.src_mesh << std::endl;
+    os << "    Kernel: " << term.kernel << std::endl;
+    os << "    Function: " << term.function << std::endl; 
+}
 
 template <size_t dim>
 ComputedEquation
@@ -68,6 +83,7 @@ compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec<dim>& 
 {
     ComputedEquation integrals;
     for (const auto& term: eqtn_spec.terms) {
+        print_operator(std::cout, bem, term);
         integrals.push_back(compute_integral(bem, term));
     }
     integrals.push_back(compute_mass(bem, eqtn_spec.mass));
