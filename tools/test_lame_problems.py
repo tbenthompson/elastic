@@ -41,6 +41,7 @@ def build_trac_bc3d(a, b, p_a, p_b, E, mu):
         term1 = (p_a * a ** 3 - p_b * b ** 3) / (b ** 3 - a ** 3)
         term2 = ((p_a - p_b) * b ** 3 * a ** 3) / ((b ** 3 - a ** 3) * r ** 3)
         sigmarr = term1 - term2
+        sigmarr = np.where(r > ((a + b) / 2.0), sigmarr, -sigmarr)
         return cart_from_sph(sigmarr, theta, phi)
     return trac_bc
 
@@ -56,18 +57,21 @@ def concentric_circle_pts(a, b, nt, nr):
     t_vals = np.linspace(0.0, 2 * np.pi, nt)
     r_vals = np.linspace(a, b, nr)
     r, t = np.meshgrid(r_vals, t_vals)
-    x = r * np.cos(t)
-    y = r * np.sin(t)
+    return cart_from_circ(r, t)
 
-    return x,y
+def plotter(a, b, dim, disp_bc):
+    nt = 50
+    nr = 20
+    pts = list(concentric_circle_pts(a, b, nt, nr))
+    if dim == 3:
+        pts.append(np.zeros_like(pts[0]))
 
-def plotter(a, b, disp_bc):
-    nt = 20
-    nr = 5
-    x, y = concentric_circle_pts(a, b, nt, nr)
+    soln = disp_bc(*pts)
 
-    ux, uy = disp_bc(x, y)
-
+    x = pts[0]
+    y = pts[1]
+    ux = soln[0]
+    uy = soln[1]
     plt.figure()
     plt.contourf(x, y, ux)
     plt.contour(x, y, ux, linestyles = 'solid', colors = 'k', linewidths = 2)
@@ -97,7 +101,7 @@ def points(a, b, nt, nr, out_filename):
     points_template(out_filename, pts)
 
 def lame(dim, bc_types):
-    a = 0.3
+    a = 0.8
     b = 1.9
     p_a = 10e6
     p_b = -15e6
@@ -105,13 +109,14 @@ def lame(dim, bc_types):
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
-    refine[2] = 7
-    refine[3] = 2
-    solver_tol = 1e-8
+    refine[2] = 8
+    refine[3] = 3
+    solver_tol = 1e-10
     input_filename = 'test_data/lame.in'
     pts_filename = 'test_data/lame.in_pts'
 
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
+    # plotter(a, b, dim, disp_bc)
     trac_bc = build_trac_bc[dim](a, b, p_a, p_b, E, mu)
     bc_funcs = dict()
     bc_funcs['traction'] = trac_bc
@@ -122,7 +127,7 @@ def lame(dim, bc_types):
     traction_filename = in_root + '.trac_out'
     interior_disp_filename = in_root + '.disp_out_interior'
 
-    delete_files(input_filename)
+    # delete_files(input_filename)
 
     es = []
     es.extend(ball_mesh[dim]([0] * dim, a, refine[dim], bc_types['inner'],
@@ -131,7 +136,7 @@ def lame(dim, bc_types):
                      bc_funcs[bc_types['outer']], False))
 
     bem_template(input_filename, es = es, G = G, mu = mu, solver_tol = solver_tol)
-    run(input_filename, dim = dim)
+    # run(input_filename, dim = dim)
     if 'displacement' in bc_types.values():
         check_field(traction_filename, trac_bc, False, -6)
     if 'traction' in bc_types.values():
@@ -169,4 +174,8 @@ def test_trac_trac3d():
     lame(3, dict(inner = "traction", outer = "traction"))
 
 if __name__ == "__main__":
-    test_trac_trac3d()
+    # test_disp_disp3d()
+    test_trac_trac2d()
+    test_disp_trac2d()
+    test_trac_disp2d()
+    test_disp_disp2d()

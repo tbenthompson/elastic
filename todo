@@ -1,4 +1,5 @@
-** there appears to be excessive memory usage
+** there appears to be super excessive memory usage -- are matrices being copied?
+** 3d interior evaluation
 ** begin integrating with fmm
 ** 3d sphere compression lame problem tests
 ** problems with vertical free slip boundaries

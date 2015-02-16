@@ -210,5 +210,4 @@ def check_field(filename, solution, plot_diff, digits, point_limiter = None):
     for d in range(len(pts)):
         data = f['values' + str(d)][:, 0]
         diff = np.abs(exact[d] - data)
-        print zip(data, exact[d])
         np.testing.assert_almost_equal(diff, np.zeros_like(diff), digits)
