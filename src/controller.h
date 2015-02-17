@@ -85,7 +85,7 @@ void precondition(BlockFunction& f, const BlockOperator& block_op, size_t dim)
         const auto& op = block_op.ops[d * dim + d];
         assert(op.n_rows == op.n_cols);
         for (size_t i = 0; i < f[d].size(); i++) {
-            f[d][i] /= op.data[i * op.n_cols + i];
+            f[d][i] /= (*op.data)[i * op.n_cols + i];
         }
     }
 }
@@ -98,7 +98,7 @@ preconditioned_rhs(const std::vector<LinearSystem>& systems,
     std::vector<BlockFunction> rhs(systems.size());
     for (size_t i = 0; i < systems.size(); i++) {
         rhs[i] = -systems[i].evaluated_terms;
-        precondition(rhs[i], systems[i].get_diag_block().op, dim);
+        precondition(rhs[i], systems[i].get_diag_block_op(), dim);
     }
     return concatenate_condense(dof_map, constraint_matrix, rhs);
 }
@@ -128,7 +128,7 @@ mat_vec_prod(const std::vector<LinearSystem>& systems, const FunctionMap& x, siz
         auto evaluated_system = evaluate_computable_terms(systems[i].lhs, x);
         assert(evaluated_system.lhs.size() == 0);
         auto eval_vec = evaluated_system.evaluated_terms;
-        precondition(eval_vec, systems[i].get_diag_block().op, dim);
+        precondition(eval_vec, systems[i].get_diag_block_op(), dim);
         eval[i] = eval_vec;
     }
     return eval;

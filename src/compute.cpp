@@ -5,24 +5,22 @@
 
 using namespace tbem;
 
-Operator operator*(const Operator& op, double s) {
-    auto out = op;
-    for (size_t i = 0; i < op.data.size(); i++) {
-        out.data[i] *= s;
+Operator& operator*=(Operator& op, double s) {
+    for (size_t i = 0; i < op.data->size(); i++) {
+        (*op.data)[i] *= s;
     }
-    return out;
+    return op;
 }
 
-BlockOperator operator*(const BlockOperator& op, double s) {
-    std::vector<Operator> out_data;
+BlockOperator& operator*=(BlockOperator& op, double s) {
     for (size_t c = 0; c < op.ops.size(); c++) {
-        out_data.push_back(op.ops[c] * s);
+        op.ops[c] *= s;
     }
-    return {op.n_comp_rows, op.n_comp_cols, out_data};
+    return op;
 }
 
-template <size_t dim>
-ComputedOperator compute_integral(const BEM<dim>& bem, const IntegralSpec& op_spec)
+template <size_t dim> ComputedOperator
+compute_integral(const BEM<dim>& bem, const IntegralSpec& op_spec)
 {
     assert(bem.meshes.count(op_spec.obs_mesh) > 0);
     assert(bem.meshes.count(op_spec.src_mesh) > 0);
@@ -34,35 +32,29 @@ ComputedOperator compute_integral(const BEM<dim>& bem, const IntegralSpec& op_sp
 
     auto problem = make_problem(src_mesh, obs_mesh, *kernel);
     auto op = mesh_to_mesh_operator(problem, bem.quad_strategy);
+    op *= op_spec.multiplier;
 
-    return {
-        op * op_spec.multiplier,
-        op_spec.obs_mesh,
-        op_spec.src_mesh,
-        op_spec.function
-    };
+    return {op, op_spec.obs_mesh, op_spec.src_mesh, op_spec.function};
 }
 
-template <size_t dim>
-ComputedOperator compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) {
+template <size_t dim> ComputedOperator
+compute_mass(const BEM<dim>& bem, const MassSpec& op_spec) 
+{
     assert(bem.meshes.count(op_spec.obs_mesh) > 0);
 
     const auto& obs_mesh = bem.meshes.at(op_spec.obs_mesh);  
 
     IdentityTensor<dim,dim,dim> identity;
     auto problem = make_problem(obs_mesh, obs_mesh, identity);
+    std::cout << "MASS: " << obs_mesh.n_dofs() << std::endl;
     auto mass_op = mass_operator(problem, bem.quad_strategy);
+    mass_op *= op_spec.multiplier;
 
-    return {
-        mass_op * op_spec.multiplier,
-        op_spec.obs_mesh,
-        op_spec.obs_mesh,
-        op_spec.function
-    };
+    return {mass_op, op_spec.obs_mesh, op_spec.obs_mesh, op_spec.function};
 }
 
-template <size_t dim>
-void print_operator(std::ostream& os, const BEM<dim>& bem_input, const IntegralSpec& term) 
+template <size_t dim> void
+print_operator(std::ostream& os, const BEM<dim>& bem_input, const IntegralSpec& term) 
 {
     if (bem_input.meshes.at(term.obs_mesh).n_facets() == 0) {
         return;

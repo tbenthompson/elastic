@@ -1,5 +1,6 @@
 #ifndef __reqrqweklajfbna_BEM_PARTS_H
 #define __reqrqweklajfbna_BEM_PARTS_H
+#include <memory>
 #include "load.h"
 #include "kernels.h"
 #include "3bem/operator.h"
@@ -19,9 +20,8 @@ struct ComputedOperator {
 typedef std::vector<ComputedOperator> ComputedEquation;
 
 // The integral equation is implicitly defined by (sum(integrals) + mass) = 0
-template <size_t dim>
-ComputedEquation
-compute_integral_equation(const BEM<dim>& bem, const IntegralEquationSpec<dim>& eqtn_spec);
+template <size_t dim> ComputedEquation compute_integral_equation(
+    const BEM<dim>& bem, const IntegralEquationSpec<dim>& eqtn_spec);
 
 struct NoDiagonalException {};
 
@@ -37,6 +37,10 @@ struct LinearSystem {
             }
         }
         throw NoDiagonalException();
+    }
+
+    const tbem::BlockOperator& get_diag_block_op() const {
+        return get_diag_block().op;
     }
 };
 

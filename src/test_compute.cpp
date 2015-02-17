@@ -4,7 +4,7 @@
 using namespace tbem;
 
 TEST(DiagBlock) {
-    BlockOperator empty{0,0,{}};
+    auto empty = BlockOperator{0,0,{}};
     ComputedEquation lhs{
         {empty, "A", "B", "C"},
         {empty, "A", "A", "E"},

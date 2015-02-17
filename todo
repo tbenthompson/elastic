@@ -1,4 +1,4 @@
-** replace matrix copying with pointers
+** why is the test_diag_free_slip so slow?
 ** begin integrating with fmm
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems

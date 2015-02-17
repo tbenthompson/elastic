@@ -58,7 +58,7 @@ executables.append(interior)
 
 def get_cpp_flags(tbem_loc):
     cpp_flags = '-Wall -std=c++11 -fopenmp \
-        -DDEBUG=1 -Ofast -funroll-loops'.split()
+        -DDEBUG=1 -g -Ofast -funroll-loops'.split()
 
     cpp_flags.extend([
         '-I' + tbem_loc,
@@ -98,13 +98,10 @@ def tests():
     subprocess.call(['./test'])
     if os.path.exists('tools/__pycache__'):
         shutil.rmtree('tools/__pycache__')
-    cmd = [
-        'py.test', '-s', '--tb=short',
-        'tools/test_input_builder.py',
-    ]
+    cmd = ['py.test']
+    cmd.extend(glob.glob('tools/test_*.py'))
     cmd.extend(glob.glob('acctests/*.py'))
     cmd.extend(sys.argv[2:])
-    print cmd
     subprocess.call(cmd)
 
 def clean():
