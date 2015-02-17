@@ -100,9 +100,7 @@ def tests():
     args = ' '.join(sys.argv[2:])
     cmd = ' py.test -s --tb=short\
         tools/test_input_builder.py\
-        tools/pressured_cylinder.py\
-        tools/beam_bend.py\
-        tools/test_crack.py\
+        acctests/*.py\
         ' + args
     print cmd
     subprocess.call(cmd, shell = True)

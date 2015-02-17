@@ -1,14 +1,17 @@
-** there appears to be super excessive memory usage -- are matrices being copied?
-** 3d interior evaluation
-** begin integrating with fmm
-** 3d sphere compression lame problem tests
 ** problems with vertical free slip boundaries
+** there appears to be super excessive memory usage -- are matrices being copied?
+** begin integrating with fmm
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems
-** 3d assembly hanging for the cube problem
-** refactor the interior tool to allow more integral equations
-** extract functions in main and write some simple tests
-** gravity problem -- valleys! (Danson 1981 paper)
----- test case: 4.1.5 here: http://solidmechanics.org/text/Chapter4_1/Chapter4_1.htm
+
 ** test rotational invariance
 ** test rigid body motion
+
+** 3d interior evaluation
+** refactor the interior tool to allow more integral equations
+
+** get the 3d sphere compression lame problem tests working
+
+** gravity problems -- valleys in 2d! (Danson 1981 paper)
+---- test case: 4.1.5 here: http://solidmechanics.org/text/Chapter4_1/Chapter4_1.htm
+** a systematic golden master testing system?

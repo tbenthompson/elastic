@@ -1,7 +1,7 @@
 import subprocess
 import os
-from input_builder import Element, bem_template, run, check_field
 import numpy as np
+from tools.input_builder import *
 
 def build_slip_bc(a, stress_drop, G, mu):
     def slip_bc(x, y):
@@ -21,10 +21,10 @@ def create_file(a, stress_drop, G, mu, input_filename, bc_type):
         [[stress_drop, 0], [stress_drop, 0]], refine))
     es.append(Element([[a/1.1, 0], [a, 0]], bc_type,
         [[stress_drop, 0], [stress_drop, 0]], refine))
-    bem_template(input_filename, es = es, G = G, mu = mu)
+    bem_template(input_filename, es, shear_modulus = G, mu = mu)
 
 def griffith_soln(bc_type):
-    input_filename = 'test_data/' + bc_type + '_griffith.in'
+    input_filename = test_data_dir + bc_type + '_griffith.in'
     a = 0.5
     G = 40e9
     mu = 0.29

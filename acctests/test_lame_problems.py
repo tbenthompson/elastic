@@ -1,10 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from input_builder import circle, sphere, points_template, bem_template, run, \
-    interior_run, check_field
 import subprocess
-from coordinate_transforms import *
+from tools.input_builder import *
+from tools.coordinate_transforms import *
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     def disp_bc(x, y):
@@ -82,14 +81,13 @@ def plotter(a, b, dim, disp_bc):
     plt.quiver(x, y, ux, uy)
     plt.show()
 
-def delete_files(input_filepath):
-    dir, filename = input_filepath.split('/')
+def delete_files(dir, filename):
     root = os.path.splitext(filename)[0]
     for f in os.listdir(dir):
         if root in f:
             os.remove(os.path.join(dir, f))
 
-def points(a, b, nt, nr, out_filename):
+def points(a, b, nt, nr, out_filepath):
     # As a result of the discretization, points on the boundary of the
     # circle that are not vertices in the mesh will be outside the
     # cylinder. Use slightly shifted circle sizes to shift the points
@@ -98,7 +96,7 @@ def points(a, b, nt, nr, out_filename):
     inside_b = b - 1e-3
     x, y = concentric_circle_pts(inside_a, inside_b, nt, nr)
     pts = zip(x.flatten(), y.flatten())
-    points_template(out_filename, pts)
+    points_template(out_filepath, pts)
 
 def lame(dim, bc_types):
     a = 0.8
@@ -112,8 +110,10 @@ def lame(dim, bc_types):
     refine[2] = 8
     refine[3] = 3
     solver_tol = 1e-10
-    input_filename = 'test_data/lame.in'
-    pts_filename = 'test_data/lame.in_pts'
+    dir = 'test_data/auto_gen/'
+    filename = 'lame.in'
+    input_filepath = dir + filename
+    pts_filepath = dir + filename + '_pts'
 
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
     # plotter(a, b, dim, disp_bc)
@@ -122,12 +122,12 @@ def lame(dim, bc_types):
     bc_funcs['traction'] = trac_bc
     bc_funcs['displacement'] = disp_bc
 
-    in_root, file_ext = os.path.splitext(input_filename)
-    displacement_filename = in_root + '.disp_out'
-    traction_filename = in_root + '.trac_out'
-    interior_disp_filename = in_root + '.disp_out_interior'
+    in_root, file_ext = os.path.splitext(input_filepath)
+    displacement_filepath = in_root + '.disp_out'
+    traction_filepath = in_root + '.trac_out'
+    interior_disp_filepath = in_root + '.disp_out_interior'
 
-    # delete_files(input_filename)
+    delete_files(dir, filename)
 
     es = []
     es.extend(ball_mesh[dim]([0] * dim, a, refine[dim], bc_types['inner'],
@@ -135,18 +135,19 @@ def lame(dim, bc_types):
     es.extend(ball_mesh[dim]([0] * dim, b, refine[dim], bc_types['outer'],
                      bc_funcs[bc_types['outer']], False))
 
-    bem_template(input_filename, es = es, G = G, mu = mu, solver_tol = solver_tol)
-    # run(input_filename, dim = dim)
+    bem_template(input_filepath, es = es,
+                 shear_modulus = G, mu = mu, solver_tol = solver_tol)
+    run(input_filepath, dim = dim, stdout_dest = subprocess.PIPE)
     if 'displacement' in bc_types.values():
-        check_field(traction_filename, trac_bc, False, -6)
+        check_field(traction_filepath, trac_bc, False, -6)
     if 'traction' in bc_types.values():
-        check_field(displacement_filename, disp_bc, False, 6)
+        check_field(displacement_filepath, disp_bc, False, 6)
 
     nt = 20
     nr = 20
-    points(a, b, nt, nr, pts_filename)
-    interior_run(input_filename, pts_filename)
-    check_field(interior_disp_filename, disp_bc, False, 6)
+    points(a, b, nt, nr, pts_filepath)
+    interior_run(input_filepath, pts_filepath)
+    check_field(interior_disp_filepath, disp_bc, False, 6)
 
 
 def test_disp_disp2d():
@@ -161,21 +162,14 @@ def test_disp_trac2d():
 def test_trac_trac2d():
     lame(2, dict(inner = "traction", outer = "traction"))
 
-def test_disp_disp3d():
-    lame(3, dict(inner = "displacement", outer = "displacement"))
-
-def test_trac_disp3d():
-    lame(3, dict(inner = "traction", outer = "displacement"))
-
-def test_disp_trac3d():
-    lame(3, dict(inner = "displacement", outer = "traction"))
-
-def test_trac_trac3d():
-    lame(3, dict(inner = "traction", outer = "traction"))
-
-if __name__ == "__main__":
-    # test_disp_disp3d()
-    test_trac_trac2d()
-    test_disp_trac2d()
-    test_trac_disp2d()
-    test_disp_disp2d()
+# def test_disp_disp3d():
+#     lame(3, dict(inner = "displacement", outer = "displacement"))
+#
+# def test_trac_disp3d():
+#     lame(3, dict(inner = "traction", outer = "displacement"))
+#
+# def test_disp_trac3d():
+#     lame(3, dict(inner = "displacement", outer = "traction"))
+#
+# def test_trac_trac3d():
+#     lame(3, dict(inner = "traction", outer = "traction"))

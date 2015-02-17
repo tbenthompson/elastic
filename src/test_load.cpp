@@ -17,8 +17,10 @@ TEST(SimpleLoadBad) {
 }
 
 TEST(RapidJSONBigFile) {
+    auto res = system("python tools/make_big.py");
+    (void)res;
     TIC
-    auto file = load_file("test_data/reallybig.in");
+    auto file = load_file("test_data/auto_gen/reallybig.in");
     TOC("Loading file");
     TIC2
     auto doc = parse_json(file);
@@ -28,7 +30,6 @@ TEST(RapidJSONBigFile) {
     int n_elements = meshes["traction"].facets.size();
     TOC("Meshing " + std::to_string(n_elements) + " elements");
 }
-
 
 TEST(GetMeshes) {
     auto doc = parse_json(load_file("test_data/one.in"));

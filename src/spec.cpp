@@ -174,16 +174,18 @@ std::vector<ConstraintEQ> form_free_slip_constraints(
 
     const auto& mesh = meshes.at("free_slip_traction");
     auto fs_component = component_map.at("free_slip_traction");
-    auto x_start = dof_map.start_positions[fs_component];
-    auto y_start = dof_map.start_positions[fs_component + 1];
+
     // Opening displacement constraint.
     std::vector<ConstraintEQ> constraints;
     for (auto it = mesh.begin(); it != mesh.end(); ++it) {
-        auto ux_dof = x_start + it.absolute_index();
-        auto uy_dof = y_start + it.absolute_index();
         auto normal = normalized(unscaled_normal(it.get_facet()));
-        ConstraintEQ c{{{ux_dof, normal[0]}, {uy_dof, normal[1]}}, 0.0};
-        constraints.push_back(c);
+        std::vector<LinearTerm> terms;
+        for (size_t d = 0; d < dim; d++) {
+            auto dof = dof_map.start_positions[fs_component + d] + it.absolute_index();
+            terms.push_back({dof, normal[d]});
+        }
+        ConstraintEQ c{terms, 0.0};
+        constraints.push_back(filter_zero_terms(c));
     }
     return constraints;
 }

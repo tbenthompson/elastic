@@ -5,6 +5,8 @@ import subprocess
 from mako.template import Template
 import matplotlib.pyplot as plt
 
+test_data_dir = 'test_data/auto_gen/'
+
 class Element(object):
     def __init__(self, pts, bc_type, bc, refine):
         self.pts = np.array(pts).astype(np.float32).tolist()
@@ -116,12 +118,12 @@ def points_template(out_filename, ps):
     """
     exec_template(file_template, out_filename, ps = ps)
 
-def bem_template(filename, **params):
+def bem_template(filename, es, **params):
     file_template = """
     {
-        "shear_modulus": ${G},
-        "poisson_ratio": ${mu},
-        "solver_tol": ${solver_tol},
+        % for key,value in params.iteritems():
+            "${key}": ${value},
+        % endfor
         "elements": [
         % for e in es:
             {
@@ -137,9 +139,7 @@ def bem_template(filename, **params):
         ]
     }
     """
-    if 'solver_tol' not in params:
-        params['solver_tol'] = 1e-6
-    exec_template(file_template, filename, **params)
+    exec_template(file_template, filename, es = es, params = params)
 
 def exec_template(file_template, filename, **params):
     text = Template(file_template).render(**params)
@@ -196,7 +196,6 @@ def get_points(f):
         return vertices[:, 0], vertices[:, 1], vertices[:, 2]
 
 def check_field(filename, solution, plot_diff, digits, point_limiter = None):
-
     if point_limiter is None:
         point_limiter = lambda x, y: np.ones_like(x, dtype = np.bool)
 

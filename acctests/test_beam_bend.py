@@ -1,9 +1,8 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from input_builder import Element, line, bem_template, run, interior_run, \
-    points_grid , check_field
 import subprocess
+from tools.input_builder import *
 
 def G_from_E_mu(E, mu):
     return E / (2 * (1 + mu))
@@ -22,8 +21,8 @@ mu_fic = mu / (1 - mu)
 E_fic = E / (1 - mu ** 2)
 G_fic = G_from_E_mu(E_fic, mu_fic)
 
-input_filename = 'test_data/beam_bend.in'
-pts_filename = 'test_data/beam_bend.in_pts'
+input_filename = test_data_dir + 'beam_bend.in'
+pts_filename = test_data_dir + 'beam_bend.in_pts'
 
 def disp_bc(x, y):
     ux = (-P * x ** 2 * y) / (2 * E_fic * I) \
@@ -81,11 +80,11 @@ def test_beam_bend():
     create_problem()
     points()
     run(input_filename, stdout_dest = subprocess.PIPE)
-    disp_filename = 'test_data/beam_bend.disp_out'
+    disp_filename = test_data_dir + 'beam_bend.disp_out'
     check_field(disp_filename, disp_bc, False, 6)
 
     interior_run(input_filename, pts_filename)
-    disp_intfilename = 'test_data/beam_bend.disp_out_interior'
+    disp_intfilename = test_data_dir + 'beam_bend.disp_out_interior'
     check_field(disp_intfilename, disp_bc, False, 6)
 
 if __name__ == "__main__":
