@@ -13,5 +13,3 @@ interior
 *.disp_out_interior
 *.stress_out_interior
 *.pts
-full_int_eqtns/*
-!full_int_eqtns/*.tex
