@@ -1,5 +1,4 @@
-** problems with vertical free slip boundaries
-** there appears to be super excessive memory usage -- are matrices being copied?
+** replace matrix copying with pointers
 ** begin integrating with fmm
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems

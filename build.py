@@ -3,6 +3,7 @@ import subprocess
 import sys
 import shutil
 import os
+import glob
 
 def prepend_dir(files, dirname = 'src'):
     return [os.path.join(dirname, f) for f in files]
@@ -94,16 +95,17 @@ def link():
 
 def tests():
     assert(sys.argv[1] == 'tests')
-    subprocess.call('./test', shell = True)
+    subprocess.call(['./test'])
     if os.path.exists('tools/__pycache__'):
         shutil.rmtree('tools/__pycache__')
-    args = ' '.join(sys.argv[2:])
-    cmd = ' py.test -s --tb=short\
-        tools/test_input_builder.py\
-        acctests/*.py\
-        ' + args
+    cmd = [
+        'py.test', '-s', '--tb=short',
+        'tools/test_input_builder.py',
+    ]
+    cmd.extend(glob.glob('acctests/*.py'))
+    cmd.extend(sys.argv[2:])
     print cmd
-    subprocess.call(cmd, shell = True)
+    subprocess.call(cmd)
 
 def clean():
     autoclean()

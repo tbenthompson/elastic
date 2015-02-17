@@ -154,14 +154,20 @@ def get_config():
     config['interior_2d'] = './interior'
     return config
 
+def run_command(filename, dim):
+    return [get_config()['solver_' + str(dim) + 'd'], filename]
+
 def run(filename, dim = 2, stdout_dest = None):
-    execute(get_config()['solver_' + str(dim) + 'd'] + ' ' + filename, stdout_dest)
+    execute(run_command(filename, dim), stdout_dest)
+
+def interior_command(bem_filename, pts_filename):
+    return [get_config()['interior_2d'], bem_filename, pts_filename]
 
 def interior_run(bem_filename, pts_filename, stdout_dest = None):
-    execute(get_config()['interior_2d'] + ' ' + bem_filename + ' ' + pts_filename, stdout_dest)
+    execute(interior_command(bem_filename, pts_filename), stdout_dest)
 
 def execute(cmd, stdout_dest):
-    popen_params = dict(shell = True)
+    popen_params = dict()
     popen_params['stdout'] = stdout_dest
     process = subprocess.Popen(cmd, **popen_params)
     process.wait()

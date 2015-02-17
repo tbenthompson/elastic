@@ -185,7 +185,7 @@ std::vector<ConstraintEQ> form_free_slip_constraints(
             terms.push_back({dof, normal[d]});
         }
         ConstraintEQ c{terms, 0.0};
-        constraints.push_back(filter_zero_terms(c));
+        constraints.push_back(c);
     }
     return constraints;
 }
