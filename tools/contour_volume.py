@@ -25,19 +25,22 @@ def main(filename, which_field, scale):
     ylims = [yrange[0] + (np.min(y) - np.mean(y)) * view_factor,
              yrange[1] + (np.max(y) - np.mean(y)) * view_factor]
 
+    nx = 500
+    ny = 500
 
-    nx = 100
-    ny = 100
-
-    xi = np.linspace(xrange[0], xrange[1], nx)
-    yi = np.linspace(yrange[0], yrange[1], ny)
+    xi = np.linspace(xrange[0] + 0.0001, xrange[1] - 0.0001, nx)
+    yi = np.linspace(yrange[0] + 0.0001, yrange[1] - 0.0001, ny)
     # grid the data.
-    zi = griddata((x, y), data, (xi[None,:], yi[:,None]), method='cubic')
+    zi = griddata((x, y), data, (xi[None,:], yi[:,None]))
 
-    levels = np.linspace(np.min(data), np.max(data), 20)
-    plt.contourf(xi, yi, zi, levels = levels)
+    data_min = np.min(data)
+    data_max = np.max(data)
+    # levels = np.linspace(-1.0, 0.5, 20)
+    levels = np.linspace(data_min, data_max, 20)
+    plt.figure()
+    plt.contourf(xi, yi, zi, levels = levels, extend = 'both')
     plt.colorbar()
-    plt.contour(xi, yi, zi, linestyles = 'solid', colors = '#000000', levels = levels)
+    # plt.contour(xi, yi, zi, linestyles = 'solid', colors = '#000000', levels = levels, extend = 'both')
     plt.xlim(*xlims)
     plt.ylim(*ylims)
     title_str = filename + ' component: ' + str(which_field)
@@ -46,7 +49,7 @@ def main(filename, which_field, scale):
     elif scale == 2:
         title_str += ' CUBE ROOT SCALE'
     plt.title(title_str)
-    plt.show()
 
 if __name__ == "__main__":
     main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
+    plt.show()

@@ -6,6 +6,7 @@
 
 using namespace tbem;
 
+//TODO: This stuff is all in closest_pt.h in the library now. Use that.
 Vec<double,3> closest_pt_seg(const Vec<double,3>& pt, const Facet<3>& seg) {
 
     return seg[0];

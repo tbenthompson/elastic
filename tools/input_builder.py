@@ -18,7 +18,7 @@ def line(end_pts, refine, bc_type, fnc):
     n = 2 ** refine
     x_vals = np.linspace(end_pts[0][0], end_pts[1][0], n + 1)
     y_vals = np.linspace(end_pts[0][1], end_pts[1][1], n + 1)
-    ux, uy = fnc(x_vals, y_vals)
+    ux, uy = fnc([x_vals, y_vals])
 
     es = []
     for i in range(n):
@@ -40,7 +40,7 @@ def circle(center, r, refine, bc_type, fnc, reverse):
     t = np.linspace(0.0, end_pt, n + 1)
     x = r * np.cos(t) + center[0]
     y = r * np.sin(t) + center[1]
-    ux, uy = fnc(x, y)
+    ux, uy = fnc([x, y])
 
     es = []
     for i in range(n):
@@ -91,7 +91,7 @@ def sphere(center, r, refine, bc_type, fnc, reverse):
         vs = [verts[f[i]] for i in range(3)]
         if reverse:
             vs = [vs[1], vs[0], vs[2]]
-        bcs = [fnc(*v) for v in vs]
+        bcs = [fnc(v) for v in vs]
         es.append(Element(vs, bc_type, bcs, 0))
     return es
 
@@ -211,7 +211,7 @@ def check_field(filename, solution, plot_diff, digits, point_limiter = None):
     data = []
     exact = []
     diff = []
-    exact = solution(*pts)
+    exact = solution(pts)
     for d in range(len(pts)):
         data = f['values' + str(d)][:, 0]
         diff = np.abs(exact[d] - data)

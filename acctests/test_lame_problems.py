@@ -6,8 +6,8 @@ from tools.input_builder import *
 from tools.coordinate_transforms import *
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
-    def disp_bc(x, y):
-        r, theta = circ_from_cart(x, y)
+    def disp_bc(pt):
+        r, theta = circ_from_cart(*pt)
         ur = ((1 + mu) * a ** 2 * b ** 2) / (E * (b ** 2 - a ** 2)) *\
             (((p_a - p_b) / r) +
              ((1 - 2 * mu) * ((p_a * a ** 2 - p_b * b ** 2) / (a ** 2 * b ** 2)) * r))
@@ -15,8 +15,8 @@ def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     return disp_bc
 
 def build_disp_bc3d(a, b, p_a, p_b, E, mu):
-    def disp_bc(x, y, z):
-        r, theta, phi = sph_from_cart(x, y, z)
+    def disp_bc(pt):
+        r, theta, phi = sph_from_cart(*pt)
         ur = (1.0 / (2 * E * (b ** 3 - a ** 3) * r ** 2)) *\
             (2 * (p_a * a ** 3 - p_b * b ** 3) * (1 - 2 * mu) * r ** 3 +
              (p_a - p_b) * (1 + mu) * b ** 3 * a ** 3)
@@ -28,15 +28,15 @@ build_disp_bc[2] = build_disp_bc2d
 build_disp_bc[3] = build_disp_bc3d
 
 def build_trac_bc2d(a, b, p_a, p_b, E, mu):
-    def trac_bc(x, y):
-        r, theta = circ_from_cart(x, y)
+    def trac_bc(pt):
+        r, theta = circ_from_cart(*pt)
         pressure = np.where(r < ((a + b) / 2), p_a, -p_b)
         return cart_from_circ(pressure, theta)
     return trac_bc
 
 def build_trac_bc3d(a, b, p_a, p_b, E, mu):
-    def trac_bc(x, y, z):
-        r, theta, phi = sph_from_cart(x, y, z)
+    def trac_bc(pt):
+        r, theta, phi = sph_from_cart(*pt)
         term1 = (p_a * a ** 3 - p_b * b ** 3) / (b ** 3 - a ** 3)
         term2 = ((p_a - p_b) * b ** 3 * a ** 3) / ((b ** 3 - a ** 3) * r ** 3)
         sigmarr = term1 - term2
