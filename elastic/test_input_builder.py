@@ -10,7 +10,7 @@ elements1 = [
         n_refines = 0
     ),
     Element(
-        pts = [[0, 0], [1, 0]],
+        pts = [[1, 0], [2, 0]],
         bc = [[1, 0], [1, 0]],
         bc_type = 'displacement',
         n_refines = 0
@@ -25,12 +25,14 @@ elements2 = [
         n_refines = 1
     ),
     Element(
-        pts = [[0, 0], [1, 0]],
+        pts = [[1, 0], [2, 0]],
         bc = [[1, 0], [2, 0]],
         bc_type = 'displacement',
         n_refines = 1
     )
 ]
+
+params1 = dict(shear_modulus = 10e9, singular_steps = 10)
 
 def test_meshes_bcs_from_elements():
     meshes, bcs = meshes_bcs_from_elements(tbempy.TwoD, elements1)
@@ -51,12 +53,17 @@ def test_meshes_bcs_from_elements_refine():
     assert(bcs['displacement'][2][1][0] == 1.5)
 
 def test_elastic_kernels():
-    kernels = get_elastic_kernels(tbempy.TwoD, 30e9, 0.25)
+    p = dict(shear_modulus = 30e9, poisson_ratio = 0.25)
+    kernels = get_elastic_kernels(tbempy.TwoD, p)
     assert(len(kernels.keys()) == 4)
 
 def test_input_parameters():
-    p = form_parameters(dict(shear_modulus = 10e9, singular_steps = 10))
+    p = add_default_parameters(params1)
     assert(p['obs_order'] == 3)
     assert(p['singular_steps'] == 10)
     assert(p['shear_modulus'] == 10e9)
 
+def test_full_input_build():
+    input = build_input(tbempy.TwoD, elements2, params1)
+    assert(len(input.kernels.keys()) == 4)
+    assert(len(input.bies) == 2)

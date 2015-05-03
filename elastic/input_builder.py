@@ -12,8 +12,13 @@ Input = namedtuple('Input',
     ['params', 'meshes', 'bcs', 'kernels', 'quad_strategy', 'bies']
 )
 
+'''
+Transforms input elements and parameters into meshes, boundary conditions,
+kernels, quadrature formulae and boundary integral equations suitable for
+input into tbem
+'''
 def build_input(tbem, elements, input_params):
-    params = form_parameters(input_params)
+    params = add_default_parameters(input_params)
     meshes, bcs = meshes_bcs_from_elements(tbem, elements)
     kernels = get_elastic_kernels(tbem, params)
     quad_strategy = get_quad_strategy(tbem, params)
@@ -22,13 +27,14 @@ def build_input(tbem, elements, input_params):
         params, meshes, bcs, kernels, quad_strategy, bies
     )
 
-def form_parameters(input_params):
+def add_default_parameters(input_params):
     params = default_params()
     for k, v in input_params.iteritems():
         params[k] = v
     return params
 
 def default_params():
+    #TODO: Load this from a file? Or move it to spec?
     return dict(
         obs_order = 3,
         singular_steps = 8,
@@ -39,12 +45,18 @@ def default_params():
         shear_modulus = 30e9
     )
 
+'''
+Builds mesh and boundary condition to tbem from the input elements
+'''
 def meshes_bcs_from_elements(tbem, elements):
     refined = refine_elements(tbem, elements)
     separated_by_bc = separate_elements_by_bc(refined)
     meshes, bcs = union_meshes_bcs(tbem, separated_by_bc)
     return add_empty_meshes(tbem, meshes, bcs)
 
+'''
+Refine the vertices and boundary conditions as specified in the input
+'''
 def refine_elements(tbem, elements):
     out_elements = []
     for e in elements:
@@ -57,6 +69,9 @@ def refine_elements(tbem, elements):
         ))
     return out_elements
 
+'''
+Separates the input elements into groups by the boundary condition type.
+'''
 def separate_elements_by_bc(elements):
     separated_by_bc = dict()
     for e in elements:
@@ -67,6 +82,10 @@ def separate_elements_by_bc(elements):
             separated_by_bc[bc_type] = [e]
     return separated_by_bc
 
+'''
+For each mesh type, this function combines each portion of the mesh
+into one mesh object.
+'''
 def union_meshes_bcs(tbem, separated_by_bc):
     meshes = dict()
     bcs = dict()
@@ -76,6 +95,9 @@ def union_meshes_bcs(tbem, separated_by_bc):
         bcs[k] = np.vstack([e.bc_mesh.facets for e in separated_by_bc[k]])
     return meshes, bcs
 
+'''
+Add an empty mesh for each mesh type that is not present in the input.
+'''
 def add_empty_meshes(tbem, meshes, bcs):
     for k in bie_spec.mesh_types():
         if k not in meshes:
@@ -85,7 +107,14 @@ def add_empty_meshes(tbem, meshes, bcs):
             bcs[k] = np.empty((0, 2, 2))
     return meshes, bcs
 
-def get_elastic_kernels(tbem, shear_modulus, poisson_ratio):
+'''
+Returns the set of four elastic kernels (also called Green's functions or
+fundamental solutions) for the Somigliana identity and the hypersingular
+integral equation
+'''
+def get_elastic_kernels(tbem, params):
+    shear_modulus = params['shear_modulus']
+    poisson_ratio = params['poisson_ratio']
     return dict(
         displacement = tbem.ElasticDisplacement(shear_modulus, poisson_ratio),
         traction = tbem.ElasticTraction(shear_modulus, poisson_ratio),
