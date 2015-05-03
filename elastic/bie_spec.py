@@ -9,6 +9,18 @@ def get_tbem(dim):
         tbem = tbempy.ThreeD
     return tbem
 
+def bc_types():
+    return [
+        'traction',
+        'displacement',
+        'slip',
+        'crack_traction',
+        'free_slip_traction'
+    ]
+
+def mesh_types():
+    return bc_types()
+
 def get_all_BIEs():
     return [
         get_displacement_BIE('displacement'),
