@@ -1,17 +1,11 @@
 ** why is the test_diag_free_slip so slow?
-** can i make the integration code more robust and fast?
-** begin integrating with fmm
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems
-
 ** (i think this is close) get the 3d sphere compression lame problem tests working
 ** test rotational invariance
 ** test rigid body motion
-
 ** 3d interior evaluation
 ** refactor the interior tool to allow more integral equations
-
-
 ** gravity problems -- valleys in 2d! (Danson 1981 paper)
 ---- test case: 4.1.5 here: http://solidmechanics.org/text/Chapter4_1/Chapter4_1.htm
 ** a systematic golden master testing system?

@@ -8,14 +8,21 @@ import bie_spec
 import input_builder
 import compute
 
-def controller(dim, elements, input_params):
-    tbem = get_tbem(dim)
-    input = input_builder.build_input(tbem, elements, input_params)
-    dof_map = build_dof_map(tbem, input.bies, input.meshes)
-    constraint_matrix = build_constraint_matrix(tbem, dof_map, input.bies, input.meshes)
-    systems = compute.form_linear_systems(tbem, input)
-    soln = solve(tbem, input, dof_map, constraint_matrix, systems)
-    return soln
+class Controller(object):
+    def __init__(self, dim, elements, input_params):
+        self.dim = dim
+        self.elements = elements
+        self.input_params = input_params
+        tbem = get_tbem(dim)
+        self.input = input_builder.build_input(tbem, self.elements, self.input_params)
+        self.dof_map = build_dof_map(tbem, self.input.bies, self.input.meshes)
+        self.constraint_matrix = build_constraint_matrix(
+            tbem, self.dof_map, self.input.bies, self.input.meshes
+        )
+        self.systems = compute.form_linear_systems(tbem, self.input)
+        self.soln = solve(
+            tbem, self.input, self.dof_map, self.constraint_matrix, self.systems
+        )
 
 def get_tbem(dim):
     if dim == 2:
@@ -40,7 +47,7 @@ def build_constraint_matrix(tbem, dof_map, bies, meshes):
     out = []
     for bie in bies:
         for d in range(tbem.dim):
-            constraints = bies[i]['constraint_builder'](
+            constraints = bie['constraint_builder'](
                 tbem, eqtn_component_map, dof_map, meshes, d
             )
             out.extend(constraints)
@@ -113,7 +120,7 @@ def operate_on_solution_fields(tbem, systems, unknowns):
     for s in systems:
         evaluated = compute.evaluate_computable_terms(tbem, s['lhs'], unknowns)
         assert(len(evaluated['lhs']) == 0)
-        eval.append(evaluated['rhs'])
+        eval.append(-evaluated['rhs'])
     return eval
 
 if __name__ == "__main__":
@@ -127,12 +134,11 @@ if __name__ == "__main__":
         ),
         Element(
             pts = [[1, 0], [2, 0]],
-            bc = [[1, 0], [1, 0]],
+            bc = [[0.005, 0], [0.005, 0]],
             bc_type = 'displacement',
             n_refines = 0
         )
     ], dict(
-        shear_modulus = 1.0
     ))
     print(soln[('displacement', 'traction')].storage[0].storage)
 

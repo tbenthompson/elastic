@@ -40,8 +40,8 @@ def get_displacement_BIE(obs_mesh_name):
         constraint_builder = form_traction_constraints
     )
 
-def form_traction_constraints(dim, component_map, dof_map, meshes, d):
-    return None
+def form_traction_constraints(tbem, component_map, dof_map, meshes, d):
+    return []
 
 def get_traction_BIE(obs_mesh_name):
     # TODO: Make a namedtuple for the BIE

@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import subprocess
-from tools.input_builder import *
+from elastic.mesh_gen import *
+from elastic.solver import Controller
 from tools.coordinate_transforms import *
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
@@ -52,40 +53,34 @@ ball_mesh = dict()
 ball_mesh[2] = circle
 ball_mesh[3] = sphere
 
-def concentric_circle_pts(a, b, nt, nr):
-    t_vals = np.linspace(0.0, 2 * np.pi, nt)
-    r_vals = np.linspace(a, b, nr)
-    r, t = np.meshgrid(r_vals, t_vals)
-    return cart_from_circ(r, t)
-
-def plotter(a, b, dim, disp_bc):
-    nt = 50
-    nr = 20
-    pts = list(concentric_circle_pts(a, b, nt, nr))
-    if dim == 3:
-        pts.append(np.zeros_like(pts[0]))
-
-    soln = disp_bc(*pts)
-
-    x = pts[0]
-    y = pts[1]
-    ux = soln[0]
-    uy = soln[1]
-    plt.figure()
-    plt.contourf(x, y, ux)
-    plt.contour(x, y, ux, linestyles = 'solid', colors = 'k', linewidths = 2)
-    plt.figure()
-    plt.contourf(x, y, uy)
-    plt.contour(x, y, uy, linestyles = 'solid', colors = 'k', linewidths = 2)
-    plt.figure()
-    plt.quiver(x, y, ux, uy)
-    plt.show()
-
-def delete_files(dir, filename):
-    root = os.path.splitext(filename)[0]
-    for f in os.listdir(dir):
-        if root in f:
-            os.remove(os.path.join(dir, f))
+# def concentric_circle_pts(a, b, nt, nr):
+#     t_vals = np.linspace(0.0, 2 * np.pi, nt)
+#     r_vals = np.linspace(a, b, nr)
+#     r, t = np.meshgrid(r_vals, t_vals)
+#     return cart_from_circ(r, t)
+#
+# def plotter(a, b, dim, disp_bc):
+#     nt = 50
+#     nr = 20
+#     pts = list(concentric_circle_pts(a, b, nt, nr))
+#     if dim == 3:
+#         pts.append(np.zeros_like(pts[0]))
+#
+#     soln = np.array([disp_bc(p[i,:]) for p in pts])
+#
+#     x = pts[0]
+#     y = pts[1]
+#     ux = soln[0]
+#     uy = soln[1]
+#     plt.figure()
+#     plt.contourf(x, y, ux)
+#     plt.contour(x, y, ux, linestyles = 'solid', colors = 'k', linewidths = 2)
+#     plt.figure()
+#     plt.contourf(x, y, uy)
+#     plt.contour(x, y, uy, linestyles = 'solid', colors = 'k', linewidths = 2)
+#     plt.figure()
+#     plt.quiver(x, y, ux, uy)
+#     plt.show()
 
 def points(a, b, nt, nr, out_filepath):
     # As a result of the discretization, points on the boundary of the
@@ -107,47 +102,64 @@ def lame(dim, bc_types):
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
-    refine[2] = 8
+    refine[2] = 9
     refine[3] = 3
-    solver_tol = 1e-10
+    solver_tol = 1e-7
     dir = 'test_data/auto_gen/'
     filename = 'lame.in'
     input_filepath = dir + filename
     pts_filepath = dir + filename + '_pts'
 
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
-    # plotter(a, b, dim, disp_bc)
     trac_bc = build_trac_bc[dim](a, b, p_a, p_b, E, mu)
     bc_funcs = dict()
     bc_funcs['traction'] = trac_bc
     bc_funcs['displacement'] = disp_bc
-
-    in_root, file_ext = os.path.splitext(input_filepath)
-    displacement_filepath = in_root + '.disp_out'
-    traction_filepath = in_root + '.trac_out'
-    interior_disp_filepath = in_root + '.disp_out_interior'
-
-    delete_files(dir, filename)
 
     es = []
     es.extend(ball_mesh[dim]([0] * dim, a, refine[dim], bc_types['inner'],
                      bc_funcs[bc_types['inner']], True))
     es.extend(ball_mesh[dim]([0] * dim, b, refine[dim], bc_types['outer'],
                      bc_funcs[bc_types['outer']], False))
+    params = dict(
+        shear_modulus = G,
+        poisson_ratio = mu,
+        solver_tol = solver_tol
+    )
+    problem = Controller(dim, es, params)
 
-    bem_template(input_filepath, es = es,
-                 shear_modulus = G, mu = mu, solver_tol = solver_tol)
-    run(input_filepath, dim = dim, stdout_dest = subprocess.PIPE)
+    x = problem.input.meshes['displacement'].facets[:, :, 0].flatten()
+    y = problem.soln[('displacement', 'traction')].storage[0].storage
+    z = problem.soln[('displacement', 'traction')].storage[1].storage
+    plt.plot(x, y)
+    plt.plot(x, z)
+    plt.show()
+
     if 'displacement' in bc_types.values():
-        check_field(traction_filepath, trac_bc, False, -6)
-    if 'traction' in bc_types.values():
-        check_field(displacement_filepath, disp_bc, False, 6)
+        l2_diff = np.zeros(dim)
+        l2_exact = np.zeros(dim)
+        for f in range(problem.input.meshes['displacement'].facets.shape[0]):
+            for d in range(dim):
+                idx = f * dim + d
+                v = problem.input.meshes['displacement'].facets[f, d, :]
+                exact = trac_bc(v)
+                for d_est in range(dim):
+                    est = problem.soln[('displacement', 'traction')].\
+                            storage[d_est].storage[idx]
+                    l2_diff[d_est] += (exact[d_est] - est) ** 2
+                    l2_exact += exact[d_est] ** 2
+        error = np.sqrt(l2_diff / l2_exact)
+        print("ERROR: " + str(error))
 
-    nt = 20
-    nr = 20
-    points(a, b, nt, nr, pts_filepath)
-    interior_run(input_filepath, pts_filepath)
-    check_field(interior_disp_filepath, disp_bc, False, 6)
+        # check_field(traction_filepath, trac_bc, False, -6)
+    # if 'traction' in bc_types.values():
+    #     check_field(displacement_filepath, disp_bc, False, 6)
+
+    # nt = 20
+    # nr = 20
+    # points(a, b, nt, nr, pts_filepath)
+    # interior_run(input_filepath, pts_filepath)
+    # check_field(interior_disp_filepath, disp_bc, False, 6)
 
 
 def test_disp_disp2d():
