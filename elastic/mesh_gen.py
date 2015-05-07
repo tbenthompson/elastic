@@ -58,7 +58,6 @@ def sphere(center, r, refine, bc_type, fnc, reverse):
     ]
 
     ## TODO: This code refines and is duplicated in mesh.cpp
-    ## TODO: THEME: Need some sort of lightweight python-cpp integration
     for i in range(refine):
         new_faces = []
         for f in faces:

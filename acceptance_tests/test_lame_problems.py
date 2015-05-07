@@ -4,7 +4,7 @@ import os
 import subprocess
 from elastic.mesh_gen import *
 from elastic.solver import Controller
-from tools.coordinate_transforms import *
+from coordinate_transforms import *
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     def disp_bc(pt):
@@ -96,19 +96,15 @@ def points(a, b, nt, nr, out_filepath):
 def lame(dim, bc_types):
     a = 0.8
     b = 1.9
-    p_a = 10e6
-    p_b = -15e6
-    E = 80e9
+    p_a = 10
+    p_b = -15
+    E = 1.0
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
-    refine[2] = 9
+    refine[2] = 8
     refine[3] = 3
     solver_tol = 1e-7
-    dir = 'test_data/auto_gen/'
-    filename = 'lame.in'
-    input_filepath = dir + filename
-    pts_filepath = dir + filename + '_pts'
 
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
     trac_bc = build_trac_bc[dim](a, b, p_a, p_b, E, mu)
@@ -128,32 +124,40 @@ def lame(dim, bc_types):
     )
     problem = Controller(dim, es, params)
 
-    x = problem.input.meshes['displacement'].facets[:, :, 0].flatten()
-    y = problem.soln[('displacement', 'traction')].storage[0].storage
-    z = problem.soln[('displacement', 'traction')].storage[1].storage
-    plt.plot(x, y)
-    plt.plot(x, z)
-    plt.show()
+    n_traction_dofs = problem.input.meshes['displacement'].n_dofs()
+    n_displacement_dofs = problem.input.meshes['traction'].n_dofs()
 
-    if 'displacement' in bc_types.values():
+    def l2_error(mesh, exact_fnc, est_vec):
         l2_diff = np.zeros(dim)
         l2_exact = np.zeros(dim)
-        for f in range(problem.input.meshes['displacement'].facets.shape[0]):
-            for d in range(dim):
-                idx = f * dim + d
-                v = problem.input.meshes['displacement'].facets[f, d, :]
-                exact = trac_bc(v)
+        for f_idx in range(mesh.facets.shape[0]):
+            for v_idx in range(dim):
+                global_v_idx = f_idx * dim + v_idx
+                v = mesh.facets[f_idx, v_idx, :]
+                exact = exact_fnc(v)
                 for d_est in range(dim):
-                    est = problem.soln[('displacement', 'traction')].\
-                            storage[d_est].storage[idx]
+                    est = est_vec[d_est][global_v_idx]
                     l2_diff[d_est] += (exact[d_est] - est) ** 2
                     l2_exact += exact[d_est] ** 2
+                    print(str(exact[d_est]) + "    " + str(est))
         error = np.sqrt(l2_diff / l2_exact)
-        print("ERROR: " + str(error))
+        return error
 
-        # check_field(traction_filepath, trac_bc, False, -6)
-    # if 'traction' in bc_types.values():
-    #     check_field(displacement_filepath, disp_bc, False, 6)
+    if problem.input.meshes['displacement'].facets.shape[0] > 0:
+        trac_error = l2_error(
+            problem.input.meshes['displacement'],
+            trac_bc,
+            problem.soln[('displacement', 'traction')]
+        )
+        print("TRAC ERROR: " + str(trac_error))
+
+    if problem.input.meshes['traction'].facets.shape[0] > 0:
+        disp_error = l2_error(
+            problem.input.meshes['traction'],
+            disp_bc,
+            problem.soln[('traction', 'displacement')]
+        )
+        print("DISP ERROR: " + str(disp_error))
 
     # nt = 20
     # nr = 20

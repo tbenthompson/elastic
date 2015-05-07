@@ -1,4 +1,4 @@
-from tbempy import BlockVectorX, VectorX
+import numpy as np
 
 def form_linear_systems(tbem, input):
     systems = []
@@ -22,7 +22,7 @@ def compute_integral(tbem, input, op_spec):
     kernel = input.kernels[op_spec['kernel']]
 
     mthd = tbem.make_adaptive_integration_mthd(input.quad_strategy, kernel)
-    op = tbem.integral_operator(obs_mesh, src_mesh, mthd)
+    op = tbem.dense_integral_operator(obs_mesh, src_mesh, mthd)
     return dict(op = op, spec = op_spec)
 
 def compute_mass(tbem, input, mass_spec):
@@ -40,25 +40,24 @@ def fields_from_bcs(bcs):
         n_dofs = v.shape[0] * v.shape[1]
         n_components = v.shape[2]
         reshaped = v.reshape((n_dofs, n_components))
-        x = BlockVectorX([
-            VectorX(reshaped[:, d]) for d in range(n_components)
-        ])
-        fields[(k, k)] = x
+        f = [0] * n_components
+        for d in range(n_components):
+            f[d] = reshaped[:, d]
+        fields[(k, k)] = f
     return fields
 
 def evaluate_computable_terms(tbem, bie, fields):
     n_total_out_dofs = bie[0]['op'].n_total_rows()
     n_components = tbem.dim
     n_dofs_per_component = n_total_out_dofs / n_components;
-    evaluated_terms = BlockVectorX(tbem.dim, VectorX(n_dofs_per_component, 0.0))
+    evaluated_terms = np.zeros(tbem.dim * n_dofs_per_component)
     uncomputed_terms = []
     for t in bie:
         f = fields.get((t['spec']['src_mesh'], t['spec']['function']), None)
         if f is None:
             uncomputed_terms.append(t)
         else:
-            #TODO: better numpy to vectorx translation would make this unnecessary
-            computed = t['op'].apply(f)
+            computed = t['op'].apply(np.concatenate(f))
             # Negate the computed value because it is being moved from the LHS
             # to the RHS of the system
             evaluated_terms -= computed * t['spec']['multiplier']

@@ -63,8 +63,8 @@ def form_displacement_constraints(tbem, component_map, dof_map, meshes, d):
     # meshes
     continuity = tbem.mesh_continuity(meshes['traction'].begin())
     constraints = tbem.convert_to_constraints(continuity)
-    start_dof = dof_map.start_positions[component_map['traction'] + d]
-    return shift_constraints(constraints, start_dof)
+    start_dof = dof_map[component_map['traction'] + d]
+    return tbem.shift_constraints(constraints, start_dof)
 
 # TODO: Make a namedtuple for the terms
 def displacement_BIE_terms(obs_mesh_name):

@@ -3,31 +3,34 @@ from elastic.solver import *
 from elastic.compute import form_linear_systems
 from elastic.input_builder import *
 
-elements1 = [
-    Element(
-        pts = [[0, 0], [1, 0]],
-        bc = [[5, 0], [0, 0]],
-        bc_type = 'traction',
-        n_refines = 0
-    ),
-    Element(
-        pts = [[1, 0], [2, 0]],
-        bc = [[1, 0], [1, 0]],
-        bc_type = 'displacement',
-        n_refines = 0
-    )
-]
+def get_element_list():
+    return [
+        Element(
+            pts = [[0, 0], [1, 0]],
+            bc = [[5, 0], [0, 0]],
+            bc_type = 'traction',
+            n_refines = 0
+        ),
+        Element(
+            pts = [[1, 0], [2, 0]],
+            bc = [[1, 0], [1, 0]],
+            bc_type = 'displacement',
+            n_refines = 0
+        )
+    ]
 
 def test_dof_map():
-    input = build_input(tbempy.TwoD, elements1, dict())
+    input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
-    correct_starts = [0, 2, 4, 6]
-    assert(np.all(dof_map.start_positions == correct_starts))
-    assert(dof_map.n_components == 4)
-    assert(dof_map.n_dofs == 8)
+    correct_starts = [0, 2, 4, 6, 8]
+    assert(np.all(dof_map == correct_starts))
+    assert(len(dof_map) == 5)
 
+
+#TODO: These tests need some kind of fixture-based design so that
+# they stop replicating the same data
 def test_constraint_matrix():
-    input = build_input(tbempy.TwoD, elements1, dict())
+    input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
     constraint_matrix = build_constraint_matrix(
         tbempy.TwoD, dof_map, input.bies, input.meshes
@@ -37,12 +40,42 @@ def test_constraint_matrix():
     assert(constraint_matrix is not None)
 
 def test_concatenate_condense():
-    input = build_input(tbempy.TwoD, elements1, dict())
+    input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
     constraint_matrix = build_constraint_matrix(
         tbempy.TwoD, dof_map, input.bies, input.meshes
     )
     systems = form_linear_systems(tbempy.TwoD, input)
     result = concatenate_condense(
-        dof_map, constraint_matrix, [s['rhs'] for s in systems]
+        tbempy.TwoD, dof_map, constraint_matrix, [s['rhs'] for s in systems]
     )
+
+def test_distribute_expand():
+    elements = get_element_list()
+    elements[1] = elements[1]._replace(bc_type = 'traction')
+    input = build_input(tbempy.TwoD, elements, dict())
+    dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
+    constraint_matrix = build_constraint_matrix(
+        tbempy.TwoD, dof_map, input.bies, input.meshes
+    )
+    systems = form_linear_systems(tbempy.TwoD, input)
+    a = [0, 1, 0, 1, 0, 1]
+    b = distribute_expand(tbempy.TwoD, dof_map, constraint_matrix, a)
+    assert(b[0].shape[0] == 0)
+    assert(b[1].shape[0] == 0)
+    assert(np.all(b[2] == [0, 1, 1, 0]))
+    assert(np.all(b[3] == [1, 0, 0, 1]))
+
+def test_extract_solution_fields():
+    input = build_input(tbempy.TwoD, get_element_list(), dict())
+    dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
+    constraint_matrix = build_constraint_matrix(
+        tbempy.TwoD, dof_map, input.bies, input.meshes
+    )
+    a = [0, 1, 0, 1, 0, 1, 0, 1]
+    b = distribute_expand(tbempy.TwoD, dof_map, constraint_matrix, a)
+    fields = extract_solution_fields(tbempy.TwoD, b, input.bies)
+    assert(np.all(np.array(fields[('traction', 'displacement')])
+           == [[0, 1], [0, 1]]))
+    assert(np.all(np.array(fields[('displacement', 'traction')])
+           == [[0, 1], [0, 1]]))

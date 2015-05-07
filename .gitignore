@@ -1,15 +1,4 @@
-.deps
 *.swp
 *.o
 *.pyc
-test
-solve2d
-solve3d
-interior
-*.disp_out
-*.trac_out
-*.slip_out
-*.free_slip_out
-*.disp_out_interior
-*.stress_out_interior
-*.pts
+build

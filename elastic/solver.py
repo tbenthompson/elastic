@@ -33,11 +33,15 @@ def get_tbem(dim):
 
 def build_dof_map(tbem, bies, meshes):
     components = []
+    start = 0
     for bie in bies:
         obs_mesh = meshes[bie['obs_mesh']]
         for d in range(tbem.dim):
-            components.append(obs_mesh.n_dofs())
-    return tbempy.build_block_dof_map(components)
+            components.append(start)
+            n_dofs = obs_mesh.n_dofs()
+            start += n_dofs
+    components.append(start)
+    return components
 
 def build_constraint_matrix(tbem, dof_map, bies, meshes):
     eqtn_component_map = dict()
@@ -51,55 +55,54 @@ def build_constraint_matrix(tbem, dof_map, bies, meshes):
                 tbem, eqtn_component_map, dof_map, meshes, d
             )
             out.extend(constraints)
-    return tbempy.from_constraints(out)
+    return tbem.from_constraints(out)
 
-def concatenate_condense(dof_map, constraint_matrix, fncs):
-    flattened = []
-    for f in fncs:
-        for d in range(f.size()):
-            flattened.append(f.storage[d])
-    concat_result = tbempy.concatenate(dof_map, tbempy.BlockVectorX(flattened))
-    return tbempy.condense_vector(constraint_matrix, concat_result)
+def distribute_expand(tbem, dof_map, constraint_matrix, vec):
+    distributed = tbem.distribute_vector(constraint_matrix, vec, dof_map[-1])
+    assert(distributed.shape[0] == dof_map[-1])
+    unstacked_soln = []
+    for i in range(len(dof_map) - 1):
+        unstacked_soln.append(distributed[dof_map[i]:dof_map[i+1]])
+    return unstacked_soln
+
+def concatenate_condense(tbem, dof_map, constraint_matrix, fncs):
+    concat = np.concatenate(fncs)
+    return tbem.condense_vector(constraint_matrix, concat)
 
 def solve(tbem, input, dof_map, constraint_matrix, systems):
     #TODO: Do a jacobi preconditioning?
 
     def mat_vec(v):
-        vec_v = tbempy.VectorX(v)
-        distributed = tbempy.distribute_vector(constraint_matrix, vec_v, dof_map.n_dofs)
-        unstacked_soln = tbempy.expand(dof_map, distributed)
+        unstacked_soln = distribute_expand(tbem, dof_map, constraint_matrix, v)
         unknowns = extract_solution_fields(tbem, unstacked_soln, input.bies)
         eval = operate_on_solution_fields(tbem, systems, unknowns)
-        out = concatenate_condense(dof_map, constraint_matrix, eval)
+        out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
         print("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
-        return out.storage
+        return out
     mat_vec.n_its = 0
 
     def residual_callback(resid):
         print("residual: " + str(resid))
 
     right_hand_sides = [s['rhs'] for s in systems]
-    rhs = concatenate_condense(dof_map, constraint_matrix, right_hand_sides)
-    np_rhs = rhs.storage
+    rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
 
     A = scipy.sparse.linalg.LinearOperator(
-        (np_rhs.shape[0], np_rhs.shape[0]),
+        (rhs.shape[0], rhs.shape[0]),
         matvec = mat_vec,
         dtype = np.float64
     )
 
     res = scipy.sparse.linalg.gmres(
         A,
-        np_rhs,
+        rhs,
         tol = input.params['solver_tol'],
         callback = residual_callback
     )
     assert(res[1] == 0)
-    soln = tbempy.VectorX(res[0])
-    distributed_soln = tbempy.distribute_vector(constraint_matrix, soln, dof_map.n_dofs)
-    unstacked_soln = tbempy.expand(dof_map, distributed_soln)
+    unstacked_soln = distribute_expand(tbem, dof_map, constraint_matrix, res[0])
     unknowns = extract_solution_fields(tbem, unstacked_soln, input.bies)
     return unknowns
 
@@ -108,11 +111,11 @@ def extract_solution_fields(tbem, concatenated_fields, bies):
     for i in range(len(bies)):
         vec = []
         for d in range(tbem.dim):
-            vec.append(concatenated_fields.storage[i * tbem.dim + d])
+            vec.append(concatenated_fields[i * tbem.dim + d])
         # The field is defined over the obs_mesh of the boundary integral equation
         mesh = bies[i]['obs_mesh']
         name = bies[i]['unknown_field']
-        fields[(mesh, name)] = tbempy.BlockVectorX(vec)
+        fields[(mesh, name)] = vec
     return fields
 
 def operate_on_solution_fields(tbem, systems, unknowns):
@@ -122,24 +125,4 @@ def operate_on_solution_fields(tbem, systems, unknowns):
         assert(len(evaluated['lhs']) == 0)
         eval.append(-evaluated['rhs'])
     return eval
-
-if __name__ == "__main__":
-    Element = input_builder.Element
-    soln = controller(2, [
-        Element(
-            pts = [[0, 0], [1, 0]],
-            bc = [[0, 0], [0, 0]],
-            bc_type = 'displacement',
-            n_refines = 0
-        ),
-        Element(
-            pts = [[1, 0], [2, 0]],
-            bc = [[0.005, 0], [0.005, 0]],
-            bc_type = 'displacement',
-            n_refines = 0
-        )
-    ], dict(
-    ))
-    print(soln[('displacement', 'traction')].storage[0].storage)
-
 
