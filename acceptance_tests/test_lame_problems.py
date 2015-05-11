@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import subprocess
-from elastic.mesh_gen import *
+from elastic.mesh_gen import circle, sphere
 from elastic.solver import Controller
 from coordinate_transforms import *
+from errors import check_error
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     def disp_bc(pt):
@@ -64,32 +65,6 @@ def points(a, b, nt, nr, out_filepath):
     pts = zip(x.flatten(), y.flatten())
     points_template(out_filepath, pts)
 
-def l2_error(dim, mesh, exact_fnc, est_vec):
-    l2_diff = np.zeros(dim)
-    l2_exact = np.zeros(dim)
-    for f_idx in range(mesh.facets.shape[0]):
-        for v_idx in range(dim):
-            global_v_idx = f_idx * dim + v_idx
-            v = mesh.facets[f_idx, v_idx, :]
-            exact = exact_fnc(v)
-            for d_est in range(dim):
-                est = est_vec[d_est][global_v_idx]
-                l2_diff[d_est] += (exact[d_est] - est) ** 2
-                l2_exact += exact[d_est] ** 2
-    error = np.sqrt(l2_diff / l2_exact)
-    return error
-
-def check_error(problem, mesh_name, field_name, exact_fnc, limit):
-    if problem.input.meshes[mesh_name].facets.shape[0] > 0:
-        error = l2_error(problem.dim,
-            problem.input.meshes[mesh_name],
-            exact_fnc,
-            problem.soln[(mesh_name, field_name)]
-        )
-        print('(mesh = ' + mesh_name + ', field = ' + field_name + ') error: '\
-             + str(error))
-        assert(np.all(error < limit))
-
 def lame(dim, bc_types):
     a = 0.8
     b = 1.9
@@ -99,7 +74,7 @@ def lame(dim, bc_types):
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
-    refine[2] = 9
+    refine[2] = 8
     refine[3] = 3
     solver_tol = 1e-5
 
@@ -121,14 +96,6 @@ def lame(dim, bc_types):
     )
     problem = Controller(dim, es, params)
 
-    # m = problem.input.meshes['traction']
-    # s = problem.soln[('traction', 'displacement')]
-    # verts = m.facets[:,:,:].reshape((m.facets.shape[0] * dim, dim))
-    # plt.figure()
-    # plt.plot(verts[:,0], s[1], 'k.')
-    # plt.figure()
-    # plt.plot(verts[:,0], [disp_bc(v)[1] for v in verts], 'b.')
-    # plt.show()
 
     check_error(problem, 'displacement', 'traction', trac_bc, 4e-2)
     check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
@@ -163,3 +130,6 @@ def test_disp_trac2d():
 #
 # def test_trac_trac3d():
 #     lame(3, dict(inner = "traction", outer = "traction"))
+
+if __name__ == '__main__':
+    test_disp_trac2d()

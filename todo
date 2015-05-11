@@ -1,3 +1,4 @@
+** scale by length -- automatically determine length?
 ** Figure out proper sign conventions!
 ** why is the test_diag_free_slip so slow?
 ** ILU preconditioning

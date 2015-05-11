@@ -22,7 +22,7 @@ def compute_integral(tbem, input, op_spec):
     kernel = input.kernels[op_spec['kernel']]
 
     mthd = tbem.make_adaptive_integration_mthd(input.quad_strategy, kernel)
-    op = tbem.dense_integral_operator(obs_mesh, src_mesh, mthd)
+    op = tbem.integral_operator(obs_mesh, src_mesh, mthd)
     return dict(op = op, spec = op_spec)
 
 def compute_mass(tbem, input, mass_spec):

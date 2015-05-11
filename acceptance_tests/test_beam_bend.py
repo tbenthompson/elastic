@@ -2,10 +2,13 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
-from tools.input_builder import *
+from elastic.mesh_gen import line
+from elastic.solver import Controller
+from elastic.input_builder import Element
+from errors import check_error
 
-def G_from_E_mu(E, mu):
-    return E / (2 * (1 + mu))
+def G_from_E_nu(E, nu):
+    return E / (2 * (1 + nu))
 
 L = 1.0
 c = 1.0
@@ -13,25 +16,24 @@ I = (2.0 / 3.0) * c ** 3
 
 P = -40e6
 E = 80e9
-mu = 0.25
-G = G_from_E_mu(E, mu)
+nu = 0.25
+G = G_from_E_nu(E, nu)
 
 # transformation from plane stress to plane strain
-mu_fic = mu / (1 - mu)
-E_fic = E / (1 - mu ** 2)
-G_fic = G_from_E_mu(E_fic, mu_fic)
+nu_fic = nu / (1 - nu)
+E_fic = E / (1 - nu ** 2)
+G_fic = G_from_E_nu(E_fic, nu_fic)
 
-input_filename = test_data_dir + 'beam_bend.in'
-pts_filename = test_data_dir + 'beam_bend.in_pts'
-
-def disp_bc(x, y):
+def disp_bc(pt):
+    x = pt[0]
+    y = pt[1]
     ux = (-P * x ** 2 * y) / (2 * E_fic * I) \
-          - (mu_fic * P * y ** 3) / (6 * E_fic * I) \
+          - (nu_fic * P * y ** 3) / (6 * E_fic * I) \
           + (P * y ** 3) / (6 * I * G_fic) \
           + (P * L ** 2 * y) / (2 * E_fic * I) \
           - (P * c ** 2 * y) / (2 * I * G_fic)
 
-    uy = (mu_fic * P * x * y ** 2) / (2 * E_fic * I) \
+    uy = (nu_fic * P * x * y ** 2) / (2 * E_fic * I) \
         + (P * x ** 3) / (6 * E_fic * I) \
         - (P * L ** 2 * x) / (2 * E_fic * I) \
         + (P * L ** 3) / (3 * E_fic * I)
@@ -67,25 +69,29 @@ def create_problem():
 
     es = []
     es.extend(line([[0, c], [0, -c]], refine, "displacement", disp_bc))
-    es.append(Element([[0, -c], [L, -c]], "traction", [[0, 0], [0, 0]], refine))
+    es.append(Element([[0, -c], [L, -c]], [[0, 0], [0, 0]], "traction", refine))
     es.extend(line([[L, -c], [L, c]], refine, "displacement", disp_bc))
-    es.append(Element([[L, c], [0, c]], "traction", [[0, 0], [0, 0]], refine))
+    es.append(Element([[L, c], [0, c]], [[0, 0], [0, 0]], "traction", refine))
+    params = dict(
+        shear_modulus = G,
+        poisson_ratio = nu,
+        solver_tol = 1e-6
+    )
+    return es, params
 
-    bem_template(input_filename, es = es, G = G, mu = mu)
-
-def points():
-    points_grid([0, L, 20], [-c, c, 20], pts_filename)
-
+# def points():
+#     points_grid([0, L, 20], [-c, c, 20], pts_filename)
+#
 def test_beam_bend():
-    create_problem()
-    points()
-    run(input_filename, stdout_dest = subprocess.PIPE)
-    disp_filename = test_data_dir + 'beam_bend.disp_out'
-    check_field(disp_filename, disp_bc, False, 6)
+    es, params = create_problem()
+    problem = Controller(2, es, params)
+    check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
 
-    interior_run(input_filename, pts_filename)
-    disp_intfilename = test_data_dir + 'beam_bend.disp_out_interior'
-    check_field(disp_intfilename, disp_bc, False, 6)
+    # # points()
+
+    # interior_run(input_filename, pts_filename)
+    # disp_intfilename = test_data_dir + 'beam_bend.disp_out_interior'
+    # check_field(disp_intfilename, disp_bc, False, 6)
 
 if __name__ == "__main__":
     plotter()

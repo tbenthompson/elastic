@@ -35,8 +35,8 @@ elements2 = [
 def test_form_linear_system():
     input = build_input(tbempy.TwoD, elements1, dict())
     systems = form_linear_systems(tbempy.TwoD, input)
-    assert(len(systems[0]['lhs']) == 2)
-    assert(len(systems[1]['lhs']) == 2)
+    assert(len(systems[0]['lhs']) == 3)
+    assert(len(systems[1]['lhs']) == 3)
     assert(systems[0]['rhs'][0] != 0.0)
 
 def test_setup_integral_equation():

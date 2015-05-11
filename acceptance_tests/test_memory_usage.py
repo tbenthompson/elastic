@@ -1,4 +1,6 @@
-from tools.input_builder import *
+from elastic.input_builder import Element
+from elastic.solver import Controller
+import multiprocessing
 import subprocess
 import time
 
@@ -23,21 +25,34 @@ def max_mem_requirements_estimate(refine, dim):
     matrix_MB = matrix_mem / (2.0 ** 20)
     return matrix_MB
 
-def test_memory():
-    fileroot = 'memory_stress'
-    input_filepath = test_data_dir + fileroot + '.in'
-    refine = 9
+def runner(refine):
     dim = 2
+    fileroot = 'memory_stress'
     es = [
-        Element([[0, -1], [0, 1]], "free_slip_traction", [[0, 1e10], [0, 1e10]], refine)
+        Element([[0, -1], [0, 1]], [[0, 1e10], [0, 1e10]], "displacement", refine)
     ]
-    bem_template(input_filepath, es = es)
-    cmd = run_command(input_filepath, dim)
-    P = subprocess.Popen(cmd, stdout = subprocess.PIPE)
-    max_mem = 0.0
-    while P.poll() is None:
-        cur_mem = memory_usage_ps(P.pid)
-        max_mem = max(cur_mem, max_mem)
+    problem = Controller(dim, es, dict(solver_tol = 1e-2))
 
-    max_allowed = max_mem_requirements_estimate(refine, dim)
-    assert(max_mem < max_allowed)
+def measure_memory(refine):
+    p = multiprocessing.Process(target = runner, args = [refine])
+    p.start()
+    most_mem_used = 0
+    while p.is_alive():
+        cur_mem = memory_usage_ps(p.pid)
+        most_mem_used = max(cur_mem, most_mem_used)
+    p.join()
+    return most_mem_used
+
+def test_memory():
+    level1 = 7
+    level2 = 8
+    mem1 = measure_memory(level1)
+    mem2 = measure_memory(level2)
+    n_vertices_diff = 2 ** (level2 + 1) - 2 ** (level1 + 1)
+    mem_diff = mem2 - mem1
+    mem_per_vert = mem_diff * 1e6 / n_vertices_diff
+    max_vertices_meade02 = 800e9 / mem_per_vert
+    assert(max_vertices_meade02 > 10e6)
+
+if __name__ == '__main__':
+    test_memory()

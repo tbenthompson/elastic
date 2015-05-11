@@ -20,8 +20,8 @@ class Controller(object):
             tbem, self.dof_map, self.input.bies, self.input.meshes
         )
         self.systems = compute.form_linear_systems(tbem, self.input)
-        # self.soln = iterative_solver(
-        self.soln = dense_solver(
+        self.soln = iterative_solver(
+        # self.soln = dense_solver(
             tbem, self.input, self.dof_map, self.constraint_matrix, self.systems
         )
 
