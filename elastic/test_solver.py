@@ -22,9 +22,9 @@ def get_element_list():
 def test_dof_map():
     input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
-    correct_starts = [0, 2, 4, 6, 8]
-    assert(np.all(dof_map == correct_starts))
-    assert(len(dof_map) == 5)
+    assert(dof_map[('traction', 'displacement')][0] == 4)
+    assert(dof_map[('traction', 'displacement')][1] == 6)
+    assert(dof_map[('traction', 'displacement')][2] == 8)
 
 
 #TODO: These tests need some kind of fixture-based design so that
@@ -60,22 +60,11 @@ def test_distribute_expand():
     )
     systems = form_linear_systems(tbempy.TwoD, input)
     a = [0, 1, 0, 1, 0, 1]
-    b = distribute_expand(tbempy.TwoD, dof_map, constraint_matrix, a)
-    assert(b[0].shape[0] == 0)
-    assert(b[1].shape[0] == 0)
-    assert(np.all(b[2] == [0, 1, 1, 0]))
-    assert(np.all(b[3] == [1, 0, 0, 1]))
+    fields = distribute_expand(tbempy.TwoD, dof_map, constraint_matrix, a)
 
-def test_extract_solution_fields():
-    input = build_input(tbempy.TwoD, get_element_list(), dict())
-    dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
-    constraint_matrix = build_constraint_matrix(
-        tbempy.TwoD, dof_map, input.bies, input.meshes
-    )
-    a = [0, 1, 0, 1, 0, 1, 0, 1]
-    b = distribute_expand(tbempy.TwoD, dof_map, constraint_matrix, a)
-    fields = extract_solution_fields(tbempy.TwoD, b, input.bies)
-    assert(np.all(np.array(fields[('traction', 'displacement')])
-           == [[0, 1], [0, 1]]))
-    assert(np.all(np.array(fields[('displacement', 'traction')])
-           == [[0, 1], [0, 1]]))
+    assert(('displacement', 'traction') in fields)
+    assert(fields[('displacement', 'traction')][0].shape[0] == 0)
+    assert(fields[('displacement', 'traction')][1].shape[0] == 0)
+    assert(('traction', 'displacement') in fields)
+    assert(np.all(fields[('traction', 'displacement')][0] == [0, 1, 1, 0]))
+    assert(np.all(fields[('traction', 'displacement')][1] == [1, 0, 0, 1]))

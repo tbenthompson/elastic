@@ -47,9 +47,9 @@ def fields_from_bcs(bcs):
     return fields
 
 def evaluate_computable_terms(tbem, bie, fields):
-    n_total_out_dofs = bie[0]['op'].n_total_rows()
+    n_out_dofs = bie[0]['op'].n_rows()
     n_components = tbem.dim
-    n_dofs_per_component = n_total_out_dofs / n_components;
+    n_dofs_per_component = n_out_dofs / n_components;
     evaluated_terms = np.zeros(tbem.dim * n_dofs_per_component)
     uncomputed_terms = []
     for t in bie:

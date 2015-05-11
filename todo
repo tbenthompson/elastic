@@ -1,4 +1,6 @@
+** Figure out proper sign conventions!
 ** why is the test_diag_free_slip so slow?
+** ILU preconditioning
 ** a systematic way of saving a solution, recompute everything except the solution?
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems

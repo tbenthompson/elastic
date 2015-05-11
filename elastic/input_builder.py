@@ -28,22 +28,10 @@ def build_input(tbem, elements, input_params):
     )
 
 def add_default_parameters(input_params):
-    params = default_params()
+    params = bie_spec.default_params()
     for k, v in input_params.iteritems():
         params[k] = v
     return params
-
-def default_params():
-    #TODO: Load this from a file? Or move it to spec?
-    return dict(
-        obs_order = 3,
-        singular_steps = 8,
-        far_threshold = 3.0,
-        near_tol = 1e-4,
-        solver_tol = 1e-6,
-        poisson_ratio = 0.25,
-        shear_modulus = 30e9
-    )
 
 '''
 Builds mesh and boundary condition to tbem from the input elements
