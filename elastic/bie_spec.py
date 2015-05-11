@@ -1,6 +1,7 @@
 from tbempy import *
 import tbempy.TwoD
 import tbempy.ThreeD
+import numpy as np
 
 def get_tbem(dim):
     if dim == 2:
@@ -37,7 +38,8 @@ def get_all_BIEs():
     return [
         get_displacement_BIE('displacement'),
         get_traction_BIE('traction'),
-        get_crack_traction_BIE('crack_traction')
+        get_crack_traction_BIE('crack_traction'),
+        get_free_slip_BIE('free_slip_traction')
     ]
 
 def get_displacement_BIE(obs_mesh_name):
@@ -112,6 +114,26 @@ def form_slip_constraints(tbem, dof_map, meshes):
         all_components.extend(tbem.shift_constraints(one_component, start_dof))
     return all_components
 
+def get_free_slip_BIE(obs_mesh_name):
+    return dict(
+        obs_mesh = obs_mesh_name,
+        unknown_field = 'free_slip',
+        mass_term = dict(
+            obs_mesh = obs_mesh_name,
+            function = 'free_slip_traction',
+            multiplier = 1.0
+        ),
+        terms = traction_BIE_terms(obs_mesh_name),
+        constraint_builder = form_free_slip_constraints,
+        scaling = lambda p: 1.0
+    )
+
+def form_free_slip_constraints(tbem, dof_map, meshes):
+    m = meshes['free_slip_traction']
+    normal_displacement = np.zeros(m.n_dofs())
+    cs = tbem.normal_constraints(m, normal_displacement)
+    return tbem.shift_constraints(cs, dof_map[('free_slip_traction', 'free_slip')][0])
+
 def displacement_BIE_terms(obs_mesh_name):
     return [
         dict(
@@ -156,13 +178,13 @@ def displacement_BIE_terms(obs_mesh_name):
             function = 'slip',
             multiplier = -1
         ),
-        # dict(
-        #     obs_mesh = obs_mesh_name,
-        #     src_mesh = 'free_slip_traction',
-        #     kernel = 'traction',
-        #     function = 'free_slip',
-        #     multiplier = -1
-        # )
+        dict(
+            obs_mesh = obs_mesh_name,
+            src_mesh = 'free_slip_traction',
+            kernel = 'traction',
+            function = 'free_slip',
+            multiplier = -1
+        )
     ]
 
 
@@ -210,12 +232,12 @@ def traction_BIE_terms(obs_mesh_name):
             function = 'slip',
             multiplier = 1
         ),
-        # dict(
-        #     obs_mesh = obs_mesh_name,
-        #     src_mesh = 'free_slip_traction',
-        #     kernel = 'hypersingular',
-        #     function = 'free_slip',
-        #     multiplier = 1
-        # )
+        dict(
+            obs_mesh = obs_mesh_name,
+            src_mesh = 'free_slip_traction',
+            kernel = 'hypersingular',
+            function = 'free_slip',
+            multiplier = 1
+        )
     ]
 

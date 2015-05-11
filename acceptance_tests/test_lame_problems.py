@@ -95,8 +95,6 @@ def lame(dim, bc_types):
         solver_tol = solver_tol
     )
     problem = Controller(dim, es, params)
-
-
     check_error(problem, 'displacement', 'traction', trac_bc, 4e-2)
     check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
 

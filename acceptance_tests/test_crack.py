@@ -7,9 +7,9 @@ from errors import check_error
 
 def build_slip_bc(a, stress_drop, G, nu):
     def slip_bc(pt):
-        # Classic Griffith crack solution! Normally, the solution is given
+        # Classic Griffith crack solution. Normally, the solution is given
         # as a displacement for each crack face. I multiply by 2 to get the
-        # slip across the slip.
+        # slip across the crack.
         slip = 2 * (1 - nu) * (stress_drop / G) * np.sqrt(a ** 2 - pt[0] ** 2)
         return slip, np.zeros_like(pt[0])
     return slip_bc
@@ -42,5 +42,5 @@ def griffith_soln(bc_type):
 def test_crack():
     griffith_soln("crack_traction")
 
-# def test_free_slip():
-#     griffith_soln("free_slip")
+def test_free_slip():
+    griffith_soln("free_slip_traction")
