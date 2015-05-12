@@ -14,27 +14,35 @@ def line(end_pts, refine, bc_type, fnc):
         es.append(Element(
             [[x_vals[i], y_vals[i]], [x_vals[i + 1], y_vals[i + 1]]],
             [[ux[i], uy[i]], [ux[i + 1], uy[i + 1]]],
-            "displacement",
+            bc_type,
             0
         ))
 
     return es
 
 def circle(center, r, refine, bc_type, fnc, reverse):
-    n = 2 ** refine
+    # If refine is 0, then by adding two, the approximation is still
+    # non-degenerate
+    n = 2 ** (refine + 2)
 
+
+    # To reverse the orientation of the circle, simply go from
+    # 0 --> -2pi rather than 0 --> 2pi
     end_pt = 2 * np.pi
     if reverse:
         end_pt = -end_pt
+
     t = np.linspace(0.0, end_pt, n + 1)
     x = r * np.cos(t) + center[0]
     y = r * np.sin(t) + center[1]
+
     ux, uy = fnc([x, y])
 
     es = []
     for i in range(n):
+        vs = [[x[i], y[i]], [x[i + 1], y[i + 1]]]
         es.append(Element(
-            [[x[i], y[i]], [x[i + 1], y[i + 1]]],
+            vs,
             [[ux[i], uy[i]], [ux[i + 1], uy[i + 1]]],
             bc_type,
             0

@@ -1,7 +1,7 @@
 import subprocess
 import os
 import numpy as np
-from elastic.solver import Controller
+from elastic.solver import execute
 from elastic.input_builder import Element
 from errors import check_error
 
@@ -36,7 +36,7 @@ def griffith_soln(bc_type):
 
     slip_bc = build_slip_bc(a, stress_drop, G, nu)
     es, params = create_problem(a, stress_drop, G, nu, bc_type)
-    problem = Controller(2, es, params)
+    problem = execute(2, es, params)
     check_error(problem, 'crack_traction', 'slip', slip_bc, 4e-2)
 
 def test_crack():

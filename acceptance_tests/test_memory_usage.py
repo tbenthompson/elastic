@@ -1,5 +1,5 @@
 from elastic.input_builder import Element
-from elastic.solver import Controller
+from elastic.solver import execute
 import multiprocessing
 import subprocess
 import time
@@ -31,7 +31,7 @@ def runner(refine):
     es = [
         Element([[0, -1], [0, 1]], [[0, 1e10], [0, 1e10]], "displacement", refine)
     ]
-    problem = Controller(dim, es, dict(solver_tol = 1e-2))
+    problem = execute(dim, es, dict(solver_tol = 1e-2))
 
 def measure_memory(refine):
     p = multiprocessing.Process(target = runner, args = [refine])

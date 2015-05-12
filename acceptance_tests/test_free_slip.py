@@ -1,9 +1,9 @@
-from elastic.solver import Controller
+from elastic.solver import execute
 from elastic.input_builder import Element
 import numpy as np
 
 def freeslip_run(es, constrained_dir):
-    problem = Controller(2, es, dict())
+    problem = execute(2, es, dict())
     s = problem.soln[('free_slip_traction', 'free_slip')]
     sx = s[0]
     sy = s[1]

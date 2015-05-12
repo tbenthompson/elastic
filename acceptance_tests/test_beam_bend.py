@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 from elastic.mesh_gen import line
-from elastic.solver import Controller
+from elastic.solver import execute
 from elastic.input_builder import Element
 from errors import check_error
 
@@ -84,7 +84,7 @@ def create_problem():
 #
 def test_beam_bend():
     es, params = create_problem()
-    problem = Controller(2, es, params)
+    problem = execute(2, es, params)
     check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
 
     # # points()

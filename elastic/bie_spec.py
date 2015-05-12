@@ -19,7 +19,8 @@ def default_params():
         near_tol = 1e-4,
         solver_tol = 1e-6,
         poisson_ratio = 0.25,
-        shear_modulus = 30e9
+        shear_modulus = 30e9,
+        dense = False
     )
 
 def bc_types():
@@ -58,6 +59,19 @@ def get_displacement_BIE(obs_mesh_name):
 
 def form_traction_constraints(tbem, dof_map, meshes):
     return []
+    # return continuous_tractions(tbem, dof_map, meshes)
+
+# Most of the time, tractions should not be assumed continuous on a surface
+# with corners, but in some cases it can be useful, so this function is left
+# here.
+def continuous_tractions(tbem, dof_map, meshes):
+    continuity = tbem.mesh_continuity(meshes['displacement'].begin())
+    one_component = tbem.convert_to_constraints(continuity)
+    all_components = []
+    for d in range(tbem.dim):
+        start_dof = dof_map[('displacement', 'traction')][d]
+        all_components.extend(tbem.shift_constraints(one_component, start_dof))
+    return all_components
 
 def get_traction_BIE(obs_mesh_name):
     return dict(

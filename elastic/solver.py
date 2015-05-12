@@ -8,7 +8,7 @@ import bie_spec
 import input_builder
 import compute
 
-class Controller(object):
+class execute(object):
     def __init__(self, dim, elements, input_params):
         self.dim = dim
         self.elements = elements
@@ -20,8 +20,10 @@ class Controller(object):
             tbem, self.dof_map, self.input.bies, self.input.meshes
         )
         self.systems = compute.form_linear_systems(tbem, self.input)
-        self.soln = iterative_solver(
-        # self.soln = dense_solver(
+        solve_fnc = iterative_solver
+        if self.input.params['dense']:
+            solve_fnc = dense_solver
+        self.soln = solve_fnc(
             tbem, self.input, self.dof_map, self.constraint_matrix, self.systems
         )
 
@@ -92,7 +94,6 @@ def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
 
 def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
     #TODO: Do an ILU preconditioning
-    #TODO: setup a dense solver
 
     def mat_vec(v):
         unknowns = distribute_expand(tbem, dof_map, constraint_matrix, v)
