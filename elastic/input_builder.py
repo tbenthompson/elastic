@@ -9,7 +9,7 @@ RefinedElement = namedtuple('RefinedElement',
     ['pts_mesh', 'bc_mesh', 'original_element']
 )
 Input = namedtuple('Input',
-    ['params', 'meshes', 'bcs', 'kernels', 'quad_strategy', 'bies']
+    ['params', 'meshes', 'bcs', 'kernels', 'quad_strategy', 'bies', 'all_mesh']
 )
 
 '''
@@ -23,8 +23,9 @@ def build_input(tbem, elements, input_params):
     kernels = get_elastic_kernels(tbem, params)
     quad_strategy = get_quad_strategy(tbem, params)
     bies = bie_spec.get_all_BIEs()
+    all_mesh = tbem.Mesh.create_union(meshes.values())
     return Input(
-        params, meshes, bcs, kernels, quad_strategy, bies
+        params, meshes, bcs, kernels, quad_strategy, bies, all_mesh
     )
 
 def add_default_parameters(input_params):

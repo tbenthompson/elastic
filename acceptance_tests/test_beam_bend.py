@@ -5,7 +5,7 @@ import subprocess
 from elastic.mesh_gen import line
 from elastic.solver import execute
 from elastic.input_builder import Element
-from errors import check_error
+from errors import check_error, check_interior_error
 
 def G_from_E_nu(E, nu):
     return E / (2 * (1 + nu))
@@ -40,30 +40,6 @@ def disp_bc(pt):
 
     return ux, uy
 
-def upper_lower_trac_bc(x, y):
-    return np.zeros_like(x), np.zeros_like(x)
-
-def plotter():
-    nx = 20
-    ny = 20
-    x_vals = np.linspace(0.0, L, nx)
-    y_vals = np.linspace(-c, c, ny)
-    y_vals = [-c, c]
-    x, y = np.meshgrid(x_vals, y_vals)
-
-    ux, uy = disp_bc(x, y)
-
-    plt.figure()
-    plt.contourf(x, y, ux)
-    plt.contour(x, y, ux, linestyles = 'solid', colors = 'k', linewidths = 2)
-    plt.figure()
-    plt.contourf(x, y, uy)
-    plt.contour(x, y, uy, linestyles = 'solid', colors = 'k', linewidths = 2)
-    plt.figure()
-    plt.quiver(x, y, ux, uy)
-    plt.ylim([-1.1,1.1])
-    plt.show()
-
 def create_problem():
     refine = 5
 
@@ -75,23 +51,18 @@ def create_problem():
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
-        solver_tol = 1e-6
     )
     return es, params
 
-# def points():
-#     points_grid([0, L, 20], [-c, c, 20], pts_filename)
-#
 def test_beam_bend():
     es, params = create_problem()
-    problem = execute(2, es, params)
-    check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
+    result = execute(2, es, params)
+    check_error(result, 'traction', 'displacement', disp_bc, 2e-3)
 
-    # # points()
-
-    # interior_run(input_filename, pts_filename)
-    # disp_intfilename = test_data_dir + 'beam_bend.disp_out_interior'
-    # check_field(disp_intfilename, disp_bc, False, 6)
+    x, y = np.meshgrid(np.linspace(0, L, 20), np.linspace(-c, c, 20))
+    pts = np.array([x.flatten(), y.flatten()]).T
+    disp_interior = result.interior_displacement(pts)
+    check_interior_error(pts, disp_interior, disp_bc, 1e-3)
 
 if __name__ == "__main__":
     plotter()

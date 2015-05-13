@@ -1,11 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 import subprocess
 from elastic.mesh_gen import circle, sphere
 from elastic.solver import execute
 from coordinate_transforms import *
-from errors import check_error
+from errors import check_error, check_interior_error
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     def disp_bc(pt):
@@ -54,7 +53,13 @@ ball_mesh = dict()
 ball_mesh[2] = circle
 ball_mesh[3] = sphere
 
-def points(a, b, nt, nr, out_filepath):
+def concentric_circle_pts(a, b, nt, nr):
+    t_vals = np.linspace(0.0, 2 * np.pi, nt)
+    r_vals = np.linspace(a, b, nr)
+    r, t = np.meshgrid(r_vals, t_vals)
+    return cart_from_circ(r, t)
+
+def points(a, b, nt, nr):
     # As a result of the discretization, points on the boundary of the
     # circle that are not vertices in the mesh will be outside the
     # cylinder. Use slightly shifted circle sizes to shift the points
@@ -62,8 +67,7 @@ def points(a, b, nt, nr, out_filepath):
     inside_a = a + 1e-3
     inside_b = b - 1e-3
     x, y = concentric_circle_pts(inside_a, inside_b, nt, nr)
-    pts = zip(x.flatten(), y.flatten())
-    points_template(out_filepath, pts)
+    return np.array([x.reshape(x.size),y.reshape(y.size)]).T
 
 def lame(dim, bc_types):
     a = 0.8
@@ -74,7 +78,7 @@ def lame(dim, bc_types):
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
-    refine[2] = 8
+    refine[2] = 6
     refine[3] = 3
     solver_tol = 1e-5
 
@@ -92,17 +96,18 @@ def lame(dim, bc_types):
     params = dict(
         shear_modulus = G,
         poisson_ratio = mu,
-        solver_tol = solver_tol
+        solver_tol = solver_tol,
     )
-    problem = execute(dim, es, params)
-    check_error(problem, 'displacement', 'traction', trac_bc, 4e-2)
-    check_error(problem, 'traction', 'displacement', disp_bc, 4e-2)
+    result = execute(dim, es, params)
+    check_error(result, 'displacement', 'traction', trac_bc, 4e-2)
+    check_error(result, 'traction', 'displacement', disp_bc, 4e-2)
 
-    # nt = 20
-    # nr = 20
-    # points(a, b, nt, nr, pts_filepath)
-    # interior_run(input_filepath, pts_filepath)
-    # check_field(interior_disp_filepath, disp_bc, False, 6)
+    nt = 20
+    nr = 20
+    pts = points(a, b, nt, nr)
+    disp_interior = result.interior_displacement(pts)
+    import ipdb; ipdb.set_trace()
+    check_interior_error(pts, disp_interior, disp_bc, 1e-2)
 
 
 def test_disp_disp2d():
@@ -130,4 +135,4 @@ def test_disp_trac2d():
 #     lame(3, dict(inner = "traction", outer = "traction"))
 
 if __name__ == '__main__':
-    test_disp_trac2d()
+    test_disp_disp2d()

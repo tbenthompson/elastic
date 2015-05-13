@@ -17,9 +17,10 @@ def default_params():
         singular_steps = 8,
         far_threshold = 3.0,
         near_tol = 1e-4,
-        solver_tol = 1e-6,
+        solver_tol = 1e-5,
         poisson_ratio = 0.25,
         shear_modulus = 30e9,
+        length_scale = 1.0,
         dense = False
     )
 
@@ -54,8 +55,11 @@ def get_displacement_BIE(obs_mesh_name):
         ),
         terms = displacement_BIE_terms(obs_mesh_name),
         constraint_builder = form_traction_constraints,
-        scaling = lambda p: p['shear_modulus']
+        scaling = displacement_scaling
     )
+
+def displacement_scaling(p):
+    return 1.0 / p['length_scale']
 
 def form_traction_constraints(tbem, dof_map, meshes):
     return []
@@ -84,14 +88,18 @@ def get_traction_BIE(obs_mesh_name):
         ),
         terms = traction_BIE_terms(obs_mesh_name),
         constraint_builder = form_displacement_constraints,
-        scaling = lambda p: 1.0
+        scaling = traction_scaling
     )
+
+def traction_scaling(p):
+    return 1.0 / p['shear_modulus']
 
 def form_displacement_constraints(tbem, dof_map, meshes):
     continuity = tbem.mesh_continuity(meshes['traction'].begin())
     combined_crack_mesh = tbem.Mesh.create_union([
         meshes['crack_traction'],
-        meshes['slip']
+        meshes['slip'],
+        meshes['free_slip_traction']
     ])
     cut_continuity = tbem.cut_at_intersection(
         continuity,
@@ -116,7 +124,7 @@ def get_crack_traction_BIE(obs_mesh_name):
         ),
         terms = traction_BIE_terms(obs_mesh_name),
         constraint_builder = form_slip_constraints,
-        scaling = lambda p: 1.0
+        scaling = traction_scaling
     )
 
 def form_slip_constraints(tbem, dof_map, meshes):
@@ -139,7 +147,7 @@ def get_free_slip_BIE(obs_mesh_name):
         ),
         terms = traction_BIE_terms(obs_mesh_name),
         constraint_builder = form_free_slip_constraints,
-        scaling = lambda p: 1.0
+        scaling = traction_scaling
     )
 
 def form_free_slip_constraints(tbem, dof_map, meshes):

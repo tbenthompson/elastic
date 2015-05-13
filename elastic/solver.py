@@ -8,24 +8,66 @@ import bie_spec
 import input_builder
 import compute
 
-class execute(object):
-    def __init__(self, dim, elements, input_params):
-        self.dim = dim
-        self.elements = elements
-        self.input_params = input_params
-        tbem = get_tbem(dim)
-        self.input = input_builder.build_input(tbem, self.elements, self.input_params)
-        self.dof_map = build_dof_map(tbem, self.input.bies, self.input.meshes)
-        self.constraint_matrix = build_constraint_matrix(
-            tbem, self.dof_map, self.input.bies, self.input.meshes
-        )
-        self.systems = compute.form_linear_systems(tbem, self.input)
-        solve_fnc = iterative_solver
-        if self.input.params['dense']:
-            solve_fnc = dense_solver
-        self.soln = solve_fnc(
-            tbem, self.input, self.dof_map, self.constraint_matrix, self.systems
-        )
+
+class Result(object):
+    def __init__(self, tbem, soln, input):
+        self.tbem = tbem
+        self.soln = soln
+        self.input = input
+
+    def interior_displacement(self, pts):
+        bie = bie_spec.get_displacement_BIE("displacement")
+        normals = np.vstack((np.zeros(pts.shape[0]), np.ones(pts.shape[0]))).T
+        return self.interior_eval(pts, normals, bie)
+
+    def interior_traction(self, pts, normals):
+        bie = bie_spec.get_displacement_BIE("traction")
+        return self.interior_eval(pts, normals, bie)
+
+    def interior_eval(self, pts, normals, bie):
+        fields = compute.fields_from_bcs(self.input.bcs)
+        for k, v in self.soln.iteritems():
+            fields[k] = v
+        result = np.zeros(pts.shape[0] * self.tbem.dim)
+        for term in bie['terms']:
+            src_mesh = self.input.meshes[term['src_mesh']]
+            kernel = self.input.kernels[term['kernel']]
+            f = fields[(term['src_mesh'], term['function'])]
+
+            mthd = self.tbem.make_adaptive_integration_mthd(
+                self.input.quad_strategy, kernel
+            )
+            op = self.tbem.mesh_to_points_operator(
+                pts, normals, src_mesh, mthd, self.input.all_mesh
+            )
+
+            # The result is negated to move it to the other side of the equation
+            result -= op.apply(np.concatenate(f)) * term['multiplier']
+        out = []
+        for d in range(self.tbem.dim):
+            start_idx = d * pts.shape[0]
+            end_idx = (d + 1) * pts.shape[0]
+            out.append(result[start_idx:end_idx])
+        return out
+
+def execute(dim, elements, input_params):
+    dim = dim
+    elements = elements
+    input_params = input_params
+    tbem = get_tbem(dim)
+    input = input_builder.build_input(tbem, elements, input_params)
+    dof_map = build_dof_map(tbem, input.bies, input.meshes)
+    constraint_matrix = build_constraint_matrix(
+        tbem, dof_map, input.bies, input.meshes
+    )
+    systems = compute.form_linear_systems(tbem, input)
+    solve_fnc = iterative_solver
+    if input.params['dense']:
+        solve_fnc = dense_solver
+    soln = solve_fnc(
+        tbem, input, dof_map, constraint_matrix, systems
+    )
+    return Result(tbem, soln, input)
 
 def get_tbem(dim):
     if dim == 2:
@@ -102,13 +144,14 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
         scale_rows(eval, input.bies, input.params)
         out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
-        print("iteration: " + str(mat_vec.n_its))
+        # print("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
         return out
     mat_vec.n_its = 0
 
     def residual_callback(resid):
-        print("residual: " + str(resid))
+        # print("residual: " + str(resid))
+        pass
 
     right_hand_sides = [s['rhs'] for s in systems]
     scale_rows(right_hand_sides, input.bies, input.params)

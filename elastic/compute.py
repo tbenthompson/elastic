@@ -2,9 +2,9 @@ import numpy as np
 
 def form_linear_systems(tbem, input):
     systems = []
+    bc_fields = fields_from_bcs(input.bcs)
     for bie in input.bies:
         setup_bie = setup_integral_equation(tbem, input, bie)
-        bc_fields = fields_from_bcs(input.bcs)
         s = evaluate_computable_terms(tbem, setup_bie, bc_fields)
         systems.append(s)
     return systems
@@ -25,7 +25,7 @@ def compute_integral(tbem, input, op_spec):
     op_builder = tbem.integral_operator
     if input.params['dense']:
         op_builder = tbem.dense_integral_operator
-    op = op_builder(obs_mesh, src_mesh, mthd)
+    op = op_builder(obs_mesh, src_mesh, mthd, input.all_mesh)
     return dict(op = op, spec = op_spec)
 
 def compute_mass(tbem, input, mass_spec):

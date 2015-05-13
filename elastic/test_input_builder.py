@@ -66,4 +66,4 @@ def test_input_parameters():
 def test_full_input_build():
     input = build_input(tbempy.TwoD, elements2, params1)
     assert(len(input.kernels.keys()) == 4)
-    assert(len(input.bies) == 2)
+    assert(len(input.bies) == 4)
