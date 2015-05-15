@@ -21,7 +21,9 @@ def default_params():
         poisson_ratio = 0.25,
         shear_modulus = 30e9,
         length_scale = 1.0,
-        dense = False
+        dense = False,
+        gravity = False,
+        gravity_vector = [0.0, -2700 * 9.8] # rho * g in a downward direction
     )
 
 def bc_types():
@@ -30,21 +32,22 @@ def bc_types():
         'displacement',
         'slip',
         'crack_traction',
-        'free_slip_traction'
+        'free_slip_traction',
+        'gravity'
     ]
 
 def mesh_types():
     return bc_types()
 
-def get_all_BIEs():
+def get_all_BIEs(params):
     return [
-        get_displacement_BIE('displacement'),
-        get_traction_BIE('traction'),
-        get_crack_traction_BIE('crack_traction'),
-        get_free_slip_BIE('free_slip_traction')
+        get_displacement_BIE('displacement', params),
+        get_traction_BIE('traction', params),
+        get_crack_traction_BIE('crack_traction', params),
+        get_free_slip_BIE('free_slip_traction', params)
     ]
 
-def get_displacement_BIE(obs_mesh_name):
+def get_displacement_BIE(obs_mesh_name, params):
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = 'traction',
@@ -53,7 +56,7 @@ def get_displacement_BIE(obs_mesh_name):
             function = 'displacement',
             multiplier = 1.0
         ),
-        terms = displacement_BIE_terms(obs_mesh_name),
+        terms = displacement_BIE_terms(obs_mesh_name, params),
         constraint_builder = form_traction_constraints,
         scaling = displacement_scaling
     )
@@ -77,7 +80,7 @@ def continuous_tractions(tbem, dof_map, meshes):
         all_components.extend(tbem.shift_constraints(one_component, start_dof))
     return all_components
 
-def get_traction_BIE(obs_mesh_name):
+def get_traction_BIE(obs_mesh_name, params):
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = 'displacement',
@@ -86,7 +89,7 @@ def get_traction_BIE(obs_mesh_name):
             function = 'traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name),
+        terms = traction_BIE_terms(obs_mesh_name, params),
         constraint_builder = form_displacement_constraints,
         scaling = traction_scaling
     )
@@ -113,7 +116,7 @@ def form_displacement_constraints(tbem, dof_map, meshes):
         all_components.extend(tbem.shift_constraints(one_component, start_dof))
     return all_components
 
-def get_crack_traction_BIE(obs_mesh_name):
+def get_crack_traction_BIE(obs_mesh_name, params):
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = 'slip',
@@ -122,7 +125,7 @@ def get_crack_traction_BIE(obs_mesh_name):
             function = 'crack_traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name),
+        terms = traction_BIE_terms(obs_mesh_name, params),
         constraint_builder = form_slip_constraints,
         scaling = traction_scaling
     )
@@ -136,7 +139,7 @@ def form_slip_constraints(tbem, dof_map, meshes):
         all_components.extend(tbem.shift_constraints(one_component, start_dof))
     return all_components
 
-def get_free_slip_BIE(obs_mesh_name):
+def get_free_slip_BIE(obs_mesh_name, params):
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = 'free_slip',
@@ -145,7 +148,7 @@ def get_free_slip_BIE(obs_mesh_name):
             function = 'free_slip_traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name),
+        terms = traction_BIE_terms(obs_mesh_name, params),
         constraint_builder = form_free_slip_constraints,
         scaling = traction_scaling
     )
@@ -156,8 +159,8 @@ def form_free_slip_constraints(tbem, dof_map, meshes):
     cs = tbem.normal_constraints(m, normal_displacement)
     return tbem.shift_constraints(cs, dof_map[('free_slip_traction', 'free_slip')][0])
 
-def displacement_BIE_terms(obs_mesh_name):
-    return [
+def displacement_BIE_terms(obs_mesh_name, params):
+    terms = [
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'displacement',
@@ -191,27 +194,36 @@ def displacement_BIE_terms(obs_mesh_name):
             src_mesh = 'slip',
             kernel = 'traction',
             function = 'slip',
-            multiplier = -1
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'crack_traction',
             kernel = 'traction',
             function = 'slip',
-            multiplier = -1
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'free_slip_traction',
             kernel = 'traction',
             function = 'free_slip',
-            multiplier = -1
+            multiplier = -1.0
         )
     ]
+    if params['gravity']:
+        terms.append(dict(
+            obs_mesh = obs_mesh_name,
+            src_mesh = 'gravity',
+            kernel = 'gravity_displacement',
+            function = 'gravity',
+            multiplier = -1.0
+        ))
+    return terms
 
 
-def traction_BIE_terms(obs_mesh_name):
-    return [
+def traction_BIE_terms(obs_mesh_name, params):
+    terms = [
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'displacement',
@@ -245,21 +257,30 @@ def traction_BIE_terms(obs_mesh_name):
             src_mesh = 'slip',
             kernel = 'hypersingular',
             function = 'slip',
-            multiplier = 1
+            multiplier = 1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'crack_traction',
             kernel = 'hypersingular',
             function = 'slip',
-            multiplier = 1
+            multiplier = 1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'free_slip_traction',
             kernel = 'hypersingular',
             function = 'free_slip',
-            multiplier = 1
+            multiplier = 1.0
         )
     ]
+    if params['gravity']:
+        terms.append(dict(
+            obs_mesh = obs_mesh_name,
+            src_mesh = 'gravity',
+            kernel = 'gravity_traction',
+            function = 'gravity',
+            multiplier = 1.0
+        ))
+    return terms
 

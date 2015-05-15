@@ -16,12 +16,12 @@ class Result(object):
         self.input = input
 
     def interior_displacement(self, pts):
-        bie = bie_spec.get_displacement_BIE("displacement")
+        bie = bie_spec.get_displacement_BIE("displacement", self.input.params)
         normals = np.vstack((np.zeros(pts.shape[0]), np.ones(pts.shape[0]))).T
         return self.interior_eval(pts, normals, bie)
 
     def interior_traction(self, pts, normals):
-        bie = bie_spec.get_displacement_BIE("traction")
+        bie = bie_spec.get_traction_BIE("traction", self.input.params)
         return self.interior_eval(pts, normals, bie)
 
     def interior_eval(self, pts, normals, bie):
@@ -144,13 +144,13 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
         scale_rows(eval, input.bies, input.params)
         out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
-        # print("iteration: " + str(mat_vec.n_its))
+        print("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
         return out
     mat_vec.n_its = 0
 
     def residual_callback(resid):
-        # print("residual: " + str(resid))
+        print("residual: " + str(resid))
         pass
 
     right_hand_sides = [s['rhs'] for s in systems]

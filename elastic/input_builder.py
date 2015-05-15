@@ -8,6 +8,7 @@ Element = namedtuple('Element',
 RefinedElement = namedtuple('RefinedElement',
     ['pts_mesh', 'bc_mesh', 'original_element']
 )
+#TODO: Remove all_mesh
 Input = namedtuple('Input',
     ['params', 'meshes', 'bcs', 'kernels', 'quad_strategy', 'bies', 'all_mesh']
 )
@@ -22,8 +23,9 @@ def build_input(tbem, elements, input_params):
     meshes, bcs = meshes_bcs_from_elements(tbem, elements)
     kernels = get_elastic_kernels(tbem, params)
     quad_strategy = get_quad_strategy(tbem, params)
-    bies = bie_spec.get_all_BIEs()
+    bies = bie_spec.get_all_BIEs(params)
     all_mesh = tbem.Mesh.create_union(meshes.values())
+    bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), 2, 2))
     return Input(
         params, meshes, bcs, kernels, quad_strategy, bies, all_mesh
     )
@@ -102,13 +104,16 @@ fundamental solutions) for the Somigliana identity and the hypersingular
 integral equation
 '''
 def get_elastic_kernels(tbem, params):
-    shear_modulus = params['shear_modulus']
-    poisson_ratio = params['poisson_ratio']
+    mu = params['shear_modulus']
+    pr = params['poisson_ratio']
+    g = params['gravity_vector']
     return dict(
-        displacement = tbem.ElasticDisplacement(shear_modulus, poisson_ratio),
-        traction = tbem.ElasticTraction(shear_modulus, poisson_ratio),
-        adjoint_traction = tbem.ElasticAdjointTraction(shear_modulus, poisson_ratio),
-        hypersingular = tbem.ElasticHypersingular(shear_modulus, poisson_ratio)
+        displacement = tbem.ElasticDisplacement(mu, pr),
+        traction = tbem.ElasticTraction(mu, pr),
+        adjoint_traction = tbem.ElasticAdjointTraction(mu, pr),
+        hypersingular = tbem.ElasticHypersingular(mu, pr),
+        gravity_displacement = tbem.GravityDisplacement(mu, pr, g),
+        gravity_traction = tbem.GravityTraction(mu, pr, g)
     )
 
 def get_quad_strategy(tbem, params):

@@ -106,7 +106,6 @@ def lame(dim, bc_types):
     nr = 20
     pts = points(a, b, nt, nr)
     disp_interior = result.interior_displacement(pts)
-    import ipdb; ipdb.set_trace()
     check_interior_error(pts, disp_interior, disp_bc, 1e-2)
 
 

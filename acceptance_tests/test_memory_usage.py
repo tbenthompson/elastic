@@ -43,7 +43,7 @@ def measure_memory(refine):
     p.join()
     return most_mem_used
 
-def test_memory():
+def memory():
     level1 = 7
     level2 = 8
     mem1 = measure_memory(level1)
@@ -55,4 +55,4 @@ def test_memory():
     assert(max_vertices_meade02 > 10e6)
 
 if __name__ == '__main__':
-    test_memory()
+    memory()
