@@ -10,7 +10,10 @@ RefinedElement = namedtuple('RefinedElement',
 )
 #TODO: Remove all_mesh
 Input = namedtuple('Input',
-    ['params', 'meshes', 'bcs', 'kernels', 'quad_strategy', 'bies', 'all_mesh']
+    [
+        'elements', 'params', 'meshes', 'bcs', 'kernels',
+        'quad_strategy', 'bies', 'all_mesh'
+    ]
 )
 
 '''
@@ -24,10 +27,13 @@ def build_input(tbem, elements, input_params):
     kernels = get_elastic_kernels(tbem, params)
     quad_strategy = get_quad_strategy(tbem, params)
     bies = bie_spec.get_all_BIEs(params)
+    gravity_mesh = tbem.Mesh.create_union([meshes['displacement'], meshes['traction']])
     all_mesh = tbem.Mesh.create_union(meshes.values())
-    bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), 2, 2))
+    if params['gravity']:
+        meshes['gravity'] = gravity_mesh
+        bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), 2, 2))
     return Input(
-        params, meshes, bcs, kernels, quad_strategy, bies, all_mesh
+        elements, params, meshes, bcs, kernels, quad_strategy, bies, all_mesh
     )
 
 def add_default_parameters(input_params):

@@ -50,6 +50,33 @@ class Result(object):
             out.append(result[start_idx:end_idx])
         return out
 
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            np.savez(
+                f,
+                dim = self.tbem.dim,
+                soln = self.soln,
+                elements = self.input.elements,
+                params = self.input.params
+            )
+
+    @staticmethod
+    def load(filename):
+        with open(filename, 'r') as f:
+            npzfile = np.load(f)
+            soln = npzfile['soln'].tolist()
+            raw_elements = npzfile['elements'].tolist()
+            elements = [
+                input_builder.Element(*r) for r in raw_elements
+            ]
+            params = npzfile['params'].tolist()
+            dim = npzfile['dim']
+        tbem = get_tbem(dim)
+        input = input_builder.build_input(tbem, elements, params)
+        return Result(tbem, soln, input)
+
+
+
 def execute(dim, elements, input_params):
     dim = dim
     elements = elements

@@ -1,12 +1,8 @@
-** Figure out proper sign conventions!
-** why is the test_diag_free_slip so slow?
-** why are some iterations very fast and others very slow? does this happen on meade02 with the intel compiler (seems to be more consistent)?
 ** ILU preconditioning
 ** a systematic way of saving a solution, recompute everything except the solution?
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems
 ** (i think this is close) get the 3d sphere compression lame problem tests working
 ** test rotational invariance
-** gravity problems -- valleys in 2d! (Danson 1981 paper)
 ---- test case: 4.1.5 here: http://solidmechanics.org/text/Chapter4_1/Chapter4_1.htm
 ** a systematic golden master testing system?

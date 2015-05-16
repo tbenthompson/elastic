@@ -1,8 +1,7 @@
 import subprocess
 import os
 import numpy as np
-from elastic.solver import execute
-from elastic.input_builder import Element
+from elastic import Element, execute
 from errors import check_error
 
 def build_slip_bc(a, stress_drop, G, nu):

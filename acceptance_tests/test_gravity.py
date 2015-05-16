@@ -8,7 +8,6 @@ def test_gravity():
     r = 1.0
     es = []
     es.extend(circle([0, 0], r, 6, "displacement", lambda x: np.zeros_like(x), False))
-    es.extend(circle([0, 0], r, 6, "gravity", lambda x: np.zeros_like(x), False))
 
     params = dict(
         shear_modulus = 30e9,
@@ -26,6 +25,8 @@ def test_gravity():
             if x[i] ** 2 + y[j] ** 2 < r ** 2:
                 pts.append([x[i], y[j]])
     pts = np.array(pts)
+
+# Replace with function on the Result object for getting stresses
     normalsx = np.array([[1, 0]] * pts.shape[0])
     normalsy = np.array([[0, 1]] * pts.shape[0])
 
