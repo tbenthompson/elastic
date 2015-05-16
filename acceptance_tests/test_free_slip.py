@@ -13,10 +13,10 @@ def freeslip_run(es, constrained_dir):
 
 def test_vertical_free_slip():
     freeslip_run([
-        Element([[0, -1], [0, 1]], [[0, 1e10], [0, 1e10]], "free_slip_traction", 4)
+        Element([[0, -1], [0, 1]], [[0, -1e10], [0, -1e10]], "free_slip_traction", 4)
         ], lambda sx, sy: sx)
 
 def test_diag_free_slip():
     freeslip_run([
-        Element([[-1, -1], [1, 1]], [[1e10, 0], [1e10, 0]], "free_slip_traction", 4)
+        Element([[-1, -1], [1, 1]], [[-1e10, 0], [-1e10, 0]], "free_slip_traction", 4)
         ], lambda sx, sy: sx - sy)

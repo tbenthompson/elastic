@@ -31,7 +31,7 @@ build_disp_bc[3] = build_disp_bc3d
 def build_trac_bc2d(a, b, p_a, p_b, E, mu):
     def trac_bc(pt):
         r, theta = circ_from_cart(*pt)
-        pressure = np.where(r < ((a + b) / 2), p_a, -p_b)
+        pressure = np.where(r < ((a + b) / 2), -p_a, p_b)
         return cart_from_circ(pressure, theta)
     return trac_bc
 
@@ -41,7 +41,7 @@ def build_trac_bc3d(a, b, p_a, p_b, E, mu):
         term1 = (p_a * a ** 3 - p_b * b ** 3) / (b ** 3 - a ** 3)
         term2 = ((p_a - p_b) * b ** 3 * a ** 3) / ((b ** 3 - a ** 3) * r ** 3)
         sigmarr = term1 - term2
-        sigmarr = np.where(r > ((a + b) / 2.0), -sigmarr, sigmarr)
+        sigmarr = np.where(r < ((a + b) / 2.0), -sigmarr, sigmarr)
         return cart_from_sph(sigmarr, theta, phi)
     return trac_bc
 

@@ -51,6 +51,7 @@ def create_problem():
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
+        solver_tol = 1e-5
     )
     return es, params
 

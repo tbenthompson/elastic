@@ -173,7 +173,7 @@ def displacement_BIE_terms(obs_mesh_name, params):
             src_mesh = 'displacement',
             kernel = 'displacement',
             function = 'traction',
-            multiplier = -1.0
+            multiplier = 1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
@@ -187,7 +187,7 @@ def displacement_BIE_terms(obs_mesh_name, params):
             src_mesh = 'traction',
             kernel = 'displacement',
             function = 'traction',
-            multiplier = -1.0
+            multiplier = 1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
@@ -229,7 +229,7 @@ def traction_BIE_terms(obs_mesh_name, params):
             src_mesh = 'displacement',
             kernel = 'hypersingular',
             function = 'displacement',
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
@@ -243,7 +243,7 @@ def traction_BIE_terms(obs_mesh_name, params):
             src_mesh = 'traction',
             kernel = 'hypersingular',
             function = 'displacement',
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
@@ -257,21 +257,21 @@ def traction_BIE_terms(obs_mesh_name, params):
             src_mesh = 'slip',
             kernel = 'hypersingular',
             function = 'slip',
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'crack_traction',
             kernel = 'hypersingular',
             function = 'slip',
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'free_slip_traction',
             kernel = 'hypersingular',
             function = 'free_slip',
-            multiplier = 1.0
+            multiplier = -1.0
         )
     ]
     if params['gravity']:

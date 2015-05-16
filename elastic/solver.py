@@ -42,11 +42,6 @@ class Result(object):
             )
 
             # The result is negated to move it to the other side of the equation
-            print(term)
-            try:
-                print(f[0][0])
-            except Exception:
-                pass
             result -= op.apply(np.concatenate(f)) * term['multiplier']
         out = []
         for d in range(self.tbem.dim):
@@ -124,13 +119,11 @@ def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
             row_scaling = scalings[bie['obs_mesh']]
             col_scaling = scalings[op['spec']['src_mesh']]
             reshaped_op *= row_scaling * col_scaling
+            reshaped_op *= op['spec']['multiplier']
             matrix[start_row:end_row, start_col:end_col] = reshaped_op
     matrix = tbem.DenseOperator(n, n, matrix.reshape(n * n))
     condensed_op = tbem.condense_matrix(constraint_matrix, constraint_matrix, matrix)
     right_hand_sides = [s['rhs'] for s in systems]
-    # TODO: Figure out why this negation is necessary for the dense solver but
-    # not the iterative solver!
-    right_hand_sides[0] = -right_hand_sides[0]
     scale_rows(right_hand_sides, input.bies, input.params)
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
     np_op = condensed_op.data().reshape((rhs.shape[0], rhs.shape[0]))

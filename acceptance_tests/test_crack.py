@@ -10,7 +10,7 @@ def build_slip_bc(a, stress_drop, G, nu):
         # Classic Griffith crack solution. Normally, the solution is given
         # as a displacement for each crack face. I multiply by 2 to get the
         # slip across the crack.
-        slip = 2 * (1 - nu) * (stress_drop / G) * np.sqrt(a ** 2 - pt[0] ** 2)
+        slip = -2 * (1 - nu) * (stress_drop / G) * np.sqrt(a ** 2 - pt[0] ** 2)
         return slip, np.zeros_like(pt[0])
     return slip_bc
 
