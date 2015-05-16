@@ -42,6 +42,11 @@ class Result(object):
             )
 
             # The result is negated to move it to the other side of the equation
+            print(term)
+            try:
+                print(f[0][0])
+            except Exception:
+                pass
             result -= op.apply(np.concatenate(f)) * term['multiplier']
         out = []
         for d in range(self.tbem.dim):

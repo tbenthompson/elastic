@@ -1,71 +1,73 @@
 import tbempy.TwoD as tbem
 from elastic import Element, execute
+from elastic.mesh_gen import circle
 import matplotlib.pyplot as plt
 import numpy as np
 
 def test_gravity():
-    L = 1000.0
-    H = 1000.0
-    g = 9.8
-    rho = 2700.0
-    syy = rho * g * H
-    R = 8
+    r = 1000.0
     es = []
-    es.append(Element([[L, 0], [-L, 0]], [[0, 0], [0, 0]], "traction", R))
-    # es.append(Element([[-L, 0], [-L, -H]], [[0, 0], [0, 0]], "displacement", R))
-    # es.append(Element([[-L, -H], [L, -H]], [[0, syy], [0, syy]], "traction", R))
-    # es.append(Element([[L, -H], [L, 0]], [[0, 0], [0, 0]], "displacement", R))
+    es.extend(circle([0, 0], r, 6, "displacement", lambda x: np.zeros_like(x), False))
+    es.extend(circle([0, 0], r, 6, "gravity", lambda x: np.zeros_like(x), False))
 
-    es.append(Element([[L, 0], [-L, 0]], [[0, 0], [0, 0]], "gravity", R))
-    # es.append(Element([[-L, 0], [-L, -H]], [[0, 0], [0, 0]], "gravity", R))
-    # es.append(Element([[-L, -H], [L, -H]], [[0, 0], [0, 0]], "gravity", R))
-    # es.append(Element([[L, -H], [L, 0]], [[0, 0], [0, 0]], "gravity", R))
     params = dict(
+        obs_order = 5,
+        singular_steps = 12,
+        near_tol = 1e-6,
+        shear_modulus = 30e9,
+        poisson_ratio = 0.25,
         gravity = True,
-        gravity_vector = [0.0, -rho * g],
+        gravity_vector = [0.0, -9.8 * 2700],
         dense = True
     )
     result = execute(2, es, params)
 
-    ptsy = np.linspace(-1.0, -0.05 * L, 1000)
-    pts = np.vstack((np.zeros(ptsy.shape[0]), ptsy)).T
-    normalsx = np.array([[1, 0]] * ptsy.shape[0])
-    normalsy = np.array([[0, 1]] * ptsy.shape[0])
-    interior_tracx = result.interior_traction(pts, normalsx)
-    interior_tracy = result.interior_traction(pts, normalsy)
-    import ipdb; ipdb.set_trace()
-    plt.plot(ptsy, (1.0 / 3.0) * rho * g * ptsy, 'b-.', label = 'sxx correct')
-    plt.plot(ptsy, rho * g * ptsy, 'k-.', label = 'syy correct')
-    plt.plot(ptsy, interior_tracx[0], 'b-', label = 'sxx')
-    plt.plot(ptsy, interior_tracx[1], 'r-', label = 'sxy')
-    plt.plot(ptsy, interior_tracy[1], 'k-', label = 'syy')
-    plt.legend()
+    pts = []
+    x = y = np.linspace(-r, r, 100)
+    x_mat, y_mat = np.meshgrid(x, y)
+    pts = np.array([x_mat.flatten(), y_mat.flatten()]).T
+    normalsx = np.array([[1, 0]] * pts.shape[0])
+    normalsy = np.array([[0, 1]] * pts.shape[0])
+
+    ux, uy = result.interior_displacement(pts)
+    sxx, sxy = result.interior_traction(pts, normalsx)
+    sxy, syy = result.interior_traction(pts, normalsy)
+
+    mask = x_mat ** 2 + y_mat ** 2 > r ** 2
+    sxy_mat = sxy.reshape(x_mat.shape)
+    sxy_mat[mask] = np.nan
+    x_mat[mask] = np.nan
+    y_mat[mask] = np.nan
+    plt.contourf(x_mat, y_mat, sxy_mat,
+        levels = np.linspace(-8e7, 8e7, 25), extend = 'both')
+    plt.xlim([-r, r])
+    plt.ylim([-r, r])
     plt.show()
 
-    f_trac = result.input.meshes['traction'].facets
-    xs_trac = f_trac[:,:,0].reshape(f_trac.shape[0] * f_trac.shape[1])
-    ys_trac = f_trac[:,:,1].reshape(f_trac.shape[0] * f_trac.shape[1])
-    f_disp = result.input.meshes['displacement'].facets
-    xs_disp = f_disp[:,:,0].reshape(f_disp.shape[0] * f_disp.shape[1])
-    ys_disp = f_disp[:,:,1].reshape(f_disp.shape[0] * f_disp.shape[1])
-    s_disp = result.soln[('traction', 'displacement')]
-    s_trac = result.soln[('displacement', 'traction')]
-    # indices = np.logical_and((-H + (H / 10) < ys_disp), (ys_disp  < (-H / 10)))
+    import sys; sys.exit()
 
-    # plt.plot(ys_disp[indices], s_trac[0][indices], 'b-')
-    # plt.plot(ys_disp[indices], s_trac[1][indices], 'r-')
-    # plt.plot(ys_disp[indices], rho * g * (1.0 / 3.0) * ys_disp[indices], 'k-')
-    # plt.show()
-    # # plt.quiver(xs, ys, s_disp[0], s_disp[1])
-    # plt.quiver(xs_disp, ys_disp, s_trac[0], s_trac[1])
-    # plt.xlim([-L - (L / 10), L + (L / 10)])
-    # plt.ylim([-H - (H / 10), (H / 10)])
-    # plt.show()
-    plt.quiver(xs_trac, ys_trac, s_disp[0], s_disp[1])
-    plt.xlim([-L - (L / 10), L + (L / 10)])
-    plt.ylim([-H - (H / 10), (H / 10)])
+    r = np.sqrt(pts[:, 0] ** 2 + pts[:, 1] ** 2)
+    plt.figure()
+    plt.plot(r, uy, '.')
+    plt.title('uy')
+    plt.figure()
+    plt.plot(pts[:, 1], sxx, '.')
+    plt.title('sxx')
+    plt.figure()
+    plt.plot(pts[:, 0], sxy, '.')
+    plt.title('sxy')
+    plt.figure()
+    plt.plot(pts[:, 1], syy, '.')
+    plt.title('syy')
     plt.show()
+    # plt.figure()
+    # plt.quiver(pts[:, 0], pts[:, 1], ux, uy)
 
+    # plt.figure()
+    # plt.quiver(pts[:, 0], pts[:, 1], sxx, sxy)
+    # plt.figure()
+    # plt.quiver(pts[:, 0], pts[:, 1], sxy, syy)
+    # plt.show()
 
 if __name__ == '__main__':
     test_gravity()

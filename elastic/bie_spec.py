@@ -65,8 +65,8 @@ def displacement_scaling(p):
     return 1.0 / p['length_scale']
 
 def form_traction_constraints(tbem, dof_map, meshes):
-    return []
-    # return continuous_tractions(tbem, dof_map, meshes)
+    # return []
+    return continuous_tractions(tbem, dof_map, meshes)
 
 # Most of the time, tractions should not be assumed continuous on a surface
 # with corners, but in some cases it can be useful, so this function is left
@@ -217,7 +217,7 @@ def displacement_BIE_terms(obs_mesh_name, params):
             src_mesh = 'gravity',
             kernel = 'gravity_displacement',
             function = 'gravity',
-            multiplier = -1.0
+            multiplier = 1.0
         ))
     return terms
 
