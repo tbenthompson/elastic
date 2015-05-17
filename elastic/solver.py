@@ -34,8 +34,8 @@ class Result(object):
             kernel = self.input.kernels[term['kernel']]
             f = fields[(term['src_mesh'], term['function'])]
 
-            mthd = self.tbem.make_adaptive_integration_mthd(
-                self.input.quad_strategy, kernel
+            mthd = self.tbem.make_sinh_integration_mthd(
+                12, self.input.quad_strategy, kernel
             )
             op = self.tbem.mesh_to_points_operator(
                 pts, normals, src_mesh, mthd, self.input.all_mesh

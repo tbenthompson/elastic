@@ -1,5 +1,4 @@
 ** ILU preconditioning
-** a systematic way of saving a solution, recompute everything except the solution?
 ** some tools that perform automated refinement and produce a convergence plot
 ---- some other tools for automated debugging of specific problems
 ** (i think this is close) get the 3d sphere compression lame problem tests working
