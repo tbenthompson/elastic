@@ -31,7 +31,7 @@ def build_input(tbem, elements, input_params):
     all_mesh = tbem.Mesh.create_union(meshes.values())
     if params['gravity']:
         meshes['gravity'] = gravity_mesh
-        bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), 2, 2))
+        bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), tbem.dim, tbem.dim))
     return Input(
         elements, params, meshes, bcs, kernels, quad_strategy, bies, all_mesh
     )
@@ -98,10 +98,10 @@ Add an empty mesh for each mesh type that is not present in the input.
 def add_empty_meshes(tbem, meshes, bcs):
     for k in bie_spec.mesh_types():
         if k not in meshes:
-            meshes[k] = tbem.Mesh(np.empty((0, 2, 2)))
+            meshes[k] = tbem.Mesh(np.empty((0, tbem.dim, tbem.dim)))
     for k in bie_spec.bc_types():
         if k not in bcs:
-            bcs[k] = np.empty((0, 2, 2))
+            bcs[k] = np.empty((0, tbem.dim, tbem.dim))
     return meshes, bcs
 
 '''
@@ -112,15 +112,19 @@ integral equation
 def get_elastic_kernels(tbem, params):
     mu = params['shear_modulus']
     pr = params['poisson_ratio']
-    g = params['gravity_vector']
-    return dict(
+    kernels = dict(
         displacement = tbem.ElasticDisplacement(mu, pr),
         traction = tbem.ElasticTraction(mu, pr),
         adjoint_traction = tbem.ElasticAdjointTraction(mu, pr),
         hypersingular = tbem.ElasticHypersingular(mu, pr),
-        gravity_displacement = tbem.GravityDisplacement(mu, pr, g),
-        gravity_traction = tbem.GravityTraction(mu, pr, g)
     )
+    if params['gravity']:
+        g = params['gravity_vector']
+        kernels.update(dict(
+            gravity_displacement = tbem.GravityDisplacement(mu, pr, g),
+            gravity_traction = tbem.GravityTraction(mu, pr, g)
+        ))
+    return kernels
 
 def get_quad_strategy(tbem, params):
     return tbem.QuadStrategy(

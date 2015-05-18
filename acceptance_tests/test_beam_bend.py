@@ -1,6 +1,5 @@
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
 import subprocess
 from elastic.mesh_gen import line
 from elastic.solver import execute
@@ -51,7 +50,7 @@ def create_problem():
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
-        solver_tol = 1e-5
+        solver_tol = 5e-5
     )
     return es, params
 

@@ -17,7 +17,7 @@ class Result(object):
 
     def interior_displacement(self, pts):
         bie = bie_spec.get_displacement_BIE("displacement", self.input.params)
-        normals = np.vstack((np.zeros(pts.shape[0]), np.ones(pts.shape[0]))).T
+        normals = np.zeros_like(pts)
         return self.interior_eval(pts, normals, bie)
 
     def interior_traction(self, pts, normals):

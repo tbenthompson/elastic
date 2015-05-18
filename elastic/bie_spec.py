@@ -22,8 +22,7 @@ def default_params():
         shear_modulus = 30e9,
         length_scale = 1.0,
         dense = False,
-        gravity = False,
-        gravity_vector = [0.0, -2700 * 9.8] # rho * g in a downward direction
+        gravity = False
     )
 
 def bc_types():

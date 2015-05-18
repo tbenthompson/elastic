@@ -1,7 +1,6 @@
 import tbempy.TwoD as tbem
 from elastic import Element, execute
 from elastic.mesh_gen import circle
-import matplotlib.pyplot as plt
 import numpy as np
 
 def test_gravity():
