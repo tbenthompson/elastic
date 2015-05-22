@@ -27,8 +27,11 @@ def build_input(tbem, elements, input_params):
     kernels = get_elastic_kernels(tbem, params)
     quad_strategy = get_quad_strategy(tbem, params)
     bies = bie_spec.get_all_BIEs(params)
-    gravity_mesh = tbem.Mesh.create_union([meshes['displacement'], meshes['traction']])
     all_mesh = tbem.Mesh.create_union(meshes.values())
+    # The gravity mesh should only include the outer boundaries of the
+    # domain considered. Otherwise, the gravitational body force will be
+    # effectively double counted.
+    gravity_mesh = tbem.Mesh.create_union([meshes['traction'], meshes['displacement']])
     if params['gravity']:
         meshes['gravity'] = gravity_mesh
         bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), tbem.dim, tbem.dim))
@@ -131,5 +134,5 @@ def get_quad_strategy(tbem, params):
         params['obs_order'],
         params['singular_steps'],
         params['far_threshold'],
-        params['near_tol']
+        1e-4
     )

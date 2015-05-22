@@ -21,7 +21,9 @@ def compute_integral(tbem, input, op_spec):
     src_mesh = input.meshes[op_spec['src_mesh']]
     kernel = input.kernels[op_spec['kernel']]
 
-    mthd = tbem.make_sinh_integration_mthd(12, input.quad_strategy, kernel)
+    mthd = tbem.make_sinh_integration_mthd(
+        input.params['sinh_order'], input.quad_strategy, kernel
+    )
     op_builder = tbem.integral_operator
     if input.params['dense']:
         op_builder = tbem.dense_integral_operator
