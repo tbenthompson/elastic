@@ -68,3 +68,5 @@ def test_form_linear_system_no_traction_elements():
     systems = form_linear_systems(tbempy.TwoD, input)
     # This segfaulted, so no assertions, just check if it runs
 
+if __name__ == '__main__':
+    test_form_linear_system()

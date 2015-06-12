@@ -21,10 +21,18 @@ def compute_integral(tbem, input, op_spec):
     src_mesh = input.meshes[op_spec['src_mesh']]
     kernel = input.kernels[op_spec['kernel']]
 
-    mthd = tbem.make_sinh_integration_mthd(12, input.quad_strategy, kernel)
-    op_builder = tbem.integral_operator
+    mthd = tbem.make_sinh_integrator(
+        input.params['sinh_order'], input.params['obs_order'],
+        input.params['singular_steps'], input.params['far_threshold'],
+        kernel
+    )
+
+    def fmm_boundary_operator(obs_mesh, src_mesh, mthd, all_mesh):
+        fmm_config = tbem.FMMConfig(0.3, input.params['fmm_order'], 250, 0.1, True)
+        return tbem.boundary_operator(obs_mesh, src_mesh, mthd, fmm_config, all_mesh)
+    op_builder = fmm_boundary_operator
     if input.params['dense']:
-        op_builder = tbem.dense_integral_operator
+        op_builder = tbem.dense_boundary_operator
     op = op_builder(obs_mesh, src_mesh, mthd, input.all_mesh)
     return dict(op = op, spec = op_spec)
 

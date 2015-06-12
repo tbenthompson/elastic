@@ -34,10 +34,12 @@ class Result(object):
             kernel = self.input.kernels[term['kernel']]
             f = fields[(term['src_mesh'], term['function'])]
 
-            mthd = self.tbem.make_sinh_integration_mthd(
-                12, self.input.quad_strategy, kernel
+            mthd = self.tbem.make_sinh_integrator(
+                self.input.params['sinh_order'], self.input.params['obs_order'],
+                self.input.params['singular_steps'], self.input.params['far_threshold'],
+                kernel
             )
-            op = self.tbem.mesh_to_points_operator(
+            op = self.tbem.dense_interior_operator(
                 pts, normals, src_mesh, mthd, self.input.all_mesh
             )
 

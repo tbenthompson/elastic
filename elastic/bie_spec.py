@@ -16,11 +16,12 @@ def default_params():
         obs_order = 3,
         singular_steps = 8,
         far_threshold = 3.0,
-        near_tol = 1e-4,
+        sinh_order = 12,
         solver_tol = 1e-5,
         poisson_ratio = 0.25,
         shear_modulus = 30e9,
         length_scale = 1.0,
+        fmm_order = 30,
         dense = False,
         gravity = False
     )
@@ -64,8 +65,7 @@ def displacement_scaling(p):
     return 1.0 / p['length_scale']
 
 def form_traction_constraints(tbem, dof_map, meshes):
-    # return []
-    return continuous_tractions(tbem, dof_map, meshes)
+    return []
 
 # Most of the time, tractions should not be assumed continuous on a surface
 # with corners, but in some cases it can be useful, so this function is left

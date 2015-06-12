@@ -53,7 +53,7 @@ def test_meshes_bcs_from_elements_refine():
     assert(bcs['displacement'][2][1][0] == 1.5)
 
 def test_elastic_kernels():
-    p = dict(shear_modulus = 30e9, poisson_ratio = 0.25)
+    p = dict(shear_modulus = 30e9, poisson_ratio = 0.25, gravity = False)
     kernels = get_elastic_kernels(tbempy.TwoD, p)
     assert(len(kernels.keys()) == 4)
 

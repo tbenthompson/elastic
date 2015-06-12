@@ -10,7 +10,7 @@ def check_zero_traction(disp_bc):
         t_component = solved.soln[('displacement', 'traction')][d]
         mu = solved.input.params['shear_modulus']
         error = np.sqrt(np.sum((t_component / mu) ** 2))
-        assert(error < 0.0001)
+        assert(error < 0.006)
 
 def test_rigid_body_translation():
     # The results from this test diverge with increasing refinement, rapidly
