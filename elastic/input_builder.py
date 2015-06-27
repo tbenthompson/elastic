@@ -1,4 +1,5 @@
 import bie_spec
+import logger
 from collections import namedtuple
 import numpy as np
 
@@ -11,9 +12,10 @@ RefinedElement = namedtuple('RefinedElement',
 #TODO: Remove all_mesh
 Input = namedtuple('Input',
     [
-        'elements', 'params', 'meshes', 'bcs', 'kernels', 'bies', 'all_mesh'
+        'elements', 'params', 'meshes', 'bcs', 'kernels', 'bies', 'all_mesh', 'logger'
     ]
 )
+
 
 '''
 Transforms input elements and parameters into meshes, boundary conditions,
@@ -33,8 +35,9 @@ def build_input(tbem, elements, input_params):
     if params['gravity']:
         meshes['gravity'] = gravity_mesh
         bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), tbem.dim, tbem.dim))
+    log = logger.StdoutLogger()
     return Input(
-        elements, params, meshes, bcs, kernels, bies, all_mesh
+        elements, params, meshes, bcs, kernels, bies, all_mesh, log
     )
 
 def add_default_parameters(input_params):

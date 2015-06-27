@@ -77,19 +77,9 @@ class Result(object):
         input = input_builder.build_input(tbem, elements, params)
         return Result(tbem, soln, input)
 
-
-
 def execute(dim, elements, input_params):
-    dim = dim
-    elements = elements
-    input_params = input_params
-    tbem = get_tbem(dim)
-    input = input_builder.build_input(tbem, elements, input_params)
-    dof_map = build_dof_map(tbem, input.bies, input.meshes)
-    constraint_matrix = build_constraint_matrix(
-        tbem, dof_map, input.bies, input.meshes
-    )
-    systems = compute.form_linear_systems(tbem, input)
+    tbem, input, dof_map, constraint_matrix, systems = \
+        form_system(dim, elements, input_params)
     solve_fnc = iterative_solver
     if input.params['dense']:
         solve_fnc = dense_solver
@@ -97,6 +87,19 @@ def execute(dim, elements, input_params):
         tbem, input, dof_map, constraint_matrix, systems
     )
     return Result(tbem, soln, input)
+
+def form_system(dim, elements, input_params):
+    dim = dim
+    elements = elements
+    input_params = input_params
+    tbem = get_tbem(dim)
+    input = input_builder.build_input(tbem, elements, input_params)
+    dof_map = build_dof_map(tbem, input.bies, input.meshes)
+    constraint_matrix = build_constraint_matrix(
+        tbem, dof_map, input
+    )
+    systems = compute.form_linear_systems(tbem, input)
+    return tbem, input, dof_map, constraint_matrix, systems
 
 def get_tbem(dim):
     if dim == 2:
@@ -119,14 +122,14 @@ def build_dof_map(tbem, bies, meshes):
     dof_map['n_total_dofs'] = start
     return dof_map
 
-def build_constraint_matrix(tbem, dof_map, bies, meshes):
+def build_constraint_matrix(tbem, dof_map, input):
     out = []
-    for bie in bies:
-        constraints = bie['constraint_builder'](tbem, dof_map, meshes)
+    for bie in input.bies:
+        constraints = bie['constraint_builder'](tbem, dof_map, input.meshes, input)
         out.extend(constraints)
     return tbem.from_constraints(out)
 
-def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
+def uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
     n = dof_map['n_total_dofs']
     matrix = np.empty((n, n))
 
@@ -151,19 +154,39 @@ def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
             reshaped_op *= op['spec']['multiplier']
             matrix[start_row:end_row, start_col:end_col] = reshaped_op
     matrix = tbem.DenseOperator(n, n, matrix.reshape(n * n))
+    return matrix
+
+def dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
+    matrix = uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
     condensed_op = tbem.condense_matrix(constraint_matrix, constraint_matrix, matrix)
+    op_data = condensed_op.data()
+    n_condensed = np.sqrt(op_data.size)
+    np_op = op_data.reshape((n_condensed, n_condensed))
+    return np_op
+
+def uncondensed_dense_rhs(tbem, input, dof_map, constraint_matrix, systems):
     right_hand_sides = [s['rhs'] for s in systems]
     scale_rows(right_hand_sides, input.bies, input.params)
+    return right_hand_sides
+
+def dense_rhs(tbem, input, dof_map, constraint_matrix, systems):
+    right_hand_sides = uncondensed_dense_rhs(
+        tbem, input, dof_map, constraint_matrix, systems
+    )
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
-    np_op = condensed_op.data().reshape((rhs.shape[0], rhs.shape[0]))
+    return rhs
+
+def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
+    np_op = dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
+    rhs = dense_rhs(tbem, input, dof_map, constraint_matrix, systems)
+    input.logger.linear_solve_start(rhs.shape[0])
     soln = np.linalg.solve(np_op, rhs)
+    input.logger.linear_solve_end()
     unknowns = distribute_expand(tbem, dof_map, constraint_matrix, soln)
     scale_columns(unknowns, input.bies, input.params)
     return unknowns
 
-def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
-    #TODO: Do an ILU preconditioning
-
+def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems):
     def mat_vec(v):
         unknowns = distribute_expand(tbem, dof_map, constraint_matrix, v)
         scale_columns(unknowns, input.bies, input.params)
@@ -175,6 +198,15 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
         mat_vec.n_its += 1
         return out
     mat_vec.n_its = 0
+    return mat_vec
+
+
+def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
+    #TODO: Do an ILU preconditioning
+    mat_vec = build_matrix_vector_product(
+        tbem, input, dof_map, constraint_matrix, systems
+    )
+
 
     def residual_callback(resid):
         print("residual: " + str(resid))
@@ -183,6 +215,8 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
     right_hand_sides = [s['rhs'] for s in systems]
     scale_rows(right_hand_sides, input.bies, input.params)
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
+
+    print(mat_vec(np.zeros_like(rhs)))
 
     A = scipy.sparse.linalg.LinearOperator(
         (rhs.shape[0], rhs.shape[0]),

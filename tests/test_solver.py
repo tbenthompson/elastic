@@ -33,7 +33,7 @@ def test_constraint_matrix():
     input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
     constraint_matrix = build_constraint_matrix(
-        tbempy.TwoD, dof_map, input.bies, input.meshes
+        tbempy.TwoD, dof_map, input
     )
     # Nothing from constraint_matrix is exposed to python so no tests are
     # performed except to check that the creation succeeds
@@ -43,7 +43,7 @@ def test_concatenate_condense():
     input = build_input(tbempy.TwoD, get_element_list(), dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
     constraint_matrix = build_constraint_matrix(
-        tbempy.TwoD, dof_map, input.bies, input.meshes
+        tbempy.TwoD, dof_map, input
     )
     systems = form_linear_systems(tbempy.TwoD, input)
     result = concatenate_condense(
@@ -56,7 +56,7 @@ def test_distribute_expand():
     input = build_input(tbempy.TwoD, elements, dict())
     dof_map = build_dof_map(tbempy.TwoD, input.bies, input.meshes)
     constraint_matrix = build_constraint_matrix(
-        tbempy.TwoD, dof_map, input.bies, input.meshes
+        tbempy.TwoD, dof_map, input
     )
     systems = form_linear_systems(tbempy.TwoD, input)
     a = [0, 1, 0, 1, 0, 1]

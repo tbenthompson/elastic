@@ -62,15 +62,15 @@ def get_displacement_BIE(obs_mesh_name, params):
     )
 
 def displacement_scaling(p):
-    return 1.0 / p['length_scale']
+    return p['shear_modulus'] / p['length_scale']
 
-def form_traction_constraints(tbem, dof_map, meshes):
+def form_traction_constraints(tbem, dof_map, meshes, input):
     return []
 
 # Most of the time, tractions should not be assumed continuous on a surface
 # with corners, but in some cases it can be useful, so this function is left
 # here.
-def continuous_tractions(tbem, dof_map, meshes):
+def continuous_tractions(tbem, dof_map, meshes, input):
     continuity = tbem.mesh_continuity(meshes['displacement'].begin())
     one_component = tbem.convert_to_constraints(continuity)
     all_components = []
@@ -94,9 +94,9 @@ def get_traction_BIE(obs_mesh_name, params):
     )
 
 def traction_scaling(p):
-    return 1.0 / p['shear_modulus']
+    return 1.0# / p['shear_modulus']
 
-def form_displacement_constraints(tbem, dof_map, meshes):
+def form_displacement_constraints(tbem, dof_map, meshes, input):
     continuity = tbem.mesh_continuity(meshes['traction'].begin())
     combined_crack_mesh = tbem.Mesh.create_union([
         meshes['crack_traction'],
@@ -112,6 +112,12 @@ def form_displacement_constraints(tbem, dof_map, meshes):
     all_components = []
     for d in range(tbem.dim):
         start_dof = dof_map[('traction', 'displacement')][d]
+        neighbor_constraints = tbem.form_neighbor_bcs(
+            meshes['traction'].begin(),
+            meshes['displacement'].begin(),
+            input.bcs['displacement'][:, :, d].flatten()
+        )
+        all_components.extend(tbem.shift_constraints(neighbor_constraints, start_dof))
         all_components.extend(tbem.shift_constraints(one_component, start_dof))
     return all_components
 
@@ -129,7 +135,7 @@ def get_crack_traction_BIE(obs_mesh_name, params):
         scaling = traction_scaling
     )
 
-def form_slip_constraints(tbem, dof_map, meshes):
+def form_slip_constraints(tbem, dof_map, meshes, input):
     continuity = tbem.mesh_continuity(meshes['crack_traction'].begin())
     one_component = tbem.convert_to_constraints(continuity)
     all_components = []
@@ -152,7 +158,7 @@ def get_free_slip_BIE(obs_mesh_name, params):
         scaling = traction_scaling
     )
 
-def form_free_slip_constraints(tbem, dof_map, meshes):
+def form_free_slip_constraints(tbem, dof_map, meshes, input):
     m = meshes['free_slip_traction']
     normal_displacement = np.zeros(m.n_dofs())
     cs = tbem.normal_constraints(m, normal_displacement)
