@@ -177,8 +177,15 @@ def dense_rhs(tbem, input, dof_map, constraint_matrix, systems):
     return rhs
 
 def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
+
     np_op = dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
     rhs = dense_rhs(tbem, input, dof_map, constraint_matrix, systems)
+
+    mat_vec = build_matrix_vector_product(
+        tbem, input, dof_map, constraint_matrix, systems
+    )
+    rhs -= mat_vec(np.zeros_like(rhs))
+
     input.logger.linear_solve_start(rhs.shape[0])
     soln = np.linalg.solve(np_op, rhs)
     input.logger.linear_solve_end()
@@ -194,10 +201,14 @@ def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems
         scale_rows(eval, input.bies, input.params)
         out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
+        if mat_vec.inhomogeneous_constraint_component is not None:
+            out -= mat_vec.inhomogeneous_constraint_component
+
         print("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
         return out
     mat_vec.n_its = 0
+    mat_vec.inhomogeneous_constraint_component = None
     return mat_vec
 
 
@@ -207,7 +218,6 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
         tbem, input, dof_map, constraint_matrix, systems
     )
 
-
     def residual_callback(resid):
         print("residual: " + str(resid))
         pass
@@ -216,7 +226,9 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
     scale_rows(right_hand_sides, input.bies, input.params)
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
 
-    print(mat_vec(np.zeros_like(rhs)))
+    inhomogeneous = mat_vec(np.zeros_like(rhs))
+    rhs -= inhomogeneous
+    mat_vec.inhomogeneous_constraint_component = inhomogeneous
 
     A = scipy.sparse.linalg.LinearOperator(
         (rhs.shape[0], rhs.shape[0]),

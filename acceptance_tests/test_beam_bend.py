@@ -67,10 +67,10 @@ def create_problem():
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
-        solver_tol = 5e-5,
-        singular_steps = 5,
-        obs_order = 2,
-        sinh_order = 6,
+        solver_tol = 1e-6,
+        singular_steps = 8,
+        obs_order = 3,
+        sinh_order = 7,
         dense = False
     )
     return es, params
@@ -78,47 +78,20 @@ def create_problem():
 def test_beam_bend():
     es, params = create_problem()
     result = execute(2, es, params)
-    # check_error(result, 'traction', 'displacement', disp_bc, 2e-3)
-    # check_error(result, 'displacement', 'traction', trac_bc, 3e-2)
+    check_error(result, 'traction', 'displacement', disp_bc, 2e-3)
+    check_error(result, 'displacement', 'traction', trac_bc, 3e-2)
 
     x, y = np.meshgrid(np.linspace(0, L, 20), np.linspace(-c, c, 20))
     pts = np.array([x.flatten(), y.flatten()]).T
     disp_interior = result.interior_displacement(pts)
-    # check_interior_error(pts, disp_interior, disp_bc, 1e-3)
+    check_interior_error(pts, disp_interior, disp_bc, 1e-3)
 
     normals_x = np.array([np.ones(pts.shape[0]), np.zeros(pts.shape[0])]).T
     normals_y = np.array([np.zeros(pts.shape[0]), np.ones(pts.shape[0])]).T
     tx_interior = result.interior_traction(pts, normals_x)
     ty_interior = result.interior_traction(pts, normals_y)
     stress_interior = [tx_interior[0], tx_interior[1], ty_interior[0], ty_interior[1]]
-    import matplotlib.pyplot as plt
-    plt.quiver(pts[:, 0], pts[:, 1], tx_interior[0], tx_interior[1])
-    plt.xlim([-0.1, 1.1])
-    plt.ylim([-1.1, 1.1])
-    plt.show()
-    # check_interior_error(pts, stress_interior, stress, 5e-3)
-
-
-    f = result.input.meshes['traction'].facets
-    xs = f[:,:,0].reshape(f.shape[0] * f.shape[1])
-    ys = f[:,:,1].reshape(f.shape[0] * f.shape[1])
-    s = result.soln[('traction', 'displacement')]
-    plt.plot(xs, s[0])
-    plt.plot(xs, s[1])
-    plt.plot(xs, disp_bc([xs, ys])[0])
-    plt.plot(xs, disp_bc([xs, ys])[1])
-    plt.show()
-
-    f = result.input.meshes['displacement'].facets
-    xs = f[:,:,0].reshape(f.shape[0] * f.shape[1])
-    ys = f[:,:,1].reshape(f.shape[0] * f.shape[1])
-    s = result.soln[('displacement', 'traction')]
-    # plt.quiver(xs, ys, s[0], s[1])
-    plt.plot(ys, s[0])
-    plt.plot(ys, s[1])
-    plt.plot(ys, [trac_bc(pt)[0] for pt in zip(xs, ys)])
-    plt.plot(ys, [trac_bc(pt)[1] for pt in zip(xs, ys)])
-    plt.show()
+    check_interior_error(pts, stress_interior, stress, 4e-3)
 
 if __name__ == "__main__":
     test_beam_bend()
