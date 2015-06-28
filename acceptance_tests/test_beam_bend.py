@@ -71,7 +71,7 @@ def create_problem():
         singular_steps = 8,
         obs_order = 3,
         sinh_order = 7,
-        dense = False
+        dense = True
     )
     return es, params
 
