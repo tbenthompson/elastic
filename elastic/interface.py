@@ -1,5 +1,3 @@
-import numpy as np
-
 import tbempy.TwoD
 import tbempy.ThreeD
 
@@ -10,6 +8,23 @@ import dof_handling
 import iterative_solver
 import dense_solver
 
+import numpy as np
+import traceback
+import logging
+logger = logging.getLogger(__name__)
+
+def log_exceptions(f):
+    def _wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            upper = ''.join(traceback.format_list(traceback.extract_stack()[:-1]))
+            lower = '\n'.join(traceback.format_exc().split('\n')[1:-1])
+            logger.error('Exception:\n' + upper + lower)
+            raise
+    return _wrapper
 
 class Result(object):
     def __init__(self, tbem, soln, input):
@@ -20,6 +35,7 @@ class Result(object):
     """
     Compute the interior displacement at the specified points.
     """
+    @log_exceptions
     def interior_displacement(self, pts):
         bie = bie_spec.get_displacement_BIE("displacement", self.input.params)
         normals = np.zeros_like(pts)
@@ -31,12 +47,14 @@ class Result(object):
     Compute the interior traction on the planes specified by the normals and
     the specified points/
     """
+    @log_exceptions
     def interior_traction(self, pts, normals):
         bie = bie_spec.get_traction_BIE("traction", self.input.params)
         return compute.interior_eval(
             self.tbem, self.input, self.soln, pts, normals, bie
         )
 
+    @log_exceptions
     def save(self, filename):
         with open(filename, 'w') as f:
             np.savez(
@@ -48,6 +66,7 @@ class Result(object):
             )
 
     @staticmethod
+    @log_exceptions
     def load(filename):
         with open(filename, 'r') as f:
             npzfile = np.load(f)
@@ -62,6 +81,7 @@ class Result(object):
         input = input_builder.build_input(tbem, elements, params)
         return Result(tbem, soln, input)
 
+@log_exceptions
 def execute(dim, elements, input_params):
     data = assemble(dim, elements, input_params)
     return solve(*data)

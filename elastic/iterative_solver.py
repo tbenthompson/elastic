@@ -1,7 +1,10 @@
 from dof_handling import distribute_expand, concatenate_condense, \
     scale_columns, scale_rows, operate_on_solution_fields
+
 import numpy as np
 import scipy.sparse.linalg
+import logging
+logger = logging.getLogger(__name__)
 
 def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems):
     def mat_vec(v):
@@ -14,7 +17,7 @@ def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems
         if mat_vec.inhomogeneous_constraint_component is not None:
             out -= mat_vec.inhomogeneous_constraint_component
 
-        print("iteration: " + str(mat_vec.n_its))
+        logger.info("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
         return out
     mat_vec.n_its = 0
@@ -23,13 +26,14 @@ def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems
 
 
 def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
+    logger.debug('Iteratively solving linear system')
     #TODO: Do an ILU preconditioning
     mat_vec = build_matrix_vector_product(
         tbem, input, dof_map, constraint_matrix, systems
     )
 
     def residual_callback(resid):
-        print("residual: " + str(resid))
+        logger.info("residual: " + str(resid))
         pass
 
     right_hand_sides = [s['rhs'] for s in systems]
@@ -55,4 +59,7 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
     assert(res[1] == 0)
     unknowns = distribute_expand(tbem, dof_map, constraint_matrix, res[0])
     scale_columns(unknowns, input.bies, input.params)
+    logger.debug(
+        'Iterative solution complete, requiring %d iterations', mat_vec.n_its
+    )
     return unknowns

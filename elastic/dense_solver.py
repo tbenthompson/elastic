@@ -1,7 +1,9 @@
 import numpy as np
 from dof_handling import distribute_expand, concatenate_condense, \
-    scale_columns, scale_rows, operate_on_solution_fields
+    scale_columns, scale_rows, operate_on_solution_fields, get_matrix_block
 import iterative_solver
+import logging
+logger = logging.getLogger(__name__)
 
 def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
     np_op = dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
@@ -12,9 +14,11 @@ def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
     )
     rhs -= mat_vec(np.zeros_like(rhs))
 
-    input.logger.linear_solve_start(rhs.shape[0])
+    logger.debug(
+        'Using numpy to solve linear system with ' + str(rhs.shape[0]) + ' rows.'
+    )
     soln = np.linalg.solve(np_op, rhs)
-    input.logger.linear_solve_end()
+    logger.debug('Finished using numpy to solve linear system')
     unknowns = distribute_expand(tbem, dof_map, constraint_matrix, soln)
     scale_columns(unknowns, input.bies, input.params)
     return unknowns
@@ -37,12 +41,7 @@ def uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
 
     for s, bie in zip(systems, input.bies):
         for op in s['lhs']:
-            row_components = dof_map[(op['spec']['obs_mesh'], bie['unknown_field'])]
-            col_components = dof_map[(op['spec']['src_mesh'], op['spec']['function'])]
-            start_row = row_components[0]
-            end_row = row_components[-1]
-            start_col = col_components[0]
-            end_col = col_components[-1]
+            start_row, end_row, start_col, end_col = get_matrix_block(dof_map, op, bie)
             rows = end_row - start_row
             cols = end_col - start_col
             reshaped_op = op['op'].data().reshape((rows, cols))

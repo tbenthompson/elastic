@@ -1,5 +1,4 @@
-from elastic.input_builder import Element
-from elastic.solver import execute
+from elastic import Element, execute
 import multiprocessing
 import subprocess
 import time

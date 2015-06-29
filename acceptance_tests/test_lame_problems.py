@@ -2,7 +2,7 @@ import numpy as np
 import os
 import subprocess
 from elastic.mesh_gen import circle, sphere
-from elastic.solver import execute
+from elastic import execute
 from errors import check_error, check_interior_error
 
 def circ_from_cart(x, y):

@@ -2,8 +2,7 @@ import h5py
 import numpy as np
 import subprocess
 from elastic.mesh_gen import line
-from elastic.solver import execute
-from elastic.input_builder import Element
+from elastic import execute, Element
 from errors import check_error, check_interior_error
 
 def G_from_E_nu(E, nu):

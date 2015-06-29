@@ -1,5 +1,5 @@
 from elastic.mesh_gen import circle
-from elastic.solver import execute
+from elastic import execute
 from errors import check_error
 import numpy as np
 

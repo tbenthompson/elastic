@@ -1,5 +1,4 @@
-from elastic.solver import execute
-from elastic.input_builder import Element
+from elastic import execute, Element
 import numpy as np
 
 def freeslip_run(es, constrained_dir):

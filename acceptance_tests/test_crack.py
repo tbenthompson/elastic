@@ -4,6 +4,9 @@ import numpy as np
 from elastic import Element, execute
 from errors import check_error
 
+import logging
+logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.INFO)
+
 def build_slip_bc(a, stress_drop, G, nu):
     def slip_bc(pt):
         # Classic Griffith crack solution. Normally, the solution is given
@@ -43,3 +46,6 @@ def test_crack():
 
 def test_free_slip():
     griffith_soln("free_slip_traction")
+
+if __name__ == '__main__':
+    test_crack()

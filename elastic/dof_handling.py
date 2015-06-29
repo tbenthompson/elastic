@@ -62,3 +62,21 @@ def scale_columns(unknowns, bies, params):
 def scale_rows(eval, bies, params):
     for i, bie in enumerate(bies):
         eval[i] *= bie['scaling'](params)
+
+def which_op_is_this_dof_from(entry, systems, bies, dof_map):
+    for s, bie in zip(systems, bies):
+        for op in s['lhs']:
+            start_row, end_row, start_col, end_col = get_matrix_block(dof_map, op, bie)
+            if start_row <= entry[0] < end_row and \
+                start_col <= entry[1] < end_col:
+                return op['spec'], bie
+    return None
+
+def get_matrix_block(dof_map, op, bie):
+    row_components = dof_map[(op['spec']['obs_mesh'], bie['unknown_field'])]
+    col_components = dof_map[(op['spec']['src_mesh'], op['spec']['function'])]
+    start_row = row_components[0]
+    end_row = row_components[-1]
+    start_col = col_components[0]
+    end_col = col_components[-1]
+    return start_row, end_row, start_col, end_col
