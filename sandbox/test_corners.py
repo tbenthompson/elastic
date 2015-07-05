@@ -8,21 +8,35 @@ def solve_and_plot(es, params, L):
     x, y = np.meshgrid(np.linspace(0, L, 20), np.linspace(0, L, 20))
     pts = np.array([x.flatten(), y.flatten()]).T
     disp = result.interior_displacement(pts)
-    plt.quiver(pts[:, 0], pts[:, 1], disp[0], disp[1])
-    plt.xlim([-0.1 * L, 1.1 * L])
-    plt.ylim([-0.1 * L, 1.1 * L])
-    plt.show()
+    # plt.figure()
+    # plt.quiver(pts[:, 0], pts[:, 1], disp[0], disp[1])
+    # plt.xlim([-0.1 * L, 1.1 * L])
+    # plt.ylim([-0.1 * L, 1.1 * L])
 
     f = result.input.meshes['traction'].facets
     xs = f[:,:,0].reshape(f.shape[0] * f.shape[1])
     ys = f[:,:,1].reshape(f.shape[0] * f.shape[1])
     s = result.soln[('traction', 'displacement')]
-    plt.plot(xs, s[0])
-    plt.plot(xs, s[1])
+    # plt.figure()
+    # plt.plot(xs, s[0])
+    # plt.plot(xs, s[1])
+    # plt.show()
+
+    f = result.input.meshes['displacement'].facets
+    xs = f[:,:,0].reshape(f.shape[0] * f.shape[1])
+    ys = f[:,:,1].reshape(f.shape[0] * f.shape[1])
+    s = result.soln[('displacement', 'traction')]
+    plt.figure()
+    plt.quiver(xs, ys, s[0], s[1])
+    plt.xlim([-0.1 * L, 1.1 * L])
+    plt.ylim([-0.1 * L, 1.1 * L])
+    plt.figure()
+    plt.plot(ys, s[0])
+    plt.plot(ys, s[1])
     plt.show()
 
 def box_mesh(L, origin = (0, 0)):
-    refine = 4
+    refine = 9
     es = []
     es.append(Element(
         [[origin[0], origin[1] + L], [origin[0], origin[1]]],
@@ -42,6 +56,18 @@ def box_mesh(L, origin = (0, 0)):
     ))
     return es
 
+def simple():
+    es = box_mesh(1.0, origin = (0, 0))
+    params = dict(
+        shear_modulus = 1.0,
+        dense = True,
+        singular_steps = 8,
+        obs_order = 2,
+        sinh_order = 12,
+        length_scale = 1.0
+    )
+    solve_and_plot(es, params, 1.0)
+
 def build_system(L, obs_order, origin = (0, 0)):
     es = box_mesh(L, origin = origin)
     params = dict(
@@ -52,10 +78,10 @@ def build_system(L, obs_order, origin = (0, 0)):
         sinh_order = 12,
         length_scale = L
     )
-    # solve_and_plot(es, params, L)
+    solve_and_plot(es, params, L)
     internal_data = form_system(2, es, params)
     matrix = dense_matrix(*internal_data)
-    # print(np.linalg.cond(matrix))
+    print(np.linalg.cond(matrix))
     rhs = dense_rhs(*internal_data)
     return matrix, rhs
 
@@ -85,9 +111,7 @@ def obs_order_refine():
 
 def size_change():
     matrix1, rhs1 = build_system(1, 5, (0, 0))
-    matrix3, rhs3 = build_system(100, 5, (0, 0))
-    matrix4, rhs4 = build_system(100, 50, (0, 0))
-    import ipdb; ipdb.set_trace()
+    matrix2, rhs2 = build_system(1e5, 5, (0, 0))
 
 def helper(L):
     es = box_mesh(L)
@@ -138,7 +162,7 @@ def size_change2():
         # plt.show()
 
 if __name__ == '__main__':
-    size_change2()
+    simple()
 
 def jagged_mesh():
     refine = 4
