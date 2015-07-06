@@ -10,22 +10,6 @@ def get_tbem(dim):
         tbem = tbempy.ThreeD
     return tbem
 
-def default_params():
-    #TODO: Load this from a file? Or move it to spec?
-    return dict(
-        obs_order = 3,
-        singular_steps = 8,
-        far_threshold = 3.0,
-        sinh_order = 12,
-        solver_tol = 1e-5,
-        poisson_ratio = 0.25,
-        shear_modulus = 30e9,
-        length_scale = 1.0,
-        fmm_order = 30,
-        dense = False,
-        gravity = False
-    )
-
 def bc_types():
     return [
         'traction',
@@ -56,7 +40,7 @@ def get_displacement_BIE(obs_mesh_name, params):
             function = 'displacement',
             multiplier = 1.0
         ),
-        terms = displacement_BIE_terms(obs_mesh_name, params),
+        terms = displacement_BIE_terms(obs_mesh_name, params['gravity']),
         constraint_builder = form_traction_constraints,
         scaling = displacement_scaling
     )
@@ -67,18 +51,6 @@ def displacement_scaling(p):
 def form_traction_constraints(tbem, dof_map, meshes, input):
     return []
 
-# Most of the time, tractions should not be assumed continuous on a surface
-# with corners, but in some cases it can be useful, so this function is left
-# here.
-def continuous_tractions(tbem, dof_map, meshes, input):
-    continuity = tbem.mesh_continuity(meshes['displacement'].begin())
-    one_component = tbem.convert_to_constraints(continuity)
-    all_components = []
-    for d in range(tbem.dim):
-        start_dof = dof_map[('displacement', 'traction')][d]
-        all_components.extend(tbem.shift_constraints(one_component, start_dof))
-    return all_components
-
 def get_traction_BIE(obs_mesh_name, params):
     return dict(
         obs_mesh = obs_mesh_name,
@@ -88,7 +60,7 @@ def get_traction_BIE(obs_mesh_name, params):
             function = 'traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name, params),
+        terms = traction_BIE_terms(obs_mesh_name, params['gravity']),
         constraint_builder = form_displacement_constraints,
         scaling = traction_scaling
     )
@@ -130,7 +102,7 @@ def get_crack_traction_BIE(obs_mesh_name, params):
             function = 'crack_traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name, params),
+        terms = traction_BIE_terms(obs_mesh_name, params['gravity']),
         constraint_builder = form_slip_constraints,
         scaling = traction_scaling
     )
@@ -153,7 +125,7 @@ def get_free_slip_BIE(obs_mesh_name, params):
             function = 'free_slip_traction',
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name, params),
+        terms = traction_BIE_terms(obs_mesh_name, params['gravity']),
         constraint_builder = form_free_slip_constraints,
         scaling = traction_scaling
     )
@@ -164,7 +136,7 @@ def form_free_slip_constraints(tbem, dof_map, meshes, input):
     cs = tbem.normal_constraints(m, normal_displacement)
     return tbem.shift_constraints(cs, dof_map[('free_slip_traction', 'free_slip')][0])
 
-def displacement_BIE_terms(obs_mesh_name, params):
+def displacement_BIE_terms(obs_mesh_name, gravity):
     terms = [
         dict(
             obs_mesh = obs_mesh_name,
@@ -216,7 +188,7 @@ def displacement_BIE_terms(obs_mesh_name, params):
             multiplier = -1.0
         )
     ]
-    if params['gravity']:
+    if gravity:
         terms.append(dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'gravity',
@@ -227,7 +199,7 @@ def displacement_BIE_terms(obs_mesh_name, params):
     return terms
 
 
-def traction_BIE_terms(obs_mesh_name, params):
+def traction_BIE_terms(obs_mesh_name, gravity):
     terms = [
         dict(
             obs_mesh = obs_mesh_name,
@@ -279,7 +251,7 @@ def traction_BIE_terms(obs_mesh_name, params):
             multiplier = -1.0
         )
     ]
-    if params['gravity']:
+    if gravity:
         terms.append(dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'gravity',

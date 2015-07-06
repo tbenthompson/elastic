@@ -1,19 +1,19 @@
 import numpy as np
 
-def form_linear_systems(tbem, input):
+def form_linear_systems(tbem, bies, meshes, bcs, kernels, params):
     systems = []
-    bc_fields = fields_from_bcs(input.bcs)
-    for bie in input.bies:
-        setup_bie = setup_integral_equation(tbem, input, bie)
+    bc_fields = fields_from_bcs(bcs)
+    for b in bies:
+        setup_bie = setup_integral_equation(tbem, meshes, kernels, params, b)
         s = evaluate_computable_terms(tbem, setup_bie, bc_fields)
         systems.append(s)
     return systems
 
-def setup_integral_equation(tbem, input, bie):
+def setup_integral_equation(tbem, meshes, kernels, params, bie):
     integrals = []
     for term in bie['terms']:
-        integrals.append(compute_boundary_integral(tbem, input, term))
-    integrals.append(compute_mass(tbem, input, bie['mass_term']))
+        integrals.append(compute_boundary_integral(tbem, meshes, kernels, params, term))
+    integrals.append(compute_mass(tbem, meshes, params, bie['mass_term']))
     return integrals
 
 def make_integrator(tbem, params, kernel):
@@ -23,29 +23,30 @@ def make_integrator(tbem, params, kernel):
         kernel
     )
 
-def compute_boundary_integral(tbem, input, op_spec):
-    obs_mesh = input.meshes[op_spec['obs_mesh']]
-    src_mesh = input.meshes[op_spec['src_mesh']]
-    kernel = input.kernels[op_spec['kernel']]
+def compute_boundary_integral(tbem, meshes, kernels, params, op_spec):
+    obs_mesh = meshes[op_spec['obs_mesh']]
+    src_mesh = meshes[op_spec['src_mesh']]
+    kernel = kernels[op_spec['kernel']]
 
-    mthd = make_integrator(tbem, input.params, kernel)
+    mthd = make_integrator(tbem, params, kernel)
 
     def fmm_boundary_operator(obs_mesh, src_mesh, mthd, all_mesh):
-        fmm_config = tbem.FMMConfig(0.3, input.params['fmm_order'], 250, 0.1, True)
+        fmm_config = tbem.FMMConfig(0.3, params['fmm_order'], 250, 0.1, True)
         return tbem.boundary_operator(obs_mesh, src_mesh, mthd, fmm_config, all_mesh)
     op_builder = fmm_boundary_operator
-    if input.params['dense']:
+    if params['dense']:
         op_builder = tbem.dense_boundary_operator
-    op = op_builder(obs_mesh, src_mesh, mthd, input.all_mesh)
+    op = op_builder(obs_mesh, src_mesh, mthd, meshes['all_mesh'])
     return dict(op = op, spec = op_spec)
 
-def compute_interior_integral(tbem, input, op_spec, pts, normals, fields):
-    src_mesh = input.meshes[op_spec['src_mesh']]
-    kernel = input.kernels[op_spec['kernel']]
+def compute_interior_integral(tbem, meshes, kernels, params,
+        op_spec, pts, normals, fields):
+    src_mesh = meshes[op_spec['src_mesh']]
+    kernel = kernels[op_spec['kernel']]
 
-    mthd = make_integrator(tbem, input.params, kernel)
+    mthd = make_integrator(tbem, params, kernel)
     op = tbem.dense_interior_operator(
-        pts, normals, src_mesh, mthd, input.all_mesh
+        pts, normals, src_mesh, mthd, meshes['all_mesh']
     )
 
     return dict(op = op, spec = op_spec)
@@ -58,10 +59,9 @@ def apply_op(op, fields):
     # Negate to switch the term from the LHS to the RHS
     return -computed * op['spec']['multiplier']
 
-
-def compute_mass(tbem, input, mass_spec):
-    obs_mesh = input.meshes[mass_spec['obs_mesh']]
-    op = tbem.mass_operator_tensor(obs_mesh, input.params['obs_order'])
+def compute_mass(tbem, meshes, params, mass_spec):
+    obs_mesh = meshes[mass_spec['obs_mesh']]
+    op = tbem.mass_operator_tensor(obs_mesh, params['obs_order'])
     return dict(op = op, spec = dict(
         src_mesh = mass_spec['obs_mesh'],
         function = mass_spec['function'],
@@ -94,14 +94,13 @@ def evaluate_computable_terms(tbem, bie, fields):
             uncomputed_terms.append(t)
     return dict(lhs = uncomputed_terms, rhs = evaluated_terms)
 
-def interior_eval(tbem, input, soln, pts, normals, bie):
-    fields = fields_from_bcs(input.bcs)
+def interior_eval(tbem, bcs, meshes, kernels, params, soln, pts, normals, terms):
     for k, v in soln.iteritems():
         fields[k] = v
     result = np.zeros(pts.shape[0] * tbem.dim)
-    for term in bie['terms']:
+    for t in terms:
         op = compute_interior_integral(
-            tbem, input, term, pts, normals, fields
+            tbem, meshes, kernels, params, t, pts, normals, fields
         )
         result += apply_op(op, fields)
     out = []

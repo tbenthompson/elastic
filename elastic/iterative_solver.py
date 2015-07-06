@@ -6,12 +6,12 @@ import scipy.sparse.linalg
 import logging
 logger = logging.getLogger(__name__)
 
-def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems):
+def build_matrix_vector_product(tbem, params, bies, dof_map, constraint_matrix, systems):
     def mat_vec(v):
         unknowns = distribute_expand(tbem, dof_map, constraint_matrix, v)
-        scale_columns(unknowns, input.bies, input.params)
+        scale_columns(unknowns, bies, params)
         eval = operate_on_solution_fields(tbem, systems, unknowns)
-        scale_rows(eval, input.bies, input.params)
+        scale_rows(eval, bies, params)
         out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
         if mat_vec.inhomogeneous_constraint_component is not None:
@@ -25,11 +25,11 @@ def build_matrix_vector_product(tbem, input, dof_map, constraint_matrix, systems
     return mat_vec
 
 
-def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
+def iterative_solver(tbem, params, bies, dof_map, constraint_matrix, systems):
     logger.debug('Iteratively solving linear system')
     #TODO: Do an ILU preconditioning
     mat_vec = build_matrix_vector_product(
-        tbem, input, dof_map, constraint_matrix, systems
+        tbem, params, bies, dof_map, constraint_matrix, systems
     )
 
     def residual_callback(resid):
@@ -37,7 +37,7 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
         pass
 
     right_hand_sides = [s['rhs'] for s in systems]
-    scale_rows(right_hand_sides, input.bies, input.params)
+    scale_rows(right_hand_sides, bies, params)
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
 
     inhomogeneous = mat_vec(np.zeros_like(rhs))
@@ -53,12 +53,12 @@ def iterative_solver(tbem, input, dof_map, constraint_matrix, systems):
     res = scipy.sparse.linalg.gmres(
         A,
         rhs,
-        tol = input.params['solver_tol'],
+        tol = params['solver_tol'],
         callback = residual_callback
     )
     assert(res[1] == 0)
     unknowns = distribute_expand(tbem, dof_map, constraint_matrix, res[0])
-    scale_columns(unknowns, input.bies, input.params)
+    scale_columns(unknowns, bies, params)
     logger.debug(
         'Iterative solution complete, requiring %d iterations', mat_vec.n_its
     )

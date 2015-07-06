@@ -1,7 +1,7 @@
 import bie_spec
-import logger
 from collections import namedtuple
 import numpy as np
+from params import add_default_parameters
 
 Element = namedtuple('Element',
     ['pts', 'bc', 'bc_type', 'n_refines']
@@ -12,10 +12,47 @@ RefinedElement = namedtuple('RefinedElement',
 #TODO: Remove all_mesh
 Input = namedtuple('Input',
     [
-        'elements', 'params', 'meshes', 'bcs', 'kernels', 'bies', 'all_mesh', 'logger'
+        'elements', 'params', 'meshes', 'bcs', 'kernels', 'bies', 'all_mesh'
     ]
 )
 
+def displacement(pts, bc):
+    dim = pts.shape[0]
+    return dict(type = 'continuous', constraints = [
+        Constraint('displacement', d1, [bc[d2][d1] for d2 in range(dim)])
+        for d1 in range(dim)
+    ])
+
+def traction(pts, bc):
+    dim = pts.shape[0]
+    return dict(type = 'continuous', constraints = [
+        Constraint('traction', d1, [bc[d2][d1] for d2 in range(dim)])
+        for d1 in range(dim)
+    ])
+
+def free_slip_traction2d(pts, normal_displacement, shear_stress):
+    cs = [
+        Constraint('traction', 'tangential0', shear_stress[0]),
+        Constraint('displacement', 'normal', normal_displacement)
+    ]
+    dim = pts.shape[0]
+    if dim == 3:
+        cs.append(Constraint('traction', 'tangential1', shear_stress[1]))
+    return dict(type = 'discontinuous', constraints = cs)
+
+def slip(pts, bc):
+    dim = pts.shape[0]
+    return dict(type = 'discontinuous', constraints = [
+        Constraint('displacement', d1, [bc[d2][d1] for d2 in range(dim)])
+        for d1 in range(dim)
+    ])
+
+def crack(pts, bc):
+    dim = pts.shape[0]
+    return dict(type = 'discontinuous', constraints = [
+        Constraint('displacement', d1, [bc[d2][d1] for d2 in range(dim)])
+        for d1 in range(dim)
+    ])
 
 '''
 Transforms input elements and parameters into meshes, boundary conditions,
@@ -28,6 +65,7 @@ def build_input(tbem, elements, input_params):
     kernels = get_elastic_kernels(tbem, params)
     bies = bie_spec.get_all_BIEs(params)
     all_mesh = tbem.Mesh.create_union(meshes.values())
+    meshes['all_mesh'] = all_mesh
     # The gravity mesh should only include the outer boundaries of the
     # domain considered. Otherwise, the gravitational body force will be
     # effectively double counted.
@@ -35,16 +73,9 @@ def build_input(tbem, elements, input_params):
     if params['gravity']:
         meshes['gravity'] = gravity_mesh
         bcs['gravity'] = np.ones((meshes['gravity'].n_facets(), tbem.dim, tbem.dim))
-    log = logger.StdoutLogger()
     return Input(
-        elements, params, meshes, bcs, kernels, bies, all_mesh, log
+        elements, params, meshes, bcs, kernels, bies, all_mesh
     )
-
-def add_default_parameters(input_params):
-    params = bie_spec.default_params()
-    for k, v in input_params.iteritems():
-        params[k] = v
-    return params
 
 '''
 Builds mesh and boundary condition to tbem from the input elements

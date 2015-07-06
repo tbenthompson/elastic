@@ -1,5 +1,6 @@
 import tbempy.TwoD
-from elastic.solver import *
+from elastic.dof_handling import *
+from elastic.interface import *
 from elastic.compute import form_linear_systems
 from elastic.input_builder import *
 
@@ -35,8 +36,7 @@ def test_constraint_matrix():
     constraint_matrix = build_constraint_matrix(
         tbempy.TwoD, dof_map, input
     )
-    # Nothing from constraint_matrix is exposed to python so no tests are
-    # performed except to check that the creation succeeds
+    #TODO: Check the values in the constraint matrix
     assert(constraint_matrix is not None)
 
 def test_concatenate_condense():

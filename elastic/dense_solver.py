@@ -5,12 +5,12 @@ import iterative_solver
 import logging
 logger = logging.getLogger(__name__)
 
-def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
-    np_op = dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
-    rhs = dense_rhs(tbem, input, dof_map, constraint_matrix, systems)
+def dense_solver(tbem, params, bies, dof_map, constraint_matrix, systems):
+    np_op = dense_matrix(tbem, params, bies, dof_map, constraint_matrix, systems)
+    rhs = dense_rhs(tbem, params, bies, dof_map, constraint_matrix, systems)
 
     mat_vec = iterative_solver.build_matrix_vector_product(
-        tbem, input, dof_map, constraint_matrix, systems
+        tbem, params, bies, dof_map, constraint_matrix, systems
     )
     rhs -= mat_vec(np.zeros_like(rhs))
 
@@ -20,26 +20,26 @@ def dense_solver(tbem, input, dof_map, constraint_matrix, systems):
     soln = np.linalg.solve(np_op, rhs)
     logger.debug('Finished using numpy to solve linear system')
     unknowns = distribute_expand(tbem, dof_map, constraint_matrix, soln)
-    scale_columns(unknowns, input.bies, input.params)
+    scale_columns(unknowns, bies, params)
     return unknowns
 
-def dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
-    matrix = uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems)
+def dense_matrix(tbem, params, bies, dof_map, constraint_matrix, systems):
+    matrix = uncondensed_dense_matrix(tbem, params, bies, dof_map, constraint_matrix, systems)
     condensed_op = tbem.condense_matrix(constraint_matrix, constraint_matrix, matrix)
     op_data = condensed_op.data()
     n_condensed = np.sqrt(op_data.size)
     np_op = op_data.reshape((n_condensed, n_condensed))
     return np_op
 
-def uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
+def uncondensed_dense_matrix(tbem, params, bies, dof_map, constraint_matrix, systems):
     n = dof_map['n_total_dofs']
     matrix = np.empty((n, n))
 
     scalings = dict()
-    for bie in input.bies:
-        scalings[bie['obs_mesh']] = bie['scaling'](input.params)
+    for b in bies:
+        scalings[b['obs_mesh']] = b['scaling'](params)
 
-    for s, bie in zip(systems, input.bies):
+    for s, bie in zip(systems, bies):
         for op in s['lhs']:
             start_row, end_row, start_col, end_col = get_matrix_block(dof_map, op, bie)
             rows = end_row - start_row
@@ -53,15 +53,15 @@ def uncondensed_dense_matrix(tbem, input, dof_map, constraint_matrix, systems):
     matrix = tbem.DenseOperator(n, n, matrix.reshape(n * n))
     return matrix
 
-def dense_rhs(tbem, input, dof_map, constraint_matrix, systems):
+def dense_rhs(tbem, params, bies, dof_map, constraint_matrix, systems):
     right_hand_sides = uncondensed_dense_rhs(
-        tbem, input, dof_map, constraint_matrix, systems
+        tbem, params, bies, dof_map, constraint_matrix, systems
     )
     rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
     return rhs
 
-def uncondensed_dense_rhs(tbem, input, dof_map, constraint_matrix, systems):
+def uncondensed_dense_rhs(tbem, params, bies, dof_map, constraint_matrix, systems):
     right_hand_sides = [s['rhs'] for s in systems]
-    scale_rows(right_hand_sides, input.bies, input.params)
+    scale_rows(right_hand_sides, bies, params)
     return right_hand_sides
 

@@ -34,7 +34,9 @@ elements2 = [
 
 def test_form_linear_system():
     input = build_input(tbempy.TwoD, elements1, dict())
-    systems = form_linear_systems(tbempy.TwoD, input)
+    systems = form_linear_systems(
+        tbempy.TwoD, input.bies, input.meshes, input.bcs, input.kernels, input.params
+    )
     assert(len(systems[0]['lhs']) == 4)
     assert(len(systems[1]['lhs']) == 4)
     assert(systems[0]['rhs'][0] != 0.0)

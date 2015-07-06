@@ -37,10 +37,12 @@ class Result(object):
     """
     @log_exceptions
     def interior_displacement(self, pts):
-        bie = bie_spec.get_displacement_BIE("displacement", self.input.params)
+        gravity = self.input.params['gravity']
+        terms = bie_spec.displacement_BIE_terms("displacement", gravity)
         normals = np.zeros_like(pts)
         return compute.interior_eval(
-            self.tbem, self.input, self.soln, pts, normals, bie
+            self.tbem, self.input.bcs, self.input.meshes, self.input.kernels,
+            self.input.params, self.soln, pts, normals, terms
         )
 
     """
@@ -49,9 +51,11 @@ class Result(object):
     """
     @log_exceptions
     def interior_traction(self, pts, normals):
-        bie = bie_spec.get_traction_BIE("traction", self.input.params)
+        gravity = self.input.params['gravity']
+        terms = bie_spec.traction_BIE_terms("traction", gravity)
         return compute.interior_eval(
-            self.tbem, self.input, self.soln, pts, normals, bie
+            self.tbem, self.input.bcs, self.input.meshes, self.input.kernels,
+            self.input.params, self.soln, pts, normals, terms
         )
 
     @log_exceptions
@@ -87,24 +91,21 @@ def execute(dim, elements, input_params):
     return solve(*data)
 
 def assemble(dim, elements, input_params):
-    dim = dim
-    elements = elements
-    input_params = input_params
     tbem = get_tbem(dim)
     input = input_builder.build_input(tbem, elements, input_params)
     dof_map = dof_handling.build_dof_map(tbem, input.bies, input.meshes)
-    constraint_matrix = dof_handling.build_constraint_matrix(
-        tbem, dof_map, input
+    cs = dof_handling.build_constraint_matrix(tbem, dof_map, input)
+    systems = compute.form_linear_systems(
+        tbem, input.bies, input.meshes, input.bcs, input.kernels, input.params
     )
-    systems = compute.form_linear_systems(tbem, input)
-    return tbem, input, dof_map, constraint_matrix, systems
+    return tbem, input, dof_map, cs, systems
 
 def solve(tbem, input, dof_map, constraint_matrix, systems):
     solve_fnc = iterative_solver.iterative_solver
     if input.params['dense']:
         solve_fnc = dense_solver.dense_solver
     soln = solve_fnc(
-        tbem, input, dof_map, constraint_matrix, systems
+        tbem, input.params, input.bies, dof_map, constraint_matrix, systems
     )
     return Result(tbem, soln, input)
 
