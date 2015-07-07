@@ -1,5 +1,7 @@
-from dof_handling import distribute_expand, concatenate_condense, \
-    scale_columns, scale_rows, operate_on_solution_fields
+import bie_spec
+from constraints import distribute, condense
+from dof_handling import scale_columns, scale_rows
+from compute import evaluate_linear_systems
 
 import numpy as np
 import scipy.sparse.linalg
@@ -8,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 def build_matrix_vector_product(tbem, params, bies, dof_map, constraint_matrix, systems):
     def mat_vec(v):
-        unknowns = distribute_expand(tbem, dof_map, constraint_matrix, v)
-        scale_columns(unknowns, bies, params)
-        eval = operate_on_solution_fields(tbem, systems, unknowns)
+        distributed = distribute(tbem, constraint_matrix, dof_map.n_total_dofs, v)
+        unknowns = dof_map.expand(distributed)
+        scale_columns(unknowns, bie_spec.field_types, params)
+        eval = evaluate_linear_systems(systems, unknowns)
         scale_rows(eval, bies, params)
         out = concatenate_condense(tbem, dof_map, constraint_matrix, eval)
 
@@ -36,12 +39,8 @@ def iterative_solver(tbem, params, bies, dof_map, constraint_matrix, systems):
         logger.info("residual: " + str(resid))
         pass
 
-    right_hand_sides = [s['rhs'] for s in systems]
-    scale_rows(right_hand_sides, bies, params)
-    rhs = concatenate_condense(tbem, dof_map, constraint_matrix, right_hand_sides)
-
-    inhomogeneous = mat_vec(np.zeros_like(rhs))
-    rhs -= inhomogeneous
+    inhomogeneous = mat_vec(np.zeros(dof_map.n_total_dofs))
+    rhs =- inhomogeneous
     mat_vec.inhomogeneous_constraint_component = inhomogeneous
 
     A = scipy.sparse.linalg.LinearOperator(

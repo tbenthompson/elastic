@@ -1,19 +1,23 @@
 import tbempy.TwoD as tbem
-from elastic import Element, execute
-from elastic.mesh_gen import circle
+from elastic import execute, displacement
+from elastic.meshing import circle
 import numpy as np
 
 def test_gravity():
     r = 1.0
     es = []
-    es.extend(circle([0, 0], r, 6, "displacement", lambda x: np.zeros_like(x), False))
+    es.extend(circle(
+        [0, 0], r, 6,
+        lambda pts: displacement(pts, np.zeros_like(pts)),
+        False
+    ))
 
     params = dict(
         shear_modulus = 30e9,
         poisson_ratio = 0.25,
         gravity = True,
         gravity_vector = [0.0, -9.8 * 2700],
-        dense = True
+        dense = False
     )
     result = execute(2, es, params)
 

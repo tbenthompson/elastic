@@ -1,8 +1,8 @@
 import numpy as np
 import os
 import subprocess
-from elastic.mesh_gen import circle, sphere
-from elastic import execute
+from elastic.meshing import circle, sphere
+from elastic import execute, displacement, traction
 from errors import check_error, check_interior_error
 
 def circ_from_cart(x, y):
@@ -126,14 +126,20 @@ def lame(dim, bc_types):
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
     trac_bc = build_trac_bc[dim](a, b, p_a, p_b, E, mu)
     bc_funcs = dict()
-    bc_funcs['traction'] = trac_bc
-    bc_funcs['displacement'] = disp_bc
+    bc_funcs[traction] = trac_bc
+    bc_funcs[displacement] = disp_bc
 
     es = []
-    es.extend(ball_mesh[dim]([0] * dim, a, refine[dim], bc_types['inner'],
-                     bc_funcs[bc_types['inner']], True))
-    es.extend(ball_mesh[dim]([0] * dim, b, refine[dim], bc_types['outer'],
-                     bc_funcs[bc_types['outer']], False))
+    es.extend(ball_mesh[dim](
+        [0] * dim, a, refine[dim],
+        lambda pts: bc_types['outer'](pts, bc_funcs[bc_types['outer']](pts)),
+        True
+    ))
+    es.extend(ball_mesh[dim](
+        [0] * dim, b, refine[dim],
+        lambda pts: bc_types['outer'](pts, bc_funcs[bc_types['outer']](pts)),
+        False
+    ))
     params = dict(
         shear_modulus = G,
         poisson_ratio = mu,
@@ -149,16 +155,16 @@ def lame(dim, bc_types):
 
 
 def test_disp_disp2d():
-    lame(2, dict(inner = "displacement", outer = "displacement"))
+    lame(2, dict(inner = displacement, outer = displacement))
 
 def test_trac_trac2d():
-    lame(2, dict(inner = "traction", outer = "traction"))
+    lame(2, dict(inner = traction, outer = traction))
 
 def test_trac_disp2d():
-    lame(2, dict(inner = "traction", outer = "displacement"))
+    lame(2, dict(inner = traction, outer = displacement))
 
 def test_disp_trac2d():
-    lame(2, dict(inner = "displacement", outer = "traction"))
+    lame(2, dict(inner = displacement, outer = traction))
 #
 # def test_disp_disp3d():
 #     lame(3, dict(inner = "displacement", outer = "displacement"))

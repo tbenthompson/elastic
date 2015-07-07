@@ -8,7 +8,7 @@ def test_save_load():
         Element([[-1, -1], [1, 1]], [[1, 1], [1, 1]], "slip", 6)
     ]
     result = execute(2, es, dict(dense = True))
-    filename = os.path.join('acceptance_tests', 'saved_data')
+    filename = os.path.join('tests', 'saved_data')
     result.save(filename)
 
     result2 = Result.load(filename)

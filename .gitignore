@@ -2,3 +2,4 @@
 *.o
 *.pyc
 build
+elastic.egg-info

@@ -11,7 +11,8 @@ def default_params():
         length_scale = 1.0,
         fmm_order = 30, #TODO: fmm_order should be different for each kernel
         dense = False,
-        gravity = False
+        gravity = False,
+        gravity_vector = [0.0, -9.8 * 2700]
     )
 
 def add_default_parameters(input_params):

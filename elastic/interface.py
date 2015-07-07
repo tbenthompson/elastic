@@ -2,11 +2,13 @@ import tbempy.TwoD
 import tbempy.ThreeD
 
 import bie_spec
-import input_builder
 import compute
 import dof_handling
+import defaults
+import constraints
 import iterative_solver
-import dense_solver
+import meshing
+# import dense_solver
 
 import numpy as np
 import traceback
@@ -26,23 +28,66 @@ def log_exceptions(f):
             raise
     return _wrapper
 
+@log_exceptions
+def execute(dim, elements, input_params):
+    executor = Executor(dim, elements, input_params)
+    return executor.solve()
+
+class Executor(object):
+    def __init__(self, dim, elements, input_params):
+        self.arguments = (dim, elements, input_params)
+        self.tbem = get_tbem(dim)
+        self.params = defaults.add_default_parameters(input_params)
+        self.meshes = meshing.build_meshes(
+            self.tbem, bie_spec.mesh_types, elements
+        )
+        self.dof_map = dof_handling.DOFMap.build(
+            self.tbem.dim, bie_spec.field_types, self.meshes
+        )
+        self.constraint_matrix = constraints.build_constraint_matrix(
+            self.tbem, self.dof_map, elements, self.meshes
+        )
+        self.bies = bie_spec.get_BIEs(self.params)
+        self.assemble()
+
+    def assemble(self):
+        evaluator = compute.DenseIntegralEvaluator(
+            self.tbem, self.params, self.meshes['all_mesh']
+        )
+        kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
+        dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
+        self.systems = compute.form_linear_systems(self.bies, dispatcher)
+
+    def solve(self):
+        solve_fnc = iterative_solver.iterative_solver
+        if self.params['dense']:
+            solve_fnc = dense_solver.dense_solver
+        soln = solve_fnc(
+            self.tbem, self.params, self.bies, self.dof_map,
+            self.constraint_matrix, self.systems
+        )
+        return Result(self.tbem, soln, self.meshes, self.params, self.arguments)
+
 class Result(object):
-    def __init__(self, tbem, soln, input):
+    def __init__(self, tbem, soln, meshes, params, arguments):
         self.tbem = tbem
         self.soln = soln
-        self.input = input
+        self.meshes = meshes
+        self.params = params
+        self.arguments = arguments
 
     """
     Compute the interior displacement at the specified points.
     """
     @log_exceptions
     def interior_displacement(self, pts):
-        gravity = self.input.params['gravity']
+        gravity = self.params['gravity']
         terms = bie_spec.displacement_BIE_terms("displacement", gravity)
         normals = np.zeros_like(pts)
+        kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         return compute.interior_eval(
-            self.tbem, self.input.bcs, self.input.meshes, self.input.kernels,
-            self.input.params, self.soln, pts, normals, terms
+            self.tbem, self.meshes, kernels,
+            self.params, self.soln, pts, normals, terms
         )
 
     """
@@ -51,11 +96,15 @@ class Result(object):
     """
     @log_exceptions
     def interior_traction(self, pts, normals):
-        gravity = self.input.params['gravity']
+        return self.interior_eval(pts, normals, 'traction')
+
+    def _interior_eval(self, pts, normals, which_bie):
+        gravity = self.params['gravity']
         terms = bie_spec.traction_BIE_terms("traction", gravity)
+        kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         return compute.interior_eval(
-            self.tbem, self.input.bcs, self.input.meshes, self.input.kernels,
-            self.input.params, self.soln, pts, normals, terms
+            self.tbem, self.meshes, self.kernels,
+            self.params, self.soln, pts, normals, terms
         )
 
     @log_exceptions
@@ -65,8 +114,8 @@ class Result(object):
                 f,
                 dim = self.tbem.dim,
                 soln = self.soln,
-                elements = self.input.elements,
-                params = self.input.params
+                elements = self.elements,
+                params = self.params
             )
 
     @staticmethod
@@ -84,30 +133,6 @@ class Result(object):
         tbem = get_tbem(dim)
         input = input_builder.build_input(tbem, elements, params)
         return Result(tbem, soln, input)
-
-@log_exceptions
-def execute(dim, elements, input_params):
-    data = assemble(dim, elements, input_params)
-    return solve(*data)
-
-def assemble(dim, elements, input_params):
-    tbem = get_tbem(dim)
-    input = input_builder.build_input(tbem, elements, input_params)
-    dof_map = dof_handling.build_dof_map(tbem, input.bies, input.meshes)
-    cs = dof_handling.build_constraint_matrix(tbem, dof_map, input)
-    systems = compute.form_linear_systems(
-        tbem, input.bies, input.meshes, input.bcs, input.kernels, input.params
-    )
-    return tbem, input, dof_map, cs, systems
-
-def solve(tbem, input, dof_map, constraint_matrix, systems):
-    solve_fnc = iterative_solver.iterative_solver
-    if input.params['dense']:
-        solve_fnc = dense_solver.dense_solver
-    soln = solve_fnc(
-        tbem, input.params, input.bies, dof_map, constraint_matrix, systems
-    )
-    return Result(tbem, soln, input)
 
 def get_tbem(dim):
     if dim == 2:
