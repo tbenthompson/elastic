@@ -3,12 +3,15 @@ from elastic import execute, displacement
 from elastic.meshing import circle
 import numpy as np
 
+import logging
+logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.INFO)
+
 def test_gravity():
     r = 1.0
     es = []
     es.extend(circle(
         [0, 0], r, 6,
-        lambda pts: displacement(pts, np.zeros_like(pts)),
+        lambda pts: displacement(pts, [[0, 0], [0, 0]]),
         False
     ))
 

@@ -1,7 +1,15 @@
+import numpy as np
 
 mesh_types = [
     'continuous',
     'discontinuous'
+]
+
+field_types = [
+    ('continuous', 'displacement'),
+    ('continuous', 'traction'),
+    ('discontinuous', 'slip'),
+    ('discontinuous', 'crack_traction')
 ]
 
 unknowns_to_knowns = dict(
@@ -11,12 +19,24 @@ unknowns_to_knowns = dict(
     slip = 'crack_traction'
 )
 
-field_to_mesh = dict(
-    displacement = 'continuous',
-    traction = 'continuous',
-    slip = 'discontinuous',
-    crack_traction = 'discontinuous'
+field_units = dict(
+    displacement = 'displacement',
+    slip = 'displacement',
+    traction = 'traction',
+    crack_traction = 'traction'
 )
+
+scaling = dict()
+scaling['displacement'] = lambda p: 1.0#p['shear_modulus'] / p['length_scale']
+scaling['traction'] = lambda p: 1.0
+
+solution_scaling = dict()
+for k in field_types:
+    solution_scaling[k] = scaling[field_units[k[1]]]
+
+integral_scaling = dict()
+for k in field_types:
+    integral_scaling[k] = scaling[field_units[unknowns_to_knowns[k[1]]]]
 
 '''
 Returns the elastic kernels (also called Green's functions or
@@ -37,49 +57,44 @@ def get_elastic_kernels(tbem, params):
     )
     return kernels
 
-def displacement_scaling(params):
-    return params['shear_modulus'] / params['length_scale']
+def bie_from_field_name(field_name):
+    if field_units[field_name] == 'displacement':
+        return get_displacement_BIE
+    elif field_units[field_name] == 'traction':
+        return get_traction_BIE
+    return None
 
-def traction_scaling(params):
-    return 1.0
-
-field_types = dict()
-field_types[('continuous', 'displacement')] = lambda p: displacement_scaling(p)
-field_types[('continuous', 'traction')] = lambda p: traction_scaling(p)
-field_types[('discontinuous', 'slip')] = lambda p: displacement_scaling(p)
-field_types[('discontinuous', 'crack_traction')] = lambda p: traction_scaling(p)
+def terms_from_field_name(field_name):
+    return bie_spec.bie_from_field_name(which_bie)(
+        'continuous', which_bie, self.params
+    )['terms']
 
 def get_BIEs(params):
     bies = []
-    for name, field_name in field_types.keys():
-        if field_name == 'displacement' or field_name == 'slip':
-            bies.append(get_displacement_BIE(name, params))
-        elif field_name == 'traction' or field_name == 'crack_traction':
-            bies.append(get_traction_BIE(name, params))
+    for name, field_name in field_types:
+        bies.append(bie_from_field_name(field_name)(name, field_name, params))
     return bies
 
-def get_displacement_BIE(obs_mesh_name, params):
+def get_displacement_BIE(obs_mesh_name, displacement_field, params):
     return dict(
         obs_mesh = obs_mesh_name,
         mass_term = dict(
             src_mesh = obs_mesh_name,
-            function = 'displacement',
+            function = displacement_field,
             multiplier = 1.0
         ),
-        terms = displacement_BIE_terms(obs_mesh_name, params['gravity']),
-        scaling = displacement_scaling(params)
+        terms = displacement_BIE_terms(obs_mesh_name, params['gravity'])
     )
 
-def get_traction_BIE(obs_mesh_name, params):
+def get_traction_BIE(obs_mesh_name, traction_field, params):
     return dict(
         obs_mesh = obs_mesh_name,
         mass_term = dict(
             src_mesh = obs_mesh_name,
-            function = 'traction',
+            function = traction_field,
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name, params['gravity']),
-        scaling = traction_scaling(params)
+        terms = traction_BIE_terms(obs_mesh_name, params['gravity'])
     )
 
 def displacement_BIE_terms(obs_mesh_name, gravity):
@@ -111,7 +126,7 @@ def displacement_BIE_terms(obs_mesh_name, gravity):
             obs_mesh = obs_mesh_name,
             src_mesh = 'continuous',
             kernel = 'gravity_displacement',
-            function = 'gravity',
+            function = 'ones',
             multiplier = 1.0
         ))
     return terms
@@ -145,7 +160,7 @@ def traction_BIE_terms(obs_mesh_name, gravity):
             obs_mesh = obs_mesh_name,
             src_mesh = 'continuous',
             kernel = 'gravity_traction',
-            function = 'gravity',
+            function = 'ones',
             multiplier = 1.0
         ))
     return terms

@@ -27,10 +27,9 @@ def sphere(center, r, refine, element_builder, reverse):
     return add_bcs(mesh, element_builder)
 
 def add_bcs(mesh, element_builder):
-    es = [
+    return [
         element_builder(np.array(
             [mesh.facets[i, d, :] for d in range(mesh.facets.shape[1])]
         ))
         for i in range(mesh.n_facets())
     ]
-    return es

@@ -5,6 +5,9 @@ from elastic.meshing import circle, sphere
 from elastic import execute, displacement, traction
 from errors import check_error, check_interior_error
 
+import logging
+logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.DEBUG)
+
 def circ_from_cart(x, y):
     r = np.sqrt(x ** 2 + y ** 2)
     theta = np.arctan2(y, x)
@@ -110,12 +113,17 @@ points = dict()
 points[2] = points2d
 points[3] = points3d
 
+def bc_builder(type_fnc, bc_fnc):
+    def f(pts):
+        return type_fnc(pts, [bc_fnc(pts[0, :]), bc_fnc(pts[1, :])])
+    return f
+
 def lame(dim, bc_types):
     a = 0.8
     b = 1.9
     p_a = 15e6
     p_b = -10e6
-    E = 80e9
+    E = 10000.0
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
@@ -132,12 +140,12 @@ def lame(dim, bc_types):
     es = []
     es.extend(ball_mesh[dim](
         [0] * dim, a, refine[dim],
-        lambda pts: bc_types['outer'](pts, bc_funcs[bc_types['outer']](pts)),
+        bc_builder(bc_types['inner'], bc_funcs[bc_types['inner']]),
         True
     ))
     es.extend(ball_mesh[dim](
         [0] * dim, b, refine[dim],
-        lambda pts: bc_types['outer'](pts, bc_funcs[bc_types['outer']](pts)),
+        bc_builder(bc_types['outer'], bc_funcs[bc_types['outer']]),
         False
     ))
     params = dict(
@@ -146,8 +154,46 @@ def lame(dim, bc_types):
         solver_tol = solver_tol
     )
     result = execute(dim, es, params)
-    check_error(result, 'displacement', 'traction', trac_bc, 5e-2)
-    check_error(result, 'traction', 'displacement', disp_bc, 5e-2)
+
+    import matplotlib.pyplot as plt
+    f = result.meshes['continuous'].facets
+    xs = f[:, :, 0].reshape(f.shape[0] * f.shape[1])
+    ys = f[:, :, 1].reshape(f.shape[0] * f.shape[1])
+    fx = result.soln[('continuous', 'traction')][0]
+    fy = result.soln[('continuous', 'traction')][1]
+    ex, ey = trac_bc([xs, ys])
+    # plt.quiver(xs, ys, fx, fy)
+    plt.figure()
+    plt.plot(xs, fx, 'b')
+    plt.plot(xs, fy, 'r')
+    plt.figure()
+    plt.plot(xs, ex, 'b')
+    plt.plot(xs, ey, 'r')
+    plt.figure()
+    plt.plot(xs, fx - ex, 'b')
+    plt.plot(xs, fy - ey, 'r')
+    plt.show()
+
+    f = result.meshes['continuous'].facets
+    xs = f[:, :, 0].reshape(f.shape[0] * f.shape[1])
+    ys = f[:, :, 1].reshape(f.shape[0] * f.shape[1])
+    fx = result.soln[('continuous', 'displacement')][0]
+    fy = result.soln[('continuous', 'displacement')][1]
+    ex, ey = disp_bc([xs, ys])
+    # plt.quiver(xs, ys, fx, fy)
+    plt.figure()
+    plt.plot(xs, fx, 'b')
+    plt.plot(xs, fy, 'r')
+    plt.figure()
+    plt.plot(xs, ex, 'b')
+    plt.plot(xs, ey, 'r')
+    plt.figure()
+    plt.plot(xs, fx - ex, 'b')
+    plt.plot(xs, fy - ey, 'r')
+    plt.show()
+
+    check_error(result, 'continuous', 'traction', trac_bc, 5e-2)
+    check_error(result, 'continuous', 'displacement', disp_bc, 5e-2)
 
     pts = points[dim](a, b, 1000)
     disp_interior = result.interior_displacement(pts)

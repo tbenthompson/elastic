@@ -2,8 +2,8 @@ import tbempy.TwoD
 import numpy as np
 from elastic.bie_spec import field_types, get_elastic_kernels, get_BIEs
 from elastic.constraints import form_displacement_constraints, gather_bc_constraints
-from elastic.compute import IntegralDispatcher
-from elastic.dof_handling import DOFMap, scale_columns
+from elastic.compute import IntegralDispatcher, Op, split_into_components, scale
+from elastic.dof_handling import DOFMap
 from elastic.element_types import displacement, traction, slip
 from elastic.meshing import build_meshes, line
 
@@ -60,7 +60,11 @@ def test_concatenate():
         ('A', '1'): [0, 1, 2],
         ('B', '2'): [2, 3, 4]
     })
-    np.testing.assert_equal(dof_map.concatenate([[0], [1]]), [0, 1])
+    input = {
+        ('A', '1'): [[0], [1]],
+        ('B', '2'): [[2], [3]]
+    }
+    np.testing.assert_equal(dof_map.concatenate(input), [0, 1, 2, 3])
 
 def test_build_meshes():
     result = build_meshes(tbempy.TwoD, ['continuous', 'discontinuous'], es)
@@ -91,13 +95,14 @@ class FakeEvaluator(object):
         return self.record[-1]
 
 def test_integral_dispatcher():
-    dispatcher = IntegralDispatcher(meshes, kernels, FakeEvaluator())
+    evaluator = FakeEvaluator()
+    dispatcher = IntegralDispatcher(meshes, kernels, evaluator)
     dispatcher.compute_boundary(dict(
         obs_mesh = 'continuous', src_mesh = 'discontinuous', kernel = 'hypersingular'
     ))
     dispatcher.compute_interior(
         dict(src_mesh = 'discontinuous', kernel = 'traction'),
-        [[0, 0], [1, 0]], [[0, 1], [1, 0]]
+        'pts', 'normals'
     )
     dispatcher.compute_mass(dict(src_mesh = 'continuous'))
 
@@ -115,13 +120,32 @@ def test_get_bies():
         length_scale = 1
     ))
 
-def test_scale_columns():
+def scale_tester(inverse):
     unknowns = dict()
     unknowns[('A', '1')] = [4, 5, 6]
     unknowns[('B', '2')] = [8, 10, 12]
     field_types = dict()
     field_types[('A', '1')] = lambda p: 2.0
     field_types[('B', '2')] = lambda p: 1.0
-    scale_columns(unknowns, field_types, None)
+    if inverse:
+        field_types[('A', '1')] = lambda p: 1.0
+        field_types[('B', '2')] = lambda p: 2.0
+    scale(unknowns, field_types, None, inverse)
     np.testing.assert_equal(unknowns.values()[0], unknowns.values()[1])
 
+def test_scale():
+    scale_tester(False)
+
+def test_scale_inverse():
+    scale_tester(True)
+
+def test_op_apply():
+    class Fake(object):
+        def apply(self, stuff):
+            return 1.0
+    thing = Op(Fake(), dict(multiplier = 3.0))
+    assert(thing.apply([np.array([0])]) == 3.0)
+
+def test_split_into_components():
+    result = split_into_components(2, np.array([1,2,3,4]))
+    np.testing.assert_equal(result, [[1,2],[3,4]])

@@ -38,9 +38,7 @@ class Executor(object):
         self.arguments = (dim, elements, input_params)
         self.tbem = get_tbem(dim)
         self.params = defaults.add_default_parameters(input_params)
-        self.meshes = meshing.build_meshes(
-            self.tbem, bie_spec.mesh_types, elements
-        )
+        self.meshes = meshing.build_meshes(self.tbem, bie_spec.mesh_types, elements)
         self.dof_map = dof_handling.DOFMap.build(
             self.tbem.dim, bie_spec.field_types, self.meshes
         )
@@ -51,12 +49,16 @@ class Executor(object):
         self.assemble()
 
     def assemble(self):
+        n_facets = str(self.meshes['all_mesh'].n_facets())
+        logger.info('Assembling linear system for ' + n_facets + ' facets')
+        #TODO: Use non-dense evaluator!
         evaluator = compute.DenseIntegralEvaluator(
             self.tbem, self.params, self.meshes['all_mesh']
         )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
         self.systems = compute.form_linear_systems(self.bies, dispatcher)
+        logger.info('Finished linear system assembly')
 
     def solve(self):
         solve_fnc = iterative_solver.iterative_solver
@@ -81,28 +83,31 @@ class Result(object):
     """
     @log_exceptions
     def interior_displacement(self, pts):
-        gravity = self.params['gravity']
-        terms = bie_spec.displacement_BIE_terms("displacement", gravity)
         normals = np.zeros_like(pts)
-        kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
-        return compute.interior_eval(
-            self.tbem, self.meshes, kernels,
-            self.params, self.soln, pts, normals, terms
-        )
+        return self._interior_eval(pts, normals, 'displacement')
 
     """
-    Compute the interior traction on the planes specified by the normals and
-    the specified points/
+    Compute the interior traction at the points on the planes specified by the
+    normals.
     """
     @log_exceptions
     def interior_traction(self, pts, normals):
-        return self.interior_eval(pts, normals, 'traction')
+        return self._interior_eval(pts, normals, 'traction')
 
     def _interior_eval(self, pts, normals, which_bie):
         gravity = self.params['gravity']
-        terms = bie_spec.traction_BIE_terms("traction", gravity)
+        terms = bie_spec.bie_from_field_name(which_bie)(
+            'continuous', which_bie, self.params
+        )['terms']
+        #TODO: Allow use of non-dense evaluator
+        evaluator = compute.DenseIntegralEvaluator(
+            self.tbem, self.params, self.meshes['all_mesh']
+        )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
-        return compute.interior_eval(
+        dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
+        return compute.evaluate_interior(dispatcher, self.soln, pts, normals, terms)
+
+        return compute.evaluate_interior(
             self.tbem, self.meshes, self.kernels,
             self.params, self.soln, pts, normals, terms
         )

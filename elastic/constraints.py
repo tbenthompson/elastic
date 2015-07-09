@@ -65,4 +65,4 @@ def distribute(tbem, constraint_matrix, n_total_dofs, vec):
     return distributed
 
 def condense(tbem, constraint_matrix, concatenated):
-    return tbem.condense_vector(constraint_matrix, concat)
+    return tbem.condense_vector(constraint_matrix, concatenated)

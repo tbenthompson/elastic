@@ -23,8 +23,8 @@ def check_interior_error(pts, est, exact_fnc, limit):
     assert(np.all(error < limit))
 
 def check_error(result, mesh_name, field_name, exact_fnc, limit):
-    if result.input.meshes[mesh_name].facets.shape[0] > 0:
-        f = result.input.meshes[mesh_name].facets
+    if result.meshes[mesh_name].facets.shape[0] > 0:
+        f = result.meshes[mesh_name].facets
         vs = f.reshape((f.shape[0] * f.shape[1], f.shape[2]))
         soln = result.soln[(mesh_name, field_name)]
         error = l2_error(result.tbem.dim, vs, exact_fnc, soln)

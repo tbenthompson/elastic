@@ -10,7 +10,7 @@ class DOFMap(object):
     def build(dim, field_types, meshes):
         map = dict()
         start = 0
-        for mesh_name, field_name in field_types.keys():
+        for mesh_name, field_name in field_types:
             components = []
             n_dofs = meshes[mesh_name].n_dofs()
             for d in range(dim):
@@ -34,19 +34,16 @@ class DOFMap(object):
                 field_components.append(distributed[start_idx:end_idx])
             fields[mesh_and_field] = field_components
 
-        displacement_field = fields[('continuous', 'displacement')]
+        # displacement_field = fields[('continuous', 'displacement')]
+        # fields[('continuous', 'gravity')] = [
+        #     np.ones_like(displacement_field[d])
+        #     for d in range(self.dim)
+        # ]
         return fields
 
-    def concatenate(self, fncs):
-        return np.concatenate(fncs)
-
-#TODO: These don't really make sense in this location, where should they go? To an "evaluate" module?
-def scale_columns(unknowns, scaling_fncs, params):
-    for u, values in unknowns.iteritems():
-        f = scaling_fncs[u]
-        for d in range(len(values)):
-            values[d] *= f(params)
-
-def scale_rows(eval, bies, params):
-    for i, bie in enumerate(bies):
-        eval[i] *= bie['scaling'](params)
+    def concatenate(self, fields):
+        result = np.empty(self.n_total_dofs)
+        for mesh_and_field, dofs in self.map.iteritems():
+            for d in range(self.dim):
+                result[dofs[d]:dofs[d+1]] = fields[mesh_and_field][d]
+        return result
