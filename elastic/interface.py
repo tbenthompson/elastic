@@ -8,7 +8,8 @@ import defaults
 import constraints
 import iterative_solver
 import meshing
-# import dense_solver
+import dense_solver
+import system
 
 import numpy as np
 import traceback
@@ -30,8 +31,18 @@ def log_exceptions(f):
 
 @log_exceptions
 def execute(dim, elements, input_params):
+    log_begin(len(elements), input_params)
     executor = Executor(dim, elements, input_params)
     return executor.solve()
+
+def log_begin(n_elements, input_params):
+    logger.info('')
+    logger.info(
+        'Beginning elastic calculation for ' +
+        str(n_elements) +
+        ' with params: ' +
+        str(input_params)
+    )
 
 class Executor(object):
     def __init__(self, dim, elements, input_params):
@@ -45,7 +56,6 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, elements, self.meshes
         )
-        self.bies = bie_spec.get_BIEs(self.params)
         self.assemble()
 
     def assemble(self):
@@ -57,7 +67,8 @@ class Executor(object):
         )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
-        self.systems = compute.form_linear_systems(self.bies, dispatcher)
+        bies = bie_spec.get_BIEs(self.params)
+        self.systems = system.form_linear_systems(bies, dispatcher)
         logger.info('Finished linear system assembly')
 
     def solve(self):
@@ -65,7 +76,7 @@ class Executor(object):
         if self.params['dense']:
             solve_fnc = dense_solver.dense_solver
         soln = solve_fnc(
-            self.tbem, self.params, self.bies, self.dof_map,
+            self.tbem, self.params, self.dof_map,
             self.constraint_matrix, self.systems
         )
         return Result(self.tbem, soln, self.meshes, self.params, self.arguments)
@@ -96,8 +107,8 @@ class Result(object):
 
     def _interior_eval(self, pts, normals, which_bie):
         gravity = self.params['gravity']
-        terms = bie_spec.bie_from_field_name(which_bie)(
-            'continuous', which_bie, self.params
+        terms = bie_spec.bie_from_field_name(
+            'continuous', bie_spec.unknowns_to_knowns[which_bie], self.params
         )['terms']
         #TODO: Allow use of non-dense evaluator
         evaluator = compute.DenseIntegralEvaluator(
@@ -105,12 +116,7 @@ class Result(object):
         )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
-        return compute.evaluate_interior(dispatcher, self.soln, pts, normals, terms)
-
-        return compute.evaluate_interior(
-            self.tbem, self.meshes, self.kernels,
-            self.params, self.soln, pts, normals, terms
-        )
+        return system.evaluate_interior(dispatcher, self.soln, pts, normals, terms)
 
     @log_exceptions
     def save(self, filename):

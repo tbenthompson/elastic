@@ -9,16 +9,16 @@ class DOFMap(object):
     @staticmethod
     def build(dim, field_types, meshes):
         map = dict()
-        start = 0
+        next = 0
         for mesh_name, field_name in field_types:
             components = []
             n_dofs = meshes[mesh_name].n_dofs()
             for d in range(dim):
-                components.append(start)
-                start += n_dofs
-            components.append(start)
+                components.append(next)
+                next += n_dofs
+            components.append(next)
             map[(mesh_name, field_name)] = components
-        n_total_dofs = start
+        n_total_dofs = next
         return DOFMap(dim, n_total_dofs, map)
 
     def get(self, mesh_name, field_name, component_idx):
@@ -33,12 +33,6 @@ class DOFMap(object):
                 end_idx = dofs[d + 1]
                 field_components.append(distributed[start_idx:end_idx])
             fields[mesh_and_field] = field_components
-
-        # displacement_field = fields[('continuous', 'displacement')]
-        # fields[('continuous', 'gravity')] = [
-        #     np.ones_like(displacement_field[d])
-        #     for d in range(self.dim)
-        # ]
         return fields
 
     def concatenate(self, fields):
@@ -47,3 +41,12 @@ class DOFMap(object):
             for d in range(self.dim):
                 result[dofs[d]:dofs[d+1]] = fields[mesh_and_field][d]
         return result
+
+    def get_matrix_block(self, output_type, input_type):
+        row_components = self.map[output_type]
+        col_components = self.map[input_type]
+        start_row = row_components[0]
+        end_row = row_components[-1]
+        start_col = col_components[0]
+        end_col = col_components[-1]
+        return start_row, end_row, start_col, end_col

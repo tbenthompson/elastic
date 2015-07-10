@@ -17,6 +17,5 @@ def default_params():
 
 def add_default_parameters(input_params):
     params = default_params()
-    for k, v in input_params.iteritems():
-        params[k] = v
+    params.update(input_params)
     return params

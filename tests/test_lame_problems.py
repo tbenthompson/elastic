@@ -121,9 +121,9 @@ def bc_builder(type_fnc, bc_fnc):
 def lame(dim, bc_types):
     a = 0.8
     b = 1.9
-    p_a = 15e6
-    p_b = -10e6
-    E = 10000.0
+    p_a = 1.5
+    p_b = -1.0
+    E = 1.0
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
@@ -151,46 +151,11 @@ def lame(dim, bc_types):
     params = dict(
         shear_modulus = G,
         poisson_ratio = mu,
-        solver_tol = solver_tol
+        solver_tol = solver_tol,
+        dense = True
     )
+
     result = execute(dim, es, params)
-
-    import matplotlib.pyplot as plt
-    f = result.meshes['continuous'].facets
-    xs = f[:, :, 0].reshape(f.shape[0] * f.shape[1])
-    ys = f[:, :, 1].reshape(f.shape[0] * f.shape[1])
-    fx = result.soln[('continuous', 'traction')][0]
-    fy = result.soln[('continuous', 'traction')][1]
-    ex, ey = trac_bc([xs, ys])
-    # plt.quiver(xs, ys, fx, fy)
-    plt.figure()
-    plt.plot(xs, fx, 'b')
-    plt.plot(xs, fy, 'r')
-    plt.figure()
-    plt.plot(xs, ex, 'b')
-    plt.plot(xs, ey, 'r')
-    plt.figure()
-    plt.plot(xs, fx - ex, 'b')
-    plt.plot(xs, fy - ey, 'r')
-    plt.show()
-
-    f = result.meshes['continuous'].facets
-    xs = f[:, :, 0].reshape(f.shape[0] * f.shape[1])
-    ys = f[:, :, 1].reshape(f.shape[0] * f.shape[1])
-    fx = result.soln[('continuous', 'displacement')][0]
-    fy = result.soln[('continuous', 'displacement')][1]
-    ex, ey = disp_bc([xs, ys])
-    # plt.quiver(xs, ys, fx, fy)
-    plt.figure()
-    plt.plot(xs, fx, 'b')
-    plt.plot(xs, fy, 'r')
-    plt.figure()
-    plt.plot(xs, ex, 'b')
-    plt.plot(xs, ey, 'r')
-    plt.figure()
-    plt.plot(xs, fx - ex, 'b')
-    plt.plot(xs, fy - ey, 'r')
-    plt.show()
 
     check_error(result, 'continuous', 'traction', trac_bc, 5e-2)
     check_error(result, 'continuous', 'displacement', disp_bc, 5e-2)

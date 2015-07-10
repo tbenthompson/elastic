@@ -2,7 +2,8 @@ import tbempy.TwoD
 import numpy as np
 from elastic.bie_spec import field_types, get_elastic_kernels, get_BIEs
 from elastic.constraints import form_displacement_constraints, gather_bc_constraints
-from elastic.compute import IntegralDispatcher, Op, split_into_components, scale
+from elastic.compute import IntegralDispatcher, Op
+from elastic.system import split_into_components, scale
 from elastic.dof_handling import DOFMap
 from elastic.element_types import displacement, traction, slip
 from elastic.meshing import build_meshes, line
@@ -143,7 +144,7 @@ def test_op_apply():
     class Fake(object):
         def apply(self, stuff):
             return 1.0
-    thing = Op(Fake(), dict(multiplier = 3.0))
+    thing = Op(Fake(), dict(multiplier = 3.0), False)
     assert(thing.apply([np.array([0])]) == 3.0)
 
 def test_split_into_components():

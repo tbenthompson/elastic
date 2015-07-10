@@ -1,20 +1,37 @@
 import numpy as np
+import tbempy
 
 class Op(object):
-    def __init__(self, op, spec):
+    def __init__(self, op, spec, is_mass):
         self.internal = op
         self.spec = spec
+        self.is_mass = is_mass
 
     def apply(self, field):
         computed = self.internal.apply(np.concatenate(field))
         return computed * self.spec['multiplier']
 
+    def input_type(self):
+        return (self.spec['src_mesh'], self.spec['function'])
+
     def select_input_field(self, fields):
         dim = len(fields.values()[0])
-        f = fields.get((self.spec['src_mesh'], self.spec['function']), None)
+        f = fields.get(self.input_type(), None)
         if self.spec['function'] == 'ones':
             f = [np.ones(self.internal.n_cols() / dim) for d in range(dim)]
         return f
+
+    def data(self):
+        if type(self.internal) is tbempy._tbempy.DenseOperator:
+            return self.internal.data()
+        elif type(self.internal) is tbempy._tbempy.SparseOperator:
+            return self.internal.to_dense().data()
+        return None
+
+    def to_numpy_matrix(self):
+        rows = self.internal.n_rows()
+        cols = self.internal.n_cols()
+        return self.spec['multiplier'] * self.data().reshape((rows, cols))
 
 class IntegralEvaluator(object):
     def mass(self, obs_mesh):
@@ -74,16 +91,18 @@ class IntegralDispatcher(object):
         obs_mesh = self.meshes[op_spec['obs_mesh']]
         src_mesh = self.meshes[op_spec['src_mesh']]
         kernel = self.kernels[op_spec['kernel']]
-        return Op(self.evaluator.boundary(obs_mesh, src_mesh, kernel), op_spec)
+        result = self.evaluator.boundary(obs_mesh, src_mesh, kernel)
+        return Op(result, op_spec, False)
 
     def compute_interior(self, op_spec, pts, normals):
         src_mesh = self.meshes[op_spec['src_mesh']]
         kernel = self.kernels[op_spec['kernel']]
-        return Op(self.evaluator.interior(pts, normals, src_mesh, kernel), op_spec)
+        result = self.evaluator.interior(pts, normals, src_mesh, kernel)
+        return Op(result, op_spec, False)
 
     def compute_mass(self, mass_spec):
         obs_mesh = self.meshes[mass_spec['src_mesh']]
-        return Op(self.evaluator.mass(obs_mesh), mass_spec)
+        return Op(self.evaluator.mass(obs_mesh), mass_spec, True)
 
 class BIE(object):
     def __init__(self, terms, spec):
@@ -103,61 +122,3 @@ class BIE(object):
 
     def output_type(self):
         return (self.spec['obs_mesh'], self.spec['mass_term']['function'])
-
-#TODO: These don't make sense here.
-#To an "evaluate" module? Same place as scale columns/rows?
-#Or a "system" module?
-def form_linear_systems(bies, dispatcher):
-    systems = []
-    for spec in bies:
-        integrals = []
-        for term in spec['terms']:
-            integrals.append(dispatcher.compute_boundary(term))
-        integrals.append(dispatcher.compute_mass(spec['mass_term']))
-        systems.append(BIE(integrals, spec))
-    return systems
-
-def split_into_components(dim, field):
-    result = []
-    n_dofs_per_components = field.shape[0] / dim
-    for d in range(dim):
-        start_dof = n_dofs_per_components * d
-        end_dof = n_dofs_per_components * (d + 1)
-        result.append(field[start_dof:end_dof])
-    return result
-
-def evaluate_linear_systems(bies, fields):
-    dim = len(fields.values()[0])
-    result = dict()
-    for b in bies:
-        evaluated = b.evaluate(fields)
-        assert(evaluated is not None)
-        result[b.output_type()] = split_into_components(dim, evaluated)
-    return result
-
-def evaluate_interior(dispatcher, soln, pts, normals, terms):
-    dim = pts.shape[1]
-    result = np.zeros(pts.shape[0] * dim)
-    for t in terms:
-        op = dispatcher.compute_interior(t, pts, normals)
-        f = op.select_input_field(soln)
-        if f is None:
-            return None
-        # Negate to shift to the RHS.
-        # The integral equation is set up like u(x) + Integrals = 0.
-        # We want u(x) = -Integrals
-        result -= op.apply(f)
-    out = []
-    for d in range(dim):
-        start_idx = d * pts.shape[0]
-        end_idx = (d + 1) * pts.shape[0]
-        out.append(result[start_idx:end_idx])
-    return out
-
-def scale(unknowns, scalings, params, inverse):
-    for u, values in unknowns.iteritems():
-        factor = scalings[u](params)
-        if inverse:
-            factor = 1.0 / factor
-        for d in range(len(values)):
-            values[d] *= factor

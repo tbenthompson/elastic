@@ -33,6 +33,8 @@ def gather_bc_constraints(tbem, dof_map, es):
     tbempy_constraints = []
     counts = dict(discontinuous = 0, continuous = 0)
     for e in es:
+        #TODO: Handle the bad input instead of failing
+        assert(len(e['constraints']) == 2)
         for basis_idx in range(tbem.dim):
             for c in e['constraints']:
                 tbempy_constraints.append(convert_helper(
@@ -49,13 +51,15 @@ def convert_helper(tbem, dof_map, element_idx, basis_idx, c, element):
     for t in c.terms:
         component_start = dof_map.get(element['type'], t.field, t.component)
         dof = component_start + tbem.dim * element_idx + basis_idx
-    tbempy_terms.append(tbem.LinearTerm(dof, t.weight))
+        tbempy_terms.append(tbem.LinearTerm(dof, t.weight))
+    assert(len(tbempy_terms) == len(c.terms))
 
     return tbem.ConstraintEQ(tbempy_terms, c.rhs[basis_idx])
 
 def build_constraint_matrix(tbem, dof_map, elements, meshes):
     bc_constraints = gather_bc_constraints(tbem, dof_map, elements)
     continuity_constraints = gather_continuity_constraints(tbem, dof_map, meshes)
+    all = bc_constraints + continuity_constraints
     constraint_matrix = tbem.from_constraints(bc_constraints + continuity_constraints)
     return constraint_matrix
 

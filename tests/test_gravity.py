@@ -20,7 +20,7 @@ def test_gravity():
         poisson_ratio = 0.25,
         gravity = True,
         gravity_vector = [0.0, -9.8 * 2700],
-        dense = False
+        dense = True
     )
     result = execute(2, es, params)
 

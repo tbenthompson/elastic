@@ -6,10 +6,10 @@ mesh_types = [
 ]
 
 field_types = [
-    ('continuous', 'displacement'),
     ('continuous', 'traction'),
+    ('continuous', 'displacement'),
+    ('discontinuous', 'crack_traction'),
     ('discontinuous', 'slip'),
-    ('discontinuous', 'crack_traction')
 ]
 
 unknowns_to_knowns = dict(
@@ -26,17 +26,13 @@ field_units = dict(
     crack_traction = 'traction'
 )
 
+dimensionless_scaling = dict()
+dimensionless_scaling['displacement'] = lambda p: 1.0#p['shear_modulus'] / p['length_scale']
+dimensionless_scaling['traction'] = lambda p: 1.0
+
 scaling = dict()
-scaling['displacement'] = lambda p: 1.0#p['shear_modulus'] / p['length_scale']
-scaling['traction'] = lambda p: 1.0
-
-solution_scaling = dict()
 for k in field_types:
-    solution_scaling[k] = scaling[field_units[k[1]]]
-
-integral_scaling = dict()
-for k in field_types:
-    integral_scaling[k] = scaling[field_units[unknowns_to_knowns[k[1]]]]
+    scaling[k] = dimensionless_scaling[field_units[k[1]]]
 
 '''
 Returns the elastic kernels (also called Green's functions or
@@ -57,22 +53,17 @@ def get_elastic_kernels(tbem, params):
     )
     return kernels
 
-def bie_from_field_name(field_name):
+def bie_from_field_name(mesh_name, field_name, params):
+    known_field = unknowns_to_knowns[field_name]
     if field_units[field_name] == 'displacement':
-        return get_displacement_BIE
-    elif field_units[field_name] == 'traction':
-        return get_traction_BIE
-    return None
-
-def terms_from_field_name(field_name):
-    return bie_spec.bie_from_field_name(which_bie)(
-        'continuous', which_bie, self.params
-    )['terms']
+        return get_traction_BIE(mesh_name, known_field, params)
+    else:
+        return get_displacement_BIE(mesh_name, known_field, params)
 
 def get_BIEs(params):
     bies = []
-    for name, field_name in field_types:
-        bies.append(bie_from_field_name(field_name)(name, field_name, params))
+    for mesh_name, field_name in field_types:
+        bies.append(bie_from_field_name(mesh_name, field_name, params))
     return bies
 
 def get_displacement_BIE(obs_mesh_name, displacement_field, params):
