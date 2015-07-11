@@ -20,7 +20,7 @@ def test_gravity():
         poisson_ratio = 0.25,
         gravity = True,
         gravity_vector = [0.0, -9.8 * 2700],
-        dense = True
+        # dense = True
     )
     result = execute(2, es, params)
 
@@ -41,12 +41,12 @@ def test_gravity():
     sxy, syy = result.interior_traction(pts, normalsy)
     assert(np.allclose(np.min(uy), -1.10e-7, atol = 1e-9))
     assert(np.allclose(np.max(uy), 0.0, atol = 1e-9))
-    assert(np.allclose(np.min(syy), -19500, atol = 50.0))
-    assert(np.allclose(np.max(syy), 19500, atol = 50.0))
-    assert(np.allclose(np.min(sxy), -6500, atol = 50.0))
-    assert(np.allclose(np.max(sxy), 6500, atol = 50.0))
-    assert(np.allclose(np.min(sxx), -6500, atol = 50.0))
-    assert(np.allclose(np.max(sxx), 6500, atol = 50.0))
+    assert(np.allclose(np.min(syy), -19500, atol = 60.0))
+    assert(np.allclose(np.max(syy), 19500, atol = 60.0))
+    assert(np.allclose(np.min(sxy), -6500, atol = 60.0))
+    assert(np.allclose(np.max(sxy), 6500, atol = 60.0))
+    assert(np.allclose(np.min(sxx), -6500, atol = 60.0))
+    assert(np.allclose(np.max(sxx), 6500, atol = 60.0))
 
 if __name__ == '__main__':
     test_gravity()

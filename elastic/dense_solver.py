@@ -15,9 +15,12 @@ def dense_solver(tbem, params, dof_map, constraint_matrix, systems):
 
     homogenized_cm = tbem.homogenize_constraints(constraint_matrix)
     np_op = dense_matrix(tbem, params, dof_map, homogenized_cm, systems)
+    log_condition_number(np_op)
     soln = np.linalg.solve(np_op, rhs)
 
-    unknowns = iterative_solver.handle_solution(tbem, homogenized_cm, dof_map, soln)
+    unknowns = iterative_solver.handle_solution(
+        tbem, homogenized_cm, dof_map, params, soln
+    )
     iterative_solver.add_bcs(tbem, constraint_matrix, dof_map, unknowns)
 
     log_finish_solve()
@@ -26,18 +29,24 @@ def dense_solver(tbem, params, dof_map, constraint_matrix, systems):
 def log_start_solve(n_dofs):
     logger.info('Dense linear solve for system with ' + str(n_dofs) + ' rows.')
 
+def log_condition_number(matrix):
+    cond = np.linalg.cond(matrix)
+    logger.info('Linear system has condition number: ' + str(cond))
+    if cond > 10e12:
+        logger.warning('Linear system has very large condition number: ' + str(cond))
+
 def log_finish_solve():
     logger.info('Finished dense linear solve')
 
 def dense_matrix(tbem, params, dof_map, constraint_matrix, systems):
-    matrix = uncondensed_dense_matrix(tbem, params, dof_map, systems, True)
+    matrix = uncondensed_dense_matrix(tbem, params, dof_map, systems)
     condensed_op = tbem.condense_matrix(constraint_matrix, constraint_matrix, matrix)
     op_data = condensed_op.data()
     n_condensed = np.sqrt(op_data.size)
     np_op = op_data.reshape((n_condensed, n_condensed))
     return np_op
 
-def uncondensed_dense_matrix(tbem, params, dof_map, systems, include_mass):
+def uncondensed_dense_matrix(tbem, params, dof_map, systems):
     n = dof_map.n_total_dofs
     matrix = np.zeros((n, n))
 
@@ -45,16 +54,17 @@ def uncondensed_dense_matrix(tbem, params, dof_map, systems, include_mass):
         for op in s.terms:
             if op.input_type()[1] == 'ones':
                 continue
-            unknown_field = bie_spec.unknowns_to_knowns[s.output_type()[1]]
-
+            if op.is_mass:
+                continue
             start_row, end_row, start_col, end_col = dof_map.get_matrix_block(
-                (s.output_type()[0], unknown_field), op.input_type()
+                s.output_type(), op.input_type()
             )
-            row_scaling = bie_spec.scaling[s.output_type()](params)
-            col_scaling = bie_spec.scaling[op.input_type()](params)
+            row_scaling = bie_spec.integral_scaling[s.output_type()](params)
+            col_scaling = bie_spec.integral_scaling[op.input_type()](params)
             chunk = op.to_numpy_matrix() * row_scaling * col_scaling
             log_dense_system_insertion(
-                start_row, end_row, start_col, end_col, s.output_type(), op.spec
+                start_row, end_row, start_col, end_col, s.output_type(),
+                op.spec, row_scaling * col_scaling
             )
             matrix[start_row:end_row, start_col:end_col] += chunk
     matrix = tbem.DenseOperator(n, n, matrix.reshape(n * n))

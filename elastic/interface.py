@@ -61,10 +61,14 @@ class Executor(object):
     def assemble(self):
         n_facets = str(self.meshes['all_mesh'].n_facets())
         logger.info('Assembling linear system for ' + n_facets + ' facets')
-        #TODO: Use non-dense evaluator!
-        evaluator = compute.DenseIntegralEvaluator(
+
+        evaluator = compute.FMMIntegralEvaluator(
             self.tbem, self.params, self.meshes['all_mesh']
         )
+        if self.params['dense']:
+            evaluator = compute.DenseIntegralEvaluator(
+                self.tbem, self.params, self.meshes['all_mesh']
+            )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
         bies = bie_spec.get_BIEs(self.params)
@@ -116,6 +120,10 @@ class Result(object):
         )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
+        n_dofs = len(self.soln[('continuous', 'displacement')][0])
+        self.soln[('continuous', 'ones')] = [
+            np.ones(n_dofs) for d in range(self.tbem.dim)
+        ]
         return system.evaluate_interior(dispatcher, self.soln, pts, normals, terms)
 
     @log_exceptions

@@ -27,12 +27,16 @@ field_units = dict(
 )
 
 dimensionless_scaling = dict()
-dimensionless_scaling['displacement'] = lambda p: 1.0#p['shear_modulus'] / p['length_scale']
-dimensionless_scaling['traction'] = lambda p: 1.0
+dimensionless_scaling['displacement'] = lambda p: p['shear_modulus']
+dimensionless_scaling['traction'] = lambda p: p['length_scale']
 
-scaling = dict()
+solution_scaling = dict()
 for k in field_types:
-    scaling[k] = dimensionless_scaling[field_units[k[1]]]
+    solution_scaling[k] = dimensionless_scaling[field_units[k[1]]]
+
+integral_scaling = dict()
+for k in field_types:
+    integral_scaling[k] = dimensionless_scaling[unknowns_to_knowns[field_units[k[1]]]]
 
 '''
 Returns the elastic kernels (also called Green's functions or

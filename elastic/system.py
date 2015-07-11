@@ -9,20 +9,17 @@ def form_linear_systems(bies, dispatcher):
         for term in spec['terms']:
             integrals.append(dispatcher.compute_boundary(term))
         integrals.append(dispatcher.compute_mass(spec['mass_term']))
-        systems.append(BIE(integrals, spec))
+        systems.append(BIE(integrals, spec, bie_spec.unknowns_to_knowns))
     return systems
 
 def evaluate_linear_systems(bies, fields):
     dim = len(fields.values()[0])
     result = dict()
     for b in bies:
-        unknown_field = bie_spec.unknowns_to_knowns[b.output_type()[1]]
-        #TODO: output_type is an unfortunate name here
-        output_type = (b.output_type()[0], unknown_field)
-        assert(output_type not in result)
+        assert(b.output_type() not in result)
         rows = b.evaluate(fields)
         assert(rows is not None)
-        result[output_type] = split_into_components(dim, rows)
+        result[b.output_type()] = split_into_components(dim, rows)
     return result
 
 def split_into_components(dim, field):

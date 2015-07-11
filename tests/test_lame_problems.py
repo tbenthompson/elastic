@@ -121,9 +121,9 @@ def bc_builder(type_fnc, bc_fnc):
 def lame(dim, bc_types):
     a = 0.8
     b = 1.9
-    p_a = 1.5
-    p_b = -1.0
-    E = 1.0
+    p_a = 1.5e6
+    p_b = -1.0e6
+    E = 80e9
     mu = 0.25
     G = E / (2 * (1 + mu))
     refine = dict()
@@ -151,8 +151,7 @@ def lame(dim, bc_types):
     params = dict(
         shear_modulus = G,
         poisson_ratio = mu,
-        solver_tol = solver_tol,
-        dense = True
+        solver_tol = solver_tol
     )
 
     result = execute(dim, es, params)

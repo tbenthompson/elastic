@@ -17,8 +17,8 @@ class Op(object):
     def select_input_field(self, fields):
         dim = len(fields.values()[0])
         f = fields.get(self.input_type(), None)
-        if self.spec['function'] == 'ones':
-            f = [np.ones(self.internal.n_cols() / dim) for d in range(dim)]
+        if self.input_type()[1] == 'ones':
+            print(f[0][0])
         return f
 
     def data(self):
@@ -53,13 +53,13 @@ class FMMIntegralEvaluator(IntegralEvaluator):
 
     def boundary(self, obs_mesh, src_mesh, kernel):
         mthd = self.make_integrator(kernel)
-        return tbem.boundary_operator(
+        return self.tbem.boundary_operator(
             obs_mesh, src_mesh, mthd, self.fmm_config, self.all_mesh
         )
 
     def interior(self, pts, normals, src_mesh, kernel):
         mthd = self.make_integrator(kernel)
-        return tbem.interior_operator(
+        return self.tbem.interior_operator(
             pts, normals, src_mesh, mthd, self.fmm_config, self.all_mesh
         )
 
@@ -105,9 +105,10 @@ class IntegralDispatcher(object):
         return Op(self.evaluator.mass(obs_mesh), mass_spec, True)
 
 class BIE(object):
-    def __init__(self, terms, spec):
+    def __init__(self, terms, spec, unknowns_to_knowns):
         self.terms = terms
         self.spec = spec
+        self.unknowns_to_knowns = unknowns_to_knowns
 
     def evaluate(self, fields):
         dim = len(fields.values()[0])
@@ -120,5 +121,8 @@ class BIE(object):
             result += t.apply(f)
         return result
 
+    #TODO: I think output_type is not the right name
     def output_type(self):
-        return (self.spec['obs_mesh'], self.spec['mass_term']['function'])
+        mass_fnc = self.spec['mass_term']['function']
+        unknown_field = self.unknowns_to_knowns[mass_fnc]
+        return (self.spec['obs_mesh'], unknown_field)
