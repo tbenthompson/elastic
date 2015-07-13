@@ -60,8 +60,13 @@ def create_problem():
 
     es = []
     es.extend(line([[0, c], [0, -c]], refine, "displacement", disp_bc))
-    es.append(Element([[0, -c], [L, -c]], [[0, 0], [0, 0]], "traction", refine))
-    es.extend(line([[L, -c], [L, c]], refine, "displacement", disp_bc))
+    es.append(traction([[0, -c], [L, -c]], [[0, 0], [0, 0]], "traction", refine))
+    es.extend(line(
+        [[L, -c], [L, c]],
+        refine,
+        lambda pts: displacement(
+        "displacement",
+        disp_bc))
     es.append(Element([[L, c], [0, c]], [[0, 0], [0, 0]], "traction", refine))
     params = dict(
         shear_modulus = G,

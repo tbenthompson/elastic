@@ -1,8 +1,7 @@
 import numpy as np
 import os
 import subprocess
-from elastic.meshing import circle, sphere
-from elastic import execute, displacement, traction
+from elastic import execute, displacement, traction, circle, sphere
 from errors import check_error, check_interior_error
 
 import logging

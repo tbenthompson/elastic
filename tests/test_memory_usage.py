@@ -1,4 +1,4 @@
-from elastic import Element, execute
+from elastic import line, displacement, execute
 import multiprocessing
 import subprocess
 import time
@@ -26,10 +26,11 @@ def max_mem_requirements_estimate(refine, dim):
 
 def runner(refine):
     dim = 2
-    fileroot = 'memory_stress'
-    es = [
-        Element([[0, -1], [0, 1]], [[0, 1e10], [0, 1e10]], "displacement", refine)
-    ]
+    es = line(
+        [[0, -1], [0, 1]],
+        refine,
+        lambda pts: displacement(pts, [[0, 1e10], [0, 1e10]]),
+    )
     problem = execute(dim, es, dict(solver_tol = 1e-2))
 
 def measure_memory(refine):
@@ -42,16 +43,20 @@ def measure_memory(refine):
     p.join()
     return most_mem_used
 
+def count_meade02_vertices(mem1, mem2, level1, level2):
+    n_vertices_diff = 2 ** (level2 + 1) - 2 ** (level1 + 1)
+    mem_diff = mem2 - mem1
+    mem_per_vert = mem_diff * 1e6 / n_vertices_diff
+    max_vertices_meade02 = 800e9 / mem_per_vert
+    print(max_vertices_meade02)
+    return max_vertices_meade02
+
 def memory():
     level1 = 7
     level2 = 8
     mem1 = measure_memory(level1)
     mem2 = measure_memory(level2)
-    n_vertices_diff = 2 ** (level2 + 1) - 2 ** (level1 + 1)
-    mem_diff = mem2 - mem1
-    mem_per_vert = mem_diff * 1e6 / n_vertices_diff
-    max_vertices_meade02 = 800e9 / mem_per_vert
-    assert(max_vertices_meade02 > 10e6)
+    assert(count_meade02_vertices(mem1, mem2, level1, level2) > 10e6)
 
 if __name__ == '__main__':
     memory()
