@@ -58,11 +58,16 @@ def get_elastic_kernels(tbem, params):
     return kernels
 
 def bie_from_field_name(mesh_name, field_name, params):
-    known_field = unknowns_to_knowns[field_name]
-    if field_units[field_name] == 'displacement':
-        return get_traction_BIE(mesh_name, known_field, params)
+    if field_name == 'displacement':
+        return get_traction_BIE(mesh_name, 'traction', 'displacement', params)
+    elif field_name == 'traction':
+        return get_displacement_BIE(mesh_name, 'displacement', 'traction', params)
+    elif field_name == 'crack_traction':
+        return get_traction_BIE(mesh_name, 'crack_traction', 'crack_traction', params)
+    elif field_name == 'slip':
+        return get_traction_BIE(mesh_name, 'crack_traction', 'slip', params)
     else:
-        return get_displacement_BIE(mesh_name, known_field, params)
+        return 'not a valid bie'
 
 def get_BIEs(params):
     bies = []
@@ -70,26 +75,16 @@ def get_BIEs(params):
         bies.append(bie_from_field_name(mesh_name, field_name, params))
     return bies
 
-def get_displacement_BIE(obs_mesh_name, displacement_field, params):
+def get_displacement_BIE(obs_mesh_name, displacement_field, unknown_field, params):
     return dict(
         obs_mesh = obs_mesh_name,
+        unknown_field = unknown_field,
         mass_term = dict(
             src_mesh = obs_mesh_name,
             function = displacement_field,
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         terms = displacement_BIE_terms(obs_mesh_name, params['gravity'])
-    )
-
-def get_traction_BIE(obs_mesh_name, traction_field, params):
-    return dict(
-        obs_mesh = obs_mesh_name,
-        mass_term = dict(
-            src_mesh = obs_mesh_name,
-            function = traction_field,
-            multiplier = 1.0
-        ),
-        terms = traction_BIE_terms(obs_mesh_name, params['gravity'])
     )
 
 def displacement_BIE_terms(obs_mesh_name, gravity):
@@ -99,21 +94,21 @@ def displacement_BIE_terms(obs_mesh_name, gravity):
             src_mesh = 'continuous',
             kernel = 'traction',
             function = 'displacement',
-            multiplier = -1.0
+            multiplier = 1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'continuous',
             kernel = 'displacement',
             function = 'traction',
-            multiplier = 1.0
+            multiplier = -1.0
         ),
         dict(
             obs_mesh = obs_mesh_name,
             src_mesh = 'discontinuous',
             kernel = 'traction',
             function = 'slip',
-            multiplier = -1.0
+            multiplier = 1.0
         )
     ]
     if gravity:
@@ -122,9 +117,21 @@ def displacement_BIE_terms(obs_mesh_name, gravity):
             src_mesh = 'continuous',
             kernel = 'gravity_displacement',
             function = 'ones',
-            multiplier = 1.0
+            multiplier = -1.0
         ))
     return terms
+
+def get_traction_BIE(obs_mesh_name, traction_field, unknown_field, params):
+    return dict(
+        obs_mesh = obs_mesh_name,
+        unknown_field = unknown_field,
+        mass_term = dict(
+            src_mesh = obs_mesh_name,
+            function = traction_field,
+            multiplier = 1.0
+        ),
+        terms = traction_BIE_terms(obs_mesh_name, params['gravity'])
+    )
 
 def traction_BIE_terms(obs_mesh_name, gravity):
     terms = [

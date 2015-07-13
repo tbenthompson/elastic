@@ -31,10 +31,10 @@ def split_into_components(dim, field):
         result.append(field[start_dof:end_dof])
     return result
 
-def evaluate_interior(dispatcher, soln, pts, normals, terms):
+def evaluate_interior(dispatcher, soln, pts, normals, bie):
     dim = pts.shape[1]
     result = np.zeros(pts.shape[0] * dim)
-    for t in terms:
+    for t in bie['terms']:
         op = dispatcher.compute_interior(t, pts, normals)
         f = op.select_input_field(soln)
         if f is None:
@@ -43,6 +43,7 @@ def evaluate_interior(dispatcher, soln, pts, normals, terms):
         # The integral equation is set up like u(x) + Integrals = 0.
         # We want u(x) = -Integrals
         result -= op.apply(f)
+    result *= bie['mass_term']['multiplier']
     out = []
     for d in range(dim):
         start_idx = d * pts.shape[0]
@@ -57,3 +58,13 @@ def scale(unknowns, scalings, params, inverse):
             factor = 1.0 / factor
         for d in range(len(values)):
             values[d] *= factor
+
+def add_constant_fields(unknowns, zeros):
+    scale_factor = 1.0
+    if zeros:
+        scale_factor = 0.0
+    dim = len(unknowns[('continuous', 'displacement')])
+    n_dofs_continuous = len(unknowns[('continuous', 'displacement')][0])
+    unknowns[('continuous', 'ones')] = [
+        scale_factor * np.ones(n_dofs_continuous) for d in range(dim)
+    ]

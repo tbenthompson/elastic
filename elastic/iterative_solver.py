@@ -1,36 +1,25 @@
 import bie_spec
-from constraints import distribute, condense
-from system import evaluate_linear_systems, scale
+import constraints
+import system
 
 import numpy as np
 import scipy.sparse.linalg
 import logging
 logger = logging.getLogger(__name__)
 
-def info(abc):
-    print(np.max(abc[('continuous', 'traction')]))
-    print(np.max(abc[('continuous', 'displacement')]))
-
 def build_matrix_vector_product(
     tbem, params, dof_map, constraint_matrix, systems, compute_rhs = False):
     def mat_vec(v):
-        distributed = distribute(tbem, constraint_matrix, dof_map.n_total_dofs, v)
-        unknowns = dof_map.expand(distributed)
-        if compute_rhs:
-            n_dofs = len(unknowns[('continuous', 'displacement')][0])
-            unknowns[('continuous', 'ones')] = [
-                np.ones(n_dofs) for d in range(tbem.dim)
-            ]
-        else:
-            scale(unknowns, bie_spec.integral_scaling, params, False)
-            n_dofs = len(unknowns[('continuous', 'displacement')][0])
-            unknowns[('continuous', 'ones')] = [
-                np.zeros(n_dofs) for d in range(tbem.dim)
-            ]
-        eval = evaluate_linear_systems(systems, unknowns)
-        scale(eval, bie_spec.integral_scaling, params, False)
+        unknowns = dof_map.expand(constraints.distribute(
+            tbem, constraint_matrix, dof_map.n_total_dofs, v
+        ))
+        if not compute_rhs:
+            system.scale(unknowns, bie_spec.integral_scaling, params, False)
+        system.add_constant_fields(unknowns, not compute_rhs)
+        eval = system.evaluate_linear_systems(systems, unknowns)
+        system.scale(eval, bie_spec.integral_scaling, params, False)
         concatenated = dof_map.concatenate(eval)
-        out = condense(tbem, constraint_matrix, concatenated)
+        out = constraints.condense(tbem, constraint_matrix, concatenated)
         logger.debug("iteration: " + str(mat_vec.n_its))
         mat_vec.n_its += 1
         return out
@@ -44,13 +33,14 @@ def calculate_rhs(tbem, params, dof_map, constraint_matrix, systems):
     return -rhs_mat_vec(np.zeros(dof_map.n_total_dofs))
 
 def handle_solution(tbem, homogenized_cm, dof_map, params, soln):
-    distributed = distribute(tbem, homogenized_cm, dof_map.n_total_dofs, soln)
-    unknowns = dof_map.expand(distributed)
-    scale(unknowns, bie_spec.integral_scaling, params, False)
+    unknowns = dof_map.expand(constraints.distribute(
+        tbem, homogenized_cm, dof_map.n_total_dofs, soln
+    ))
+    system.scale(unknowns, bie_spec.integral_scaling, params, False)
     return unknowns
 
 def add_bcs(tbem, constraint_matrix, dof_map, unknowns):
-    inhomogeneous_component = distribute(
+    inhomogeneous_component = constraints.distribute(
         tbem, constraint_matrix, dof_map.n_total_dofs,
         np.zeros(dof_map.n_total_dofs)
     )

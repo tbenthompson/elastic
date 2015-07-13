@@ -1,13 +1,16 @@
-from elastic import Element, execute, Result
+from elastic import line, slip, traction, execute, Result
 import numpy as np
 import os
 
+import logging
+logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.DEBUG)
+
 def test_save_load():
-    es = [
-        Element([[20, 0], [-20, 0]], [[0, 0], [0, 0]], "traction", 6),
-        Element([[-1, -1], [1, 1]], [[1, 1], [1, 1]], "slip", 6)
-    ]
-    result = execute(2, es, dict(dense = True))
+    es = line([[20, 0], [-20, 0]], 6, lambda pts: traction(pts, [[0, 0], [0, 0]])) +\
+        line([[-1, -1], [0, 0]], 6, lambda pts: slip(pts, [[1, 1], [1, 1]]))
+    result = execute(2, es, dict(
+        dense = True
+    ))
     filename = os.path.join('tests', 'saved_data')
     result.save(filename)
 

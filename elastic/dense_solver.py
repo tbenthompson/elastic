@@ -54,8 +54,6 @@ def uncondensed_dense_matrix(tbem, params, dof_map, systems):
         for op in s.terms:
             if op.input_type()[1] == 'ones':
                 continue
-            if op.is_mass:
-                continue
             start_row, end_row, start_col, end_col = dof_map.get_matrix_block(
                 s.output_type(), op.input_type()
             )
@@ -75,4 +73,14 @@ def log_skipped_mass(output_type, mass_spec):
 
 def log_dense_system_insertion(*data):
     logger.debug('Insert operator into dense system: ' + str(data))
+
+def plot_symmetry(np_op):
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.imshow(np.log10(np.abs(np_op)), vmin = 3, vmax = 10)
+    plt.colorbar()
+    plt.figure()
+    plt.imshow(np.log10(np.abs(np_op.T - np_op)))
+    plt.colorbar()
+    plt.show()
 

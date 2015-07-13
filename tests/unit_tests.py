@@ -1,7 +1,8 @@
 import tbempy.TwoD
 import numpy as np
 from elastic.bie_spec import field_types, get_elastic_kernels, get_BIEs
-from elastic.constraints import form_displacement_constraints, gather_bc_constraints
+from elastic.constraints import form_displacement_constraints, gather_bc_constraints,\
+    Term, transform_element_local_term
 from elastic.compute import IntegralDispatcher, Op
 from elastic.system import split_into_components, scale
 from elastic.dof_handling import DOFMap
@@ -150,3 +151,20 @@ def test_op_apply():
 def test_split_into_components():
     result = split_into_components(2, np.array([1,2,3,4]))
     np.testing.assert_equal(result, [[1,2],[3,4]])
+
+def test_transform_element_local_term_normal():
+    t = Term('slip', 'normal', 1.0)
+    result = transform_element_local_term(2, t, [[0, 0], [1, 0]])
+    assert(result[0].component == 0)
+    assert(result[0].weight == 0)
+    assert(result[1].component == 1)
+    assert(result[1].weight == 1)
+
+def test_transform_element_local_term_multiplier():
+    t = Term('slip', 'normal', -2.0)
+    result = transform_element_local_term(2, t, [[0, 0], [1, 0]])
+    # assert(result[1].component ==
+
+def test_transform_element_local_term_tangential():
+    t = Term('slip', 'tangential0', 1.0)
+    result = transform_element_local_term(2, t, [[0, 0], [1, 0]])

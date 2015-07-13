@@ -1,14 +1,15 @@
-from elastic.mesh_gen import circle
-from elastic import execute
+from elastic import execute, circle, displacement
 from errors import check_error
 import numpy as np
 
 def check_zero_traction(disp_bc):
-    es = circle([0, 0], 1.0, 3, 'displacement', disp_bc, False)
+    es = circle([0, 0], 1.0, 3,
+        lambda pts: displacement(pts, [disp_bc(pts[0, :]), disp_bc(pts[1, :])]),
+    False)
     solved = execute(2, es, dict(dense = True))
     for d in range(2):
-        t_component = solved.soln[('displacement', 'traction')][d]
-        mu = solved.input.params['shear_modulus']
+        t_component = solved.soln[('continuous', 'traction')][d]
+        mu = solved.params['shear_modulus']
         error = np.sqrt(np.sum((t_component / mu) ** 2))
         assert(error < 0.006)
 

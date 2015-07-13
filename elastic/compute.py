@@ -17,8 +17,6 @@ class Op(object):
     def select_input_field(self, fields):
         dim = len(fields.values()[0])
         f = fields.get(self.input_type(), None)
-        if self.input_type()[1] == 'ones':
-            print(f[0][0])
         return f
 
     def data(self):
@@ -121,8 +119,5 @@ class BIE(object):
             result += t.apply(f)
         return result
 
-    #TODO: I think output_type is not the right name
     def output_type(self):
-        mass_fnc = self.spec['mass_term']['function']
-        unknown_field = self.unknowns_to_knowns[mass_fnc]
-        return (self.spec['obs_mesh'], unknown_field)
+        return (self.spec['obs_mesh'], self.spec['unknown_field'])

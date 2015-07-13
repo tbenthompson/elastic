@@ -1,4 +1,5 @@
 from collections import namedtuple
+import numpy as np
 
 def form_traction_constraints(tbem, dof_map, meshes):
     return []
@@ -29,6 +30,8 @@ Term = namedtuple('Term', ['field', 'component', 'weight'])
 Constraint = namedtuple('Constraint', ['terms', 'rhs'])
 BCConstraint = namedtuple('BCConstraint', ['field', 'component', 'rhs'])
 
+#TODO: Much of this BC constraint handling code would be better in C++...
+#TODO: Need some tests for element local transformations.
 def gather_bc_constraints(tbem, dof_map, es):
     tbempy_constraints = []
     counts = dict(discontinuous = 0, continuous = 0)
@@ -47,14 +50,49 @@ def convert_helper(tbem, dof_map, element_idx, basis_idx, c, element):
     if type(c) is BCConstraint:
         c = Constraint(terms = [Term(c.field, c.component, 1.0)], rhs = c.rhs)
 
+    new_terms = add_element_local_terms(tbem.dim, c.terms, element['pts'])
+
     tbempy_terms = []
-    for t in c.terms:
+    for t in new_terms:
         component_start = dof_map.get(element['type'], t.field, t.component)
         dof = component_start + tbem.dim * element_idx + basis_idx
         tbempy_terms.append(tbem.LinearTerm(dof, t.weight))
-    assert(len(tbempy_terms) == len(c.terms))
 
     return tbem.ConstraintEQ(tbempy_terms, c.rhs[basis_idx])
+
+def add_element_local_terms(dim, terms, pts):
+    new_terms = []
+    for t in terms:
+        if type(t.component) is not str:
+            new_terms.append(t)
+            continue
+        new_terms.extend(transform_element_local_term(dim, t, pts))
+    return new_terms
+
+def transform_element_local_term(dim, term, pts):
+    if term.component == 'tangential0':
+        direction = tangential_vector0(pts)
+    elif term.component == 'tangential1' and tbem.dim == 3:
+        return 'unimplemented!'
+    elif term.component == 'normal':
+        direction = normal_vector(pts)
+    else:
+        return 'Not a valid element local direction.'
+    return [Term(term.field, d, direction[d] * term.weight) for d in range(dim)]
+
+def tangential_vector0(pts):
+    vector = np.array([
+        pts[1][0] - pts[0][0],
+        pts[1][1] - pts[0][1]
+    ])
+    return vector / np.linalg.norm(vector)
+
+def normal_vector(pts):
+    vector = np.array([
+        -(pts[1][1] - pts[0][1]),
+        pts[1][0] - pts[0][0]
+    ])
+    return vector / np.linalg.norm(vector)
 
 def build_constraint_matrix(tbem, dof_map, elements, meshes):
     bc_constraints = gather_bc_constraints(tbem, dof_map, elements)

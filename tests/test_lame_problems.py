@@ -128,7 +128,7 @@ def lame(dim, bc_types):
     refine = dict()
     refine[2] = 6
     refine[3] = 3
-    solver_tol = 1e-5
+    solver_tol = 1e-3
 
     disp_bc = build_disp_bc[dim](a, b, p_a, p_b, E, mu)
     trac_bc = build_trac_bc[dim](a, b, p_a, p_b, E, mu)
@@ -150,7 +150,8 @@ def lame(dim, bc_types):
     params = dict(
         shear_modulus = G,
         poisson_ratio = mu,
-        solver_tol = solver_tol
+        solver_tol = solver_tol,
+        # dense = True
     )
 
     result = execute(dim, es, params)

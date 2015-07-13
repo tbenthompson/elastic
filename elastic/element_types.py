@@ -24,12 +24,12 @@ def traction(pts, bc):
 
 def free_slip(pts, normal_displacement, shear_stress):
     cs = [
-        BCConstraint('traction', 'tangential0', shear_stress[0]),
-        BCConstraint('displacement', 'normal', normal_displacement)
+        BCConstraint('crack_traction', 'tangential0', shear_stress[0]),
+        BCConstraint('slip', 'normal', normal_displacement)
     ]
     dim = len(pts)
     if dim == 3:
-        cs.append(BCConstraint('traction', 'tangential1', shear_stress[1]))
+        cs.append(BCConstraint('crack_traction', 'tangential1', shear_stress[1]))
     return dict(pts = pts, type = 'discontinuous', constraints = cs)
 
 def slip(pts, bc):
@@ -38,7 +38,7 @@ def slip(pts, bc):
         pts = pts,
         type = 'discontinuous',
         constraints = [
-            BCConstraint('displacement', d1, [bc[d2][d1] for d2 in range(dim)])
+            BCConstraint('slip', d1, [bc[d2][d1] for d2 in range(dim)])
             for d1 in range(dim)
         ]
     )
@@ -49,7 +49,7 @@ def crack(pts, bc):
         pts = pts,
         type = 'discontinuous',
         constraints = [
-            BCConstraint('displacement', d1, [bc[d2][d1] for d2 in range(dim)])
+            BCConstraint('crack_traction', d1, [bc[d2][d1] for d2 in range(dim)])
             for d1 in range(dim)
         ]
     )

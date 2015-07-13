@@ -33,7 +33,7 @@ def log_exceptions(f):
 def execute(dim, elements, input_params):
     log_begin(len(elements), input_params)
     executor = Executor(dim, elements, input_params)
-    return executor.solve()
+    return executor.solve(executor.assemble())
 
 def log_begin(n_elements, input_params):
     logger.info('')
@@ -46,6 +46,9 @@ def log_begin(n_elements, input_params):
 
 class Executor(object):
     def __init__(self, dim, elements, input_params):
+        self.setup(dim, elements, input_params)
+
+    def setup(self, dim, elements, input_params):
         self.arguments = (dim, elements, input_params)
         self.tbem = get_tbem(dim)
         self.params = defaults.add_default_parameters(input_params)
@@ -56,7 +59,6 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, elements, self.meshes
         )
-        self.assemble()
 
     def assemble(self):
         n_facets = str(self.meshes['all_mesh'].n_facets())
@@ -72,16 +74,17 @@ class Executor(object):
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
         bies = bie_spec.get_BIEs(self.params)
-        self.systems = system.form_linear_systems(bies, dispatcher)
+        assembled_systems = system.form_linear_systems(bies, dispatcher)
         logger.info('Finished linear system assembly')
+        return assembled_systems
 
-    def solve(self):
+    def solve(self, assembled_systems):
         solve_fnc = iterative_solver.iterative_solver
         if self.params['dense']:
             solve_fnc = dense_solver.dense_solver
         soln = solve_fnc(
             self.tbem, self.params, self.dof_map,
-            self.constraint_matrix, self.systems
+            self.constraint_matrix, assembled_systems
         )
         return Result(self.tbem, soln, self.meshes, self.params, self.arguments)
 
@@ -111,30 +114,26 @@ class Result(object):
 
     def _interior_eval(self, pts, normals, which_bie):
         gravity = self.params['gravity']
-        terms = bie_spec.bie_from_field_name(
+        bie = bie_spec.bie_from_field_name(
             'continuous', bie_spec.unknowns_to_knowns[which_bie], self.params
-        )['terms']
+        )
         #TODO: Allow use of non-dense evaluator
         evaluator = compute.DenseIntegralEvaluator(
             self.tbem, self.params, self.meshes['all_mesh']
         )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
-        n_dofs = len(self.soln[('continuous', 'displacement')][0])
-        self.soln[('continuous', 'ones')] = [
-            np.ones(n_dofs) for d in range(self.tbem.dim)
-        ]
-        return system.evaluate_interior(dispatcher, self.soln, pts, normals, terms)
+        system.add_constant_fields(self.soln, False)
+        return system.evaluate_interior(dispatcher, self.soln, pts, normals, bie)
 
     @log_exceptions
     def save(self, filename):
+        #TODO: at some point, include some information about versioning
         with open(filename, 'w') as f:
             np.savez(
                 f,
-                dim = self.tbem.dim,
                 soln = self.soln,
-                elements = self.elements,
-                params = self.params
+                arguments = self.arguments
             )
 
     @staticmethod
@@ -142,16 +141,15 @@ class Result(object):
     def load(filename):
         with open(filename, 'r') as f:
             npzfile = np.load(f)
+            arguments = npzfile['arguments']
+            dim = arguments[0]
+            elements = arguments[1]
+            input_params = arguments[2]
             soln = npzfile['soln'].tolist()
-            raw_elements = npzfile['elements'].tolist()
-            elements = [
-                input_builder.Element(*r) for r in raw_elements
-            ]
-            params = npzfile['params'].tolist()
-            dim = npzfile['dim']
-        tbem = get_tbem(dim)
-        input = input_builder.build_input(tbem, elements, params)
-        return Result(tbem, soln, input)
+            tbem = get_tbem(dim)
+            params = defaults.add_default_parameters(input_params)
+            meshes = meshing.build_meshes(tbem, bie_spec.mesh_types, elements)
+        return Result(tbem, soln, meshes, params, arguments)
 
 def get_tbem(dim):
     if dim == 2:

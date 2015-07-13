@@ -39,7 +39,10 @@ class DOFMap(object):
         result = np.empty(self.n_total_dofs)
         for mesh_and_field, dofs in self.map.iteritems():
             for d in range(self.dim):
-                result[dofs[d]:dofs[d+1]] = fields[mesh_and_field][d]
+                if mesh_and_field in fields:
+                    result[dofs[d]:dofs[d+1]] = fields[mesh_and_field][d]
+                else:
+                    result[dofs[d]:dofs[d+1]] = 0
         return result
 
     def get_matrix_block(self, output_type, input_type):

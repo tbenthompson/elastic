@@ -1,8 +1,7 @@
 import h5py
 import numpy as np
 import subprocess
-from elastic.mesh_gen import line
-from elastic import execute, Element
+from elastic import execute, line, displacement, traction
 from errors import check_error, check_interior_error
 
 def G_from_E_nu(E, nu):
@@ -47,33 +46,34 @@ def stress(pt):
 
 def trac_bc(pt):
     S = stress(pt)
-    if pt[0] < 0.001:
+    if pt[0] == 0:
         return S[0], S[2]
-    elif pt[0] > 0.99 * L:
+    elif pt[0] == L:
         return -S[0], -S[2]
-    else:
-        return 'bad traction location'
 
 
 def create_problem():
     refine = 6
 
     es = []
-    es.extend(line([[0, c], [0, -c]], refine, "displacement", disp_bc))
-    es.append(traction([[0, -c], [L, -c]], [[0, 0], [0, 0]], "traction", refine))
-    es.extend(line(
-        [[L, -c], [L, c]],
-        refine,
-        lambda pts: displacement(
-        "displacement",
-        disp_bc))
-    es.append(Element([[L, c], [0, c]], [[0, 0], [0, 0]], "traction", refine))
+    es.extend(line([[0, c], [0, -c]], refine,
+        lambda pts: displacement(pts, [disp_bc(pts[0, :]), disp_bc(pts[1, :])])
+    ))
+    es.extend(line([[0, -c], [L, -c]], refine,
+        lambda pts: traction(pts, [[0, 0], [0, 0]])
+    ))
+    es.extend(line([[L, -c], [L, c]], refine,
+        lambda pts: displacement(pts, [disp_bc(pts[0, :]), disp_bc(pts[1, :])])
+    ))
+    es.extend(line([[L, c], [0, c]], refine,
+        lambda pts: traction(pts, [[0, 0], [0, 0]])
+    ))
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
         solver_tol = 1e-6,
         singular_steps = 8,
-        obs_order = 3,
+        obs_order = 4,
         sinh_order = 7,
         dense = True
     )
@@ -82,8 +82,7 @@ def create_problem():
 def test_beam_bend():
     es, params = create_problem()
     result = execute(2, es, params)
-    check_error(result, 'traction', 'displacement', disp_bc, 2e-3)
-    check_error(result, 'displacement', 'traction', trac_bc, 3e-2)
+    check_error(result, 'continuous', 'displacement', disp_bc, 2e-3)
 
     x, y = np.meshgrid(np.linspace(0, L, 20), np.linspace(-c, c, 20))
     pts = np.array([x.flatten(), y.flatten()]).T

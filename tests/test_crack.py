@@ -1,7 +1,7 @@
 import subprocess
 import os
 import numpy as np
-from elastic import Element, execute
+from elastic import line, crack, free_slip, execute
 from errors import check_error
 
 import logging
@@ -18,11 +18,8 @@ def build_slip_bc(a, stress_drop, G, nu):
 
 def create_problem(a, stress_drop, G, nu, bc_type):
     refine = 6
-    bc = [[stress_drop, 0], [stress_drop, 0]]
     es = []
-    es.append(Element([[-a, 0], [-a/1.3, 0]], bc, bc_type, refine))
-    es.append(Element([[-a/1.3, 0], [a/1.3, 0]], bc, bc_type, refine))
-    es.append(Element([[a/1.3, 0], [a, 0]], bc, bc_type, refine))
+    es.extend(line([[-a, 0], [a, 0]], refine, lambda pts: bc_type(pts, stress_drop)))
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu
@@ -39,13 +36,13 @@ def griffith_soln(bc_type):
     slip_bc = build_slip_bc(a, stress_drop, G, nu)
     es, params = create_problem(a, stress_drop, G, nu, bc_type)
     problem = execute(2, es, params)
-    check_error(problem, 'crack_traction', 'slip', slip_bc, 4e-2)
+    check_error(problem, 'discontinuous', 'slip', slip_bc, 4e-2)
 
 def test_crack():
-    griffith_soln("crack_traction")
+    griffith_soln(lambda pts, bc: crack(pts, [[bc, 0], [bc, 0]]))
 
 def test_free_slip():
-    griffith_soln("free_slip_traction")
+    griffith_soln(lambda pts, bc: free_slip(pts, [0, 0], [[bc, bc]]))
 
 if __name__ == '__main__':
     test_crack()
