@@ -6,6 +6,13 @@ def form_traction_constraints(tbem, dof_map, meshes):
 
 def form_slip_constraints(tbem, dof_map, meshes):
     return []
+    # continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
+    # one_component = tbem.convert_to_constraints(continuity)
+    # all_components = []
+    # for d in range(tbem.dim):
+    #     start_dof = dof_map.get('discontinuous', 'slip', d)
+    #     all_components.extend(tbem.shift_constraints(one_component, start_dof))
+    # return all_components
 
 def form_displacement_constraints(tbem, dof_map, meshes):
     continuity = tbem.mesh_continuity(meshes['continuous'].begin())

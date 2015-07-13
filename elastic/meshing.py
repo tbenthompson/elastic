@@ -11,6 +11,15 @@ def build_meshes(tbem, mesh_types, es):
         if len(elements) == 0:
             pts = np.empty((0, tbem.dim, tbem.dim))
         meshes[mesh_name] = tbem.Mesh(pts)
+
+    mp = tbem.MeshPreprocessor()
+    intersections = mp.find_intersections(
+        meshes['continuous'].facets, meshes['discontinuous'].facets
+    )
+    split_surface = mp.split_facets_at_intersections(
+        meshes['continuous'].facets, intersections
+    )
+    meshes['continuous'] = tbem.Mesh(split_surface)
     meshes['all_mesh'] = tbem.Mesh.create_union(meshes.values())
     return meshes
 
