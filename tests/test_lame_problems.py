@@ -151,7 +151,7 @@ def lame(dim, bc_types):
         shear_modulus = G,
         poisson_ratio = mu,
         solver_tol = solver_tol,
-        # dense = True
+        dense = True
     )
 
     result = execute(dim, es, params)

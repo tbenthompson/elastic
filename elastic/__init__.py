@@ -1,4 +1,5 @@
 from interface import execute, Result
+from adaptive_executor import adaptive_execute
 from element_types import displacement, traction, free_slip, crack,\
     slip, static_friction, mixed
 from meshing import line, circle, sphere

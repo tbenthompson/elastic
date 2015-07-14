@@ -52,9 +52,7 @@ def trac_bc(pt):
         return -S[0], -S[2]
 
 
-def create_problem():
-    refine = 6
-
+def create_problem(refine):
     es = []
     es.extend(line([[0, c], [0, -c]], refine,
         lambda pts: displacement(pts, [disp_bc(pts[0, :]), disp_bc(pts[1, :])])
@@ -79,9 +77,7 @@ def create_problem():
     )
     return es, params
 
-def test_beam_bend():
-    es, params = create_problem()
-    result = execute(2, es, params)
+def check_soln(result):
     check_error(result, 'continuous', 'displacement', disp_bc, 2e-3)
 
     x, y = np.meshgrid(np.linspace(0, L, 20), np.linspace(-c, c, 20))
@@ -95,6 +91,11 @@ def test_beam_bend():
     ty_interior = result.interior_traction(pts, normals_y)
     stress_interior = [tx_interior[0], tx_interior[1], ty_interior[0], ty_interior[1]]
     check_interior_error(pts, stress_interior, stress, 4e-3)
+
+def test_beam_bend():
+    es, params = create_problem(6)
+    result = execute(2, es, params)
+    check_soln(result)
 
 if __name__ == "__main__":
     test_beam_bend()

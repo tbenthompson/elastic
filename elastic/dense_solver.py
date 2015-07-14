@@ -16,6 +16,7 @@ def dense_solver(tbem, params, dof_map, constraint_matrix, systems):
     homogenized_cm = tbem.homogenize_constraints(constraint_matrix)
     np_op = dense_matrix(tbem, params, dof_map, homogenized_cm, systems)
     log_condition_number(np_op)
+    # plot_matrix(np_op)
     soln = np.linalg.solve(np_op, rhs)
 
     unknowns = iterative_solver.handle_solution(
@@ -74,13 +75,11 @@ def log_skipped_mass(output_type, mass_spec):
 def log_dense_system_insertion(*data):
     logger.debug('Insert operator into dense system: ' + str(data))
 
-def plot_symmetry(np_op):
+def plot_matrix(np_op):
     import matplotlib.pyplot as plt
-    plt.figure()
-    plt.imshow(np.log10(np.abs(np_op)), vmin = 3, vmax = 10)
-    plt.colorbar()
-    plt.figure()
-    plt.imshow(np.log10(np.abs(np_op.T - np_op)))
-    plt.colorbar()
-    plt.show()
+    plt.figure(facecolor = (0, 0, 0))
+    plt.imshow(np.log10(np.abs(np_op)), vmin = 3.0, vmax = 8.5)
+    plt.axis('off')
+    plt.gca().set_axis_bgcolor((0, 0, 0))
+    plt.savefig('matrix.pdf', facecolor = (0, 0, 0))
 

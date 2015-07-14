@@ -57,8 +57,9 @@ class FMMIntegralEvaluator(IntegralEvaluator):
 
     def interior(self, pts, normals, src_mesh, kernel):
         mthd = self.make_integrator(kernel)
-        return self.tbem.interior_operator(
-            pts, normals, src_mesh, mthd, self.fmm_config, self.all_mesh
+        #TODO: Switch to non-dense once available!
+        return self.tbem.dense_interior_operator(
+            pts, normals, src_mesh, mthd, self.all_mesh
         )
 
 class DenseIntegralEvaluator(IntegralEvaluator):

@@ -7,7 +7,7 @@ from elastic.compute import IntegralDispatcher, Op
 from elastic.system import split_into_components, scale
 from elastic.dof_handling import DOFMap
 from elastic.element_types import displacement, traction, slip
-from elastic.meshing import build_meshes, line
+from elastic.meshing import build_meshes, line, postprocess_meshes
 
 es = [
     displacement([[0, 0], [1, 0]], [[1, 2], [3, 4]]),
@@ -69,7 +69,7 @@ def test_concatenate():
     np.testing.assert_equal(dof_map.concatenate(input), [0, 1, 2, 3])
 
 def test_build_meshes():
-    result = build_meshes(tbempy.TwoD, ['continuous', 'discontinuous'], es)
+    result = build_meshes(tbempy.TwoD, es)
     assert(result['continuous'].n_facets() == 2)
     assert(result['discontinuous'].n_facets() == 0)
 
@@ -168,3 +168,12 @@ def test_transform_element_local_term_multiplier():
 def test_transform_element_local_term_tangential():
     t = Term('slip', 'tangential0', 1.0)
     result = transform_element_local_term(2, t, [[0, 0], [1, 0]])
+
+def test_build_meshes_cut_at_fault():
+    meshes = postprocess_meshes(tbempy.TwoD, build_meshes(tbempy.TwoD, [
+        dict(type = 'continuous', pts = [[-1, 0], [1, 0]]),
+        dict(type = 'discontinuous', pts = [[0, -1], [0, 1]])
+    ]))
+    assert(meshes['continuous'].n_facets() == 2)
+    assert(meshes['discontinuous'].n_facets() == 2)
+

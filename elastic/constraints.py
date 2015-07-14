@@ -6,13 +6,13 @@ def form_traction_constraints(tbem, dof_map, meshes):
 
 def form_slip_constraints(tbem, dof_map, meshes):
     return []
-    # continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
-    # one_component = tbem.convert_to_constraints(continuity)
-    # all_components = []
-    # for d in range(tbem.dim):
-    #     start_dof = dof_map.get('discontinuous', 'slip', d)
-    #     all_components.extend(tbem.shift_constraints(one_component, start_dof))
-    # return all_components
+    continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
+    one_component = tbem.convert_to_constraints(continuity)
+    all_components = []
+    for d in range(tbem.dim):
+        start_dof = dof_map.get('discontinuous', 'slip', d)
+        all_components.extend(tbem.shift_constraints(one_component, start_dof))
+    return all_components
 
 def form_displacement_constraints(tbem, dof_map, meshes):
     continuity = tbem.mesh_continuity(meshes['continuous'].begin())
@@ -38,7 +38,6 @@ Constraint = namedtuple('Constraint', ['terms', 'rhs'])
 BCConstraint = namedtuple('BCConstraint', ['field', 'component', 'rhs'])
 
 #TODO: Much of this BC constraint handling code would be better in C++...
-#TODO: Need some tests for element local transformations.
 def gather_bc_constraints(tbem, dof_map, es):
     tbempy_constraints = []
     counts = dict(discontinuous = 0, continuous = 0)

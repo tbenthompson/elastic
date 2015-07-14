@@ -13,7 +13,7 @@ def test_friction():
         lambda pts: mixed(pts, ['displacement', 'traction'], [[1, 0], [1, 0]])
     ))
     es.extend(line([[0, 0], [1, 0]], refine,
-        lambda pts: traction(pts, [[0, 0], [0, 0]])
+        lambda pts: mixed(pts, ['traction', 'displacement'], [[0, 0], [0, 0]])
     ))
     es.extend(line([[1, 0], [1, 1]], refine,
         lambda pts: mixed(pts, ['displacement', 'traction'], [[0, 0], [0, 0]])
@@ -22,9 +22,12 @@ def test_friction():
         lambda pts: free_slip(pts, [0, 0], [[0, 0]])
     ))
 
-    result = execute(2, es, dict(dense = True))
+    result = execute(2, es, dict(
+        dense = True
+    ))
 
     plotter(result, 'continuous', 'displacement', 0)
+    plotter(result, 'discontinuous', 'slip', 0)
 
     nx = 100
     ny = 100
@@ -49,7 +52,7 @@ def test_friction():
     syy_mat = syy.reshape(x_mat.shape)
 
     import matplotlib.pyplot as plt
-    plt.contourf(x_mat, y_mat, np.sqrt(ux_mat ** 2 + uy_mat ** 2))
+    plt.contourf(x_mat, y_mat, np.log10(np.abs(np.sqrt(syy_mat ** 2 + syy_mat ** 2))), levels = np.linspace(6.0, 12.0, 21), extend = 'both')
     plt.colorbar()
     def skip_and_make_vec(f, k):
         skipped = f[::k,::k]

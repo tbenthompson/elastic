@@ -75,6 +75,24 @@ def get_BIEs(params):
         bies.append(bie_from_field_name(mesh_name, field_name, params))
     return bies
 
+def residual_bie_from_field_name(mesh_name, field_name, params):
+    if field_name == 'displacement':
+        return get_displacement_BIE(mesh_name, 'displacement', 'displacement', params)
+    elif field_name == 'traction':
+        return get_traction_BIE(mesh_name, 'traction', 'traction', params)
+    elif field_name == 'crack_traction':
+        return get_displacement_BIE(mesh_name, 'slip', 'crack_traction', params)
+    elif field_name == 'slip':
+        return get_displacement_BIE(mesh_name, 'slip', 'slip', params)
+    else:
+        return 'not a valid bie'
+
+def get_residual_BIEs(params):
+    bies = []
+    for mesh_name, field_name in field_types:
+        bies.append(residual_bie_from_field_name(mesh_name, field_name, params))
+    return bies
+
 def get_displacement_BIE(obs_mesh_name, displacement_field, unknown_field, params):
     return dict(
         obs_mesh = obs_mesh_name,
