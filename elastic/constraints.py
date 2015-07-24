@@ -6,13 +6,13 @@ def form_traction_constraints(tbem, dof_map, meshes):
 
 def form_slip_constraints(tbem, dof_map, meshes):
     return []
-    continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
-    one_component = tbem.convert_to_constraints(continuity)
-    all_components = []
-    for d in range(tbem.dim):
-        start_dof = dof_map.get('discontinuous', 'slip', d)
-        all_components.extend(tbem.shift_constraints(one_component, start_dof))
-    return all_components
+    # continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
+    # one_component = tbem.convert_to_constraints(continuity)
+    # all_components = []
+    # for d in range(tbem.dim):
+    #     start_dof = dof_map.get('discontinuous', 'slip', d)
+    #     all_components.extend(tbem.shift_constraints(one_component, start_dof))
+    # return all_components
 
 def form_displacement_constraints(tbem, dof_map, meshes):
     continuity = tbem.mesh_continuity(meshes['continuous'].begin())
@@ -54,7 +54,7 @@ def gather_bc_constraints(tbem, dof_map, es):
 
 def convert_helper(tbem, dof_map, element_idx, basis_idx, c, element):
     if type(c) is BCConstraint:
-        c = Constraint(terms = [Term(c.field, c.component, 1.0)], rhs = c.rhs)
+        c = convert_bcconstraint_to_constraint(c)
 
     new_terms = add_element_local_terms(tbem.dim, c.terms, element['pts'])
 
@@ -114,3 +114,17 @@ def distribute(tbem, constraint_matrix, n_total_dofs, vec):
 
 def condense(tbem, constraint_matrix, concatenated):
     return tbem.condense_vector(constraint_matrix, concatenated)
+
+def convert_bcconstraint_to_constraint(c):
+    return Constraint(terms = [Term(c.field, c.component, 1.0)], rhs = c.rhs)
+
+def refine_constraint(c, end_idx):
+    if type(c) is BCConstraint:
+        c = convert_bcconstraint_to_constraint(c)
+    midpt_rhs = (c.rhs[0] + c.rhs[1]) / 2.0
+    if end_idx == 0:
+        rhs = [c.rhs[0], midpt_rhs]
+    else:
+        rhs = [midpt_rhs, c.rhs[0]]
+    return Constraint(terms = c.terms, rhs = rhs)
+

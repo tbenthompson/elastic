@@ -65,7 +65,7 @@ def crack(pts, bc):
         ]
     )
 
-def static_friction(pts, normal_displacement, friction_coefficient):
+def static_friction(pts, normal_field, normal_bc, friction_coefficient):
     dim = len(pts)
     if dim == 3:
         return 'unimplemented!'
@@ -74,6 +74,6 @@ def static_friction(pts, normal_displacement, friction_coefficient):
             Term('crack_traction', 'normal', friction_coefficient),
             Term('crack_traction', 'tangential0', -1.0),
         ], [0, 0]),
-        BCConstraint('slip', 'normal', normal_displacement)
+        BCConstraint(normal_field, 'normal', normal_bc)
     ]
     return dict(pts = pts, type = 'discontinuous', constraints = cs)

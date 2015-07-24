@@ -11,7 +11,7 @@ def build_meshes(tbem, es):
         if len(elements) == 0:
             pts = np.empty((0, tbem.dim, tbem.dim))
         meshes[mesh_name] = tbem.Mesh(pts)
-    return meshes
+    return meshes, element_lists
 
 def postprocess_meshes(tbem, meshes):
     meshes['continuous'] = split(tbem, meshes['continuous'], meshes['discontinuous'])

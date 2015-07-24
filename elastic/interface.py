@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 @log_exceptions
 def execute(dim, elements, input_params):
     log_begin(len(elements), input_params)
-    inputs = create_input(dim, elements, input_params)
-    executor = Executor(*inputs)
+    executor = Executor(dim, elements, input_params)
     return executor.run()
 
 def log_begin(n_elements, input_params):
@@ -33,23 +32,16 @@ def log_begin(n_elements, input_params):
         str(input_params)
     )
 
-def create_input(dim, elements, input_params):
-    arguments = (dim, elements, input_params)
-    tbem = get_tbem(dim)
-    params = defaults.add_default_parameters(input_params)
-    meshes = meshing.build_meshes(tbem, elements)
-    meshes = meshing.postprocess_meshes(tbem, meshes)
-    return arguments, params, meshes
-
 class Executor(object):
-    def __init__(self, arguments, params, meshes):
-        self.arguments = arguments
-        self.params = params
-        self.meshes = meshes
-        self.setup()
+    def __init__(self, *data):
+        self.setup(*data)
 
-    def setup(self):
-        self.tbem = get_tbem(self.arguments[0])
+    def setup(self, dim, elements, input_params):
+        self.arguments = (dim, elements, input_params)
+        self.tbem = get_tbem(dim)
+        self.params = defaults.add_default_parameters(input_params)
+        self.meshes, self.element_lists = meshing.build_meshes(self.tbem, elements)
+        self.meshes = meshing.postprocess_meshes(self.tbem, self.meshes)
         self.dof_map = dof_handling.DOFMap.build(
             self.tbem.dim, bie_spec.field_types, self.meshes
         )
@@ -112,6 +104,7 @@ class Result(object):
         return self._interior_eval(pts, normals, 'traction')
 
     def _interior_eval(self, pts, normals, which_bie):
+        self.log_interior_eval_begin(pts.shape[0], which_bie)
         gravity = self.params['gravity']
         bie = bie_spec.bie_from_field_name(
             'continuous', bie_spec.unknowns_to_knowns[which_bie], self.params
@@ -126,7 +119,19 @@ class Result(object):
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
         system.add_constant_fields(self.soln, False)
-        return system.evaluate_interior(dispatcher, self.soln, pts, normals, bie)
+        out = system.evaluate_interior(dispatcher, self.soln, pts, normals, bie)
+        self.log_interior_eval_done()
+        return out
+
+    def log_interior_eval_begin(self, n_pts, which_bie):
+        logger.info(
+            'Starting interior evaluation of ' + str(which_bie) + 's at ' +
+            str(n_pts) + ' points'
+        )
+
+    def log_interior_eval_done(self):
+        logger.info('Finished interior evaluation')
+
 
     @log_exceptions
     def save(self, filename):
