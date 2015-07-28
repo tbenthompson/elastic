@@ -1,8 +1,7 @@
 from elastic import execute, line, traction
 from errors import check_error, check_interior_error
 import numpy as np
-from stress_fnc import traction_bc_builder, form_stress_evaluators,\
-        calc_traction_builder
+from stress_fnc import *
 
 #stress function =
 #a / 6 * x^3 + b / 2 * x^2 * y + c / 2 * x * y^2 + d / 6 * y^3
@@ -27,7 +26,7 @@ def stress_fnc(x, y):
 
 
 def test_tractions():
-    calc_stress = form_stress_evaluators(stress_fnc, [0, 0])
+    calc_stress = calc_stress_builder(form_stress_lambdas(stress_fnc, [0, 0]))
     trac_calc = calc_traction_builder(calc_stress)
     trac_bc = traction_bc_builder(trac_calc)
 
@@ -66,3 +65,4 @@ def test_tractions():
     ty_interior = result.interior_traction(pts, normals_y)
     stress_interior = [tx_interior[0], tx_interior[1], ty_interior[0], ty_interior[1]]
     check_interior_error(pts, normals_x, stress_interior, calc_stress, 1e-3)
+

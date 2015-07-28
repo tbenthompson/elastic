@@ -2,7 +2,7 @@ import numpy as np
 import sympy
 from elastic import traction
 
-def form_stress_evaluators(stress_fnc, body_force):
+def form_stress_lambdas(stress_fnc, body_force):
     x, y = sympy.symbols('x, y')
     f = stress_fnc(x, y)
     fx = sympy.diff(f, x)
@@ -10,18 +10,21 @@ def form_stress_evaluators(stress_fnc, body_force):
     fxx = sympy.diff(fx, x)
     fxy = sympy.diff(fx, y)
     fyy = sympy.diff(fy, y)
-    sxx = fyy + body_force[0] * x
-    syy = fxx + body_force[1] * y
+    sxx = fyy - body_force[0] * x
+    syy = fxx - body_force[1] * y
     sxy = -fxy
     fsxx = sympy.lambdify((x, y), sxx)
     fsxy = sympy.lambdify((x, y), sxy)
     fsyy = sympy.lambdify((x, y), syy)
+    return [fsxx, fsxy, fsyy]
+
+def calc_stress_builder(stress_lambdas):
     def calc_stress(pt, empty):
         x = pt[0]
         y = pt[1]
-        sxx = fsxx(x, y)
-        sxy = fsxy(x, y)
-        syy = fsyy(x, y)
+        sxx = stress_lambdas[0](x, y)
+        sxy = stress_lambdas[1](x, y)
+        syy = stress_lambdas[2](x, y)
         return [sxx, sxy, sxy, syy]
     return calc_stress
 
