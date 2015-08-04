@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.INFO)
 
 def build_slip_bc(a, stress_drop, G, nu):
-    def slip_bc(pt):
+    def slip_bc(pt, normal):
         # Classic Griffith crack solution. Normally, the solution is given
         # as a displacement for each crack face. I multiply by 2 to get the
         # slip across the crack.

@@ -29,7 +29,7 @@ def cart_from_sph(r, theta, phi):
 
 
 def build_disp_bc2d(a, b, p_a, p_b, E, mu):
-    def disp_bc(pt):
+    def disp_bc(pt, normal):
         r, theta = circ_from_cart(*pt)
         ur = ((1 + mu) * a ** 2 * b ** 2) / (E * (b ** 2 - a ** 2)) *\
             (((p_a - p_b) / r) +
@@ -38,7 +38,7 @@ def build_disp_bc2d(a, b, p_a, p_b, E, mu):
     return disp_bc
 
 def build_disp_bc3d(a, b, p_a, p_b, E, mu):
-    def disp_bc(pt):
+    def disp_bc(pt, normal):
         r, theta, phi = sph_from_cart(*pt)
         ur = (1.0 / (2 * E * (b ** 3 - a ** 3) * r ** 2)) *\
             (2 * (p_a * a ** 3 - p_b * b ** 3) * (1 - 2 * mu) * r ** 3 +
@@ -47,14 +47,14 @@ def build_disp_bc3d(a, b, p_a, p_b, E, mu):
     return disp_bc
 
 def build_trac_bc2d(a, b, p_a, p_b, E, mu):
-    def trac_bc(pt):
+    def trac_bc(pt, normal):
         r, theta = circ_from_cart(*pt)
         pressure = np.where(r < ((a + b) / 2), -p_a, p_b)
         return cart_from_circ(pressure, theta)
     return trac_bc
 
 def build_trac_bc3d(a, b, p_a, p_b, E, mu):
-    def trac_bc(pt):
+    def trac_bc(pt, normal):
         r, theta, phi = sph_from_cart(*pt)
         term1 = (p_a * a ** 3 - p_b * b ** 3) / (b ** 3 - a ** 3)
         term2 = ((p_a - p_b) * b ** 3 * a ** 3) / ((b ** 3 - a ** 3) * r ** 3)
@@ -114,7 +114,7 @@ points[3] = points3d
 
 def bc_builder(type_fnc, bc_fnc):
     def f(pts):
-        return type_fnc(pts, [bc_fnc(pts[0, :]), bc_fnc(pts[1, :])])
+        return type_fnc(pts, [bc_fnc(pts[0, :], []), bc_fnc(pts[1, :], [])])
     return f
 
 def lame(dim, bc_types):
@@ -161,7 +161,7 @@ def lame(dim, bc_types):
 
     pts = points[dim](a, b, 1000)
     disp_interior = result.interior_displacement(pts)
-    check_interior_error(pts, disp_interior, disp_bc, 3e-2)
+    check_interior_error(pts, pts, disp_interior, disp_bc, 3e-2)
 
 
 def test_disp_disp2d():

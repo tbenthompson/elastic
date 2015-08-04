@@ -2,7 +2,7 @@ import tbempy.TwoD
 import numpy as np
 from elastic.bie_spec import field_types, get_elastic_kernels, get_BIEs
 from elastic.constraints import form_displacement_constraints, gather_bc_constraints,\
-    Term, transform_element_local_term
+    Term, transform_element_local_term, any_displacement_constraints
 from elastic.compute import IntegralDispatcher, Op
 from elastic.system import split_into_components, scale
 from elastic.dof_handling import DOFMap
@@ -177,3 +177,9 @@ def test_build_meshes_cut_at_fault():
     assert(meshes['continuous'].n_facets() == 2)
     assert(meshes['discontinuous'].n_facets() == 2)
 
+def test_any_displacement_constraints():
+    es_no_disp = [
+        traction([[1, 1], [2, 2]], [[5, 6], [7, 8]])
+    ]
+    assert(any_displacement_constraints(es))
+    assert(not any_displacement_constraints(es_no_disp))

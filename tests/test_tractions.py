@@ -30,7 +30,7 @@ def test_tractions():
     trac_calc = calc_traction_builder(calc_stress)
     trac_bc = traction_bc_builder(trac_calc)
 
-    refine = 6
+    refine = 7
     pts = [[0, 0], [100, -100], [100, 0], [0, 0]]
     es = []
     for i in range(len(pts) - 1):
@@ -41,15 +41,16 @@ def test_tractions():
         shear_modulus = 1.0,
         poisson_ratio = 0.3,
         singular_steps = 8,
-        obs_order = 5,
+        obs_far_order = 12,
+        obs_near_order = 12,
+        src_far_order = 7,
         sinh_order = 10
     )
     result = execute(2, es, params)
-    result.params['obs_order'] = 5
 
     check_error(result, 'continuous', 'traction', trac_calc, 1e-2)
 
-    n_interior = 80
+    n_interior = 40
     x_hat, y_hat = np.meshgrid(
         np.linspace(0, 1, n_interior), np.linspace(0, 1, n_interior)
     )

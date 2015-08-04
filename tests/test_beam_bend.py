@@ -70,7 +70,9 @@ def create_problem(refine):
         poisson_ratio = nu,
         solver_tol = 1e-6,
         singular_steps = 8,
-        obs_order = 5,
+        obs_far_order = 5,
+        obs_near_order = 5,
+        src_far_order = 4,
         sinh_order = 7,
         dense = True
     )

@@ -100,11 +100,39 @@ def normal_vector(pts):
     ])
     return vector / np.linalg.norm(vector)
 
+def make_zero_avg_displacement(tbem, dof_map, meshes, elements):
+    if any_displacement_constraints(elements):
+        return []
+    cs = []
+    for d in range(tbem.dim):
+        terms = []
+        component_start = dof_map.get('continuous', 'displacement', d)
+        for i in range(meshes['continuous'].n_facets()):
+            f = meshes['continuous'].facets[i, :, :]
+            length = np.sqrt(np.sum((f[0, :] - f[1, :]) ** 2))
+            for basis_idx in range(tbem.dim):
+                dof = component_start + tbem.dim * i + basis_idx
+                terms.append(tbem.LinearTerm(dof, length))
+        cs.append(tbem.ConstraintEQ(terms, 0))
+    return cs
+
+def any_displacement_constraints(elements):
+    for e in elements:
+        for c in e['constraints']:
+            if type(c) is BCConstraint and c.field == 'displacement':
+                return True
+            elif type(c) is Constraint:
+                for t in c.terms:
+                    if t.field == 'displacement':
+                        return True
+    return False
+
 def build_constraint_matrix(tbem, dof_map, elements, meshes):
     bc_constraints = gather_bc_constraints(tbem, dof_map, elements)
     continuity_constraints = gather_continuity_constraints(tbem, dof_map, meshes)
-    all = bc_constraints + continuity_constraints
-    constraint_matrix = tbem.from_constraints(bc_constraints + continuity_constraints)
+    zero_avg_displacement = make_zero_avg_displacement(tbem, dof_map, meshes, elements)
+    all = bc_constraints + continuity_constraints + zero_avg_displacement
+    constraint_matrix = tbem.from_constraints(all)
     return constraint_matrix
 
 def distribute(tbem, constraint_matrix, n_total_dofs, vec):

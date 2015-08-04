@@ -13,7 +13,7 @@ def test_split():
             lambda pts: free_slip(pts, [0, 0], [[0, 0]])
         ))
         n_discontinuous_facets = len(es) - n_continuous_facets
-        meshes = build_meshes(tbempy.TwoD, es)
+        meshes, element_lists = build_meshes(tbempy.TwoD, es)
         assert(meshes['continuous'].n_facets() == (n_continuous_facets + 1))
         assert(meshes['discontinuous'].n_facets() == n_discontinuous_facets)
 

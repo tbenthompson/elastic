@@ -38,16 +38,33 @@ class Executor(object):
 
     def setup(self, dim, elements, input_params):
         self.arguments = (dim, elements, input_params)
+
+        params = defaults.add_default_parameters(input_params)
+        self.check_input_params(params)
+        self.params = params
+
         self.tbem = get_tbem(dim)
-        self.params = defaults.add_default_parameters(input_params)
         self.meshes, self.element_lists = meshing.build_meshes(self.tbem, elements)
-        self.meshes = meshing.postprocess_meshes(self.tbem, self.meshes)
         self.dof_map = dof_handling.DOFMap.build(
             self.tbem.dim, bie_spec.field_types, self.meshes
         )
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, self.arguments[1], self.meshes
         )
+
+    def check_input_params(self, params):
+        if 'obs_order' in params:
+            raise Exception(
+                'obs_order parameter has been removed in ' +
+                'favor of obs_near_order and obs_far_order'
+            )
+        if params['obs_far_order'] == params['src_far_order']:
+            raise Exception(
+                'obs_far_order and src_far_order can\'t be equal. ' +
+                ' Please change one.'
+            )
+
+
 
     def run(self):
         return self.solve(self.assemble(bie_spec.get_BIEs(self.params)))
@@ -155,7 +172,7 @@ class Result(object):
             soln = npzfile['soln'].tolist()
             tbem = get_tbem(dim)
             params = defaults.add_default_parameters(input_params)
-            meshes = meshing.build_meshes(tbem, elements)
+            meshes, _ = meshing.build_meshes(tbem, elements)
         return Result(tbem, soln, meshes, params, arguments)
 
 def get_tbem(dim):

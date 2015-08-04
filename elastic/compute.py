@@ -33,13 +33,13 @@ class Op(object):
 
 class IntegralEvaluator(object):
     def mass(self, obs_mesh):
-        return self.tbem.mass_operator_tensor(obs_mesh, self.params['obs_order'])
+        return self.tbem.mass_operator_tensor(obs_mesh, self.params['obs_far_order'])
 
     def make_integrator(self, kernel):
-        return self.tbem.make_sinh_integrator(
-            self.params['sinh_order'], self.params['obs_order'],
-            self.params['singular_steps'], self.params['far_threshold'],
-            kernel
+        return self.tbem.make_sinh_integrator(self.params['sinh_order'],
+            self.params['obs_near_order'], self.params['obs_far_order'],
+            self.params['src_far_order'], self.params['singular_steps'],
+            self.params['far_threshold'], kernel
         )
 
 class FMMIntegralEvaluator(IntegralEvaluator):
