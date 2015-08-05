@@ -1,3 +1,5 @@
+import time
+
 def default_params():
     #TODO: Load this from a file? Or move it to spec?
     return dict(
@@ -15,7 +17,9 @@ def default_params():
         dense = False,
         gravity = False,
         gravity_vector = [0.0, -9.8 * 2700],
-        timing = False
+        timing = False,
+        timer = time,
+        check_condition_number = True,
     )
 
 def add_default_parameters(input_params):

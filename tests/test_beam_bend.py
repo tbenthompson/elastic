@@ -1,6 +1,4 @@
-import h5py
 import numpy as np
-import subprocess
 from elastic import execute, line, displacement, traction
 from errors import check_error, check_interior_error
 import logging
@@ -77,7 +75,8 @@ def create_problem(refine):
         src_far_order = 4,
         sinh_order = 7,
         dense = True,
-        timing = True
+        timing = True,
+        check_condition_number = False
     )
     return es, params
 
