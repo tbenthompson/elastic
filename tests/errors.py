@@ -1,7 +1,6 @@
 import numpy as np
 import logging
-
-logger = logging.getLogger('elastic')
+logger = logging.getLogger(__name__)
 
 def l2_error(dim, pts, normals, exact_fnc, est_vec):
     exact_example = exact_fnc([0] * dim, [0] * dim)

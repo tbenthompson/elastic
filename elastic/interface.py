@@ -13,6 +13,7 @@ import system
 from exceptions import log_exceptions
 
 import numpy as np
+import time
 import logging
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class Executor(object):
         self.check_input_params(params)
         self.params = params
 
+        self.log_setup_start()
         self.tbem = get_tbem(dim)
         self.meshes, self.element_lists = meshing.build_meshes(self.tbem, elements)
         self.dof_map = dof_handling.DOFMap.build(
@@ -51,6 +53,7 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, self.arguments[1], self.meshes
         )
+        self.log_setup_end()
 
     def check_input_params(self, params):
         if 'obs_order' in params:
@@ -70,8 +73,7 @@ class Executor(object):
         return self.solve(self.assemble(bie_spec.get_BIEs(self.params)))
 
     def assemble(self, bies):
-        n_facets = str(self.meshes['all_mesh'].n_facets())
-        logger.info('Assembling linear system for ' + n_facets + ' facets')
+        self.log_assemble_start()
 
         evaluator = compute.FMMIntegralEvaluator(
             self.tbem, self.params, self.meshes['all_mesh']
@@ -83,10 +85,12 @@ class Executor(object):
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
         dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
         assembled_systems = system.form_linear_systems(bies, dispatcher)
-        logger.info('Finished linear system assembly')
+
+        self.log_assemble_end()
         return assembled_systems
 
     def solve(self, assembled_systems):
+        self.log_solve_start()
         solve_fnc = iterative_solver.iterative_solver
         if self.params['dense']:
             solve_fnc = dense_solver.dense_solver
@@ -94,7 +98,37 @@ class Executor(object):
             self.tbem, self.params, self.dof_map,
             self.constraint_matrix, assembled_systems
         )
-        return Result(self.tbem, soln, self.meshes, self.params, self.arguments)
+        out = Result(self.tbem, soln, self.meshes, self.params, self.arguments)
+        self.log_solve_end()
+        return out
+
+    def log_setup_start(self):
+        self.setup_start = time.time()
+
+    def log_setup_end(self):
+        setup_elapsed = time.time() - self.setup_start
+        if self.params['timing']:
+            logger.info('Setting up BEM problem took ' + str(setup_elapsed))
+
+    def log_assemble_start(self):
+        n_facets = str(self.meshes['all_mesh'].n_facets())
+        logger.info('Assembling linear system for ' + n_facets + ' facets')
+        self.assemble_start = time.time()
+
+    def log_assemble_end(self):
+        logger.info('Finished linear system assembly')
+        assemble_elapsed = time.time() - self.assemble_start
+        logger.info('Assembling BEM problem took ' + str(assemble_elapsed))
+
+    def log_solve_start(self):
+        logger.info('Solving linear system')
+        self.solve_start = time.time()
+
+    def log_solve_end(self):
+        logger.info('Finished linear system assembly')
+        solve_elapsed = time.time() - self.solve_start
+        logger.info('Solving BEM problem took ' + str(solve_elapsed))
+
 
 class Result(object):
     def __init__(self, tbem, soln, meshes, params, arguments):

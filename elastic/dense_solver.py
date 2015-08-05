@@ -15,6 +15,7 @@ def dense_solver(tbem, params, dof_map, constraint_matrix, systems):
 
     homogenized_cm = tbem.homogenize_constraints(constraint_matrix)
     np_op = dense_matrix(tbem, params, dof_map, homogenized_cm, systems)
+    log_constrained_system_size(np_op, rhs)
     log_condition_number(np_op)
     # plot_matrix(np_op)
     soln = np.linalg.solve(np_op, rhs)
@@ -26,18 +27,6 @@ def dense_solver(tbem, params, dof_map, constraint_matrix, systems):
 
     log_finish_solve()
     return unknowns
-
-def log_start_solve(n_dofs):
-    logger.info('Dense linear solve for system with ' + str(n_dofs) + ' rows.')
-
-def log_condition_number(matrix):
-    cond = np.linalg.cond(matrix)
-    logger.info('Linear system has condition number: ' + str(cond))
-    if cond > 10e12:
-        logger.warning('Linear system has very large condition number: ' + str(cond))
-
-def log_finish_solve():
-    logger.info('Finished dense linear solve')
 
 def dense_matrix(tbem, params, dof_map, constraint_matrix, systems):
     matrix = uncondensed_dense_matrix(tbem, params, dof_map, systems)
@@ -68,6 +57,21 @@ def uncondensed_dense_matrix(tbem, params, dof_map, systems):
             matrix[start_row:end_row, start_col:end_col] += chunk
     matrix = tbem.DenseOperator(n, n, matrix.reshape(n * n))
     return matrix
+
+def log_start_solve(n_dofs):
+    logger.info('Dense linear solve for system with ' + str(n_dofs) + ' rows.')
+
+def log_constrained_system_size(matrix, rhs):
+    logger.info('Constrained linear system has ' + str(matrix.shape[0]) + ' rows.')
+
+def log_condition_number(matrix):
+    cond = np.linalg.cond(matrix)
+    logger.info('Linear system has condition number: ' + str(cond))
+    if cond > 10e12:
+        logger.warning('Linear system has very large condition number: ' + str(cond))
+
+def log_finish_solve():
+    logger.info('Finished dense linear solve')
 
 def log_skipped_mass(output_type, mass_spec):
     logger.debug('Skipping mass operator: ' + str((output_type, mass_spec)))

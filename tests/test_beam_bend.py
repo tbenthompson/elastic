@@ -3,6 +3,8 @@ import numpy as np
 import subprocess
 from elastic import execute, line, displacement, traction
 from errors import check_error, check_interior_error
+import logging
+logging.basicConfig(filename = 'log.txt', filemode = 'w', level = logging.DEBUG)
 
 # The analytic solution is from the Timoshenko and Goodier book pg. 35
 def G_from_E_nu(E, nu):
@@ -74,7 +76,8 @@ def create_problem(refine):
         obs_near_order = 5,
         src_far_order = 4,
         sinh_order = 7,
-        dense = True
+        dense = True,
+        timing = True
     )
     return es, params
 
