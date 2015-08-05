@@ -19,17 +19,14 @@ class Op(object):
         f = fields.get(self.input_type(), None)
         return f
 
-    def data(self):
+    def to_dense(self):
         if type(self.internal) is tbempy._tbempy.DenseOperator:
-            return self.internal.data()
+            return self.internal
         elif type(self.internal) is tbempy._tbempy.SparseOperator:
-            return self.internal.to_dense().data()
-        return None
+            return self.internal.to_dense()
 
-    def to_numpy_matrix(self):
-        rows = self.internal.n_rows()
-        cols = self.internal.n_cols()
-        return self.spec['multiplier'] * self.data().reshape((rows, cols))
+    def get_multiplier(self):
+        return self.spec['multiplier']
 
 class IntegralEvaluator(object):
     def mass(self, obs_mesh):

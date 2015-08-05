@@ -68,14 +68,15 @@ def create_problem(refine):
     params = dict(
         shear_modulus = G,
         poisson_ratio = nu,
-        solver_tol = 1e-6,
+        length_scale = 0.05,
+        solver_tol = 1e-4,
         singular_steps = 8,
         obs_far_order = 5,
         obs_near_order = 5,
         src_far_order = 4,
         sinh_order = 7,
-        dense = True,
         timing = True,
+        dense = True,
         check_condition_number = False
     )
     return es, params
