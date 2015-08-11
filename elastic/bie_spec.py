@@ -94,6 +94,9 @@ def get_residual_BIEs(params):
     return bies
 
 def get_displacement_BIE(obs_mesh_name, displacement_field, unknown_field, params):
+    terms = displacement_BIE_terms(obs_mesh_name, params['gravity'])
+    for t in terms:
+        t['unknown_field'] = unknown_field
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = unknown_field,
@@ -102,7 +105,7 @@ def get_displacement_BIE(obs_mesh_name, displacement_field, unknown_field, param
             function = displacement_field,
             multiplier = -1.0
         ),
-        terms = displacement_BIE_terms(obs_mesh_name, params['gravity'])
+        terms = terms
     )
 
 def displacement_BIE_terms(obs_mesh_name, gravity):
@@ -140,6 +143,9 @@ def displacement_BIE_terms(obs_mesh_name, gravity):
     return terms
 
 def get_traction_BIE(obs_mesh_name, traction_field, unknown_field, params):
+    terms = traction_BIE_terms(obs_mesh_name, params['gravity'])
+    for t in terms:
+        t['unknown_field'] = unknown_field
     return dict(
         obs_mesh = obs_mesh_name,
         unknown_field = unknown_field,
@@ -148,7 +154,7 @@ def get_traction_BIE(obs_mesh_name, traction_field, unknown_field, params):
             function = traction_field,
             multiplier = 1.0
         ),
-        terms = traction_BIE_terms(obs_mesh_name, params['gravity'])
+        terms = terms
     )
 
 def traction_BIE_terms(obs_mesh_name, gravity):

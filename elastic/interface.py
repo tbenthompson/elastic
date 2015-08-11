@@ -10,6 +10,7 @@ import iterative_solver
 import meshing
 import dense_solver
 import system
+import mesh_provider
 from log_tools import log_exceptions, log_elapsed_time
 
 import numpy as np
@@ -54,6 +55,10 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, self.arguments[1], self.meshes
         )
+        ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
+        self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(
+            self.meshes, self.dof_map, ignored_dofs
+        )
 
     def check_input_params(self, params):
         if 'obs_order' in params:
@@ -66,8 +71,6 @@ class Executor(object):
                 'obs_far_order and src_far_order can\'t be equal. ' +
                 ' Please change one.'
             )
-
-
 
     def run(self):
         return self.solve(self.assemble(bie_spec.get_BIEs(self.params)))
@@ -82,7 +85,8 @@ class Executor(object):
                 self.tbem, self.params, self.meshes['all_mesh']
             )
         kernels = bie_spec.get_elastic_kernels(self.tbem, self.params)
-        dispatcher = compute.IntegralDispatcher(self.meshes, kernels, evaluator)
+
+        dispatcher = compute.IntegralDispatcher(self.mesh_provider, kernels, evaluator)
         assembled_systems = system.form_linear_systems(bies, dispatcher)
         return assembled_systems
 

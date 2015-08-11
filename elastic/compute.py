@@ -78,26 +78,31 @@ class DenseIntegralEvaluator(IntegralEvaluator):
         )
 
 class IntegralDispatcher(object):
-    def __init__(self, meshes, kernels, evaluator):
-        self.meshes = meshes
+    def __init__(self, mesh_provider, kernels, evaluator):
+        self.mesh_provider = mesh_provider
         self.kernels = kernels
         self.evaluator = evaluator
 
     def compute_boundary(self, op_spec):
-        obs_mesh = self.meshes[op_spec['obs_mesh']]
-        src_mesh = self.meshes[op_spec['src_mesh']]
+        obs_mesh = self.mesh_provider.get_obs_mesh(op_spec)
+        src_mesh = self.mesh_provider.get_src_mesh(op_spec)
         kernel = self.kernels[op_spec['kernel']]
         result = self.evaluator.boundary(obs_mesh, src_mesh, kernel)
-        return Op(result, op_spec, False)
+        np_result = result.data().reshape((result.n_rows(), result.n_cols()))
+        final_op = self.mesh_provider.distribute_zeros(op_spec, np_result)
+        final_op = tbempy.TwoD.DenseOperator(final_op.shape[0], final_op.shape[1],
+            final_op.reshape(final_op.size)
+        )
+        return Op(final_op, op_spec, False)
 
     def compute_interior(self, op_spec, pts, normals):
-        src_mesh = self.meshes[op_spec['src_mesh']]
+        src_mesh = self.mesh_provider[op_spec['src_mesh']]
         kernel = self.kernels[op_spec['kernel']]
         result = self.evaluator.interior(pts, normals, src_mesh, kernel)
         return Op(result, op_spec, False)
 
     def compute_mass(self, mass_spec):
-        obs_mesh = self.meshes[mass_spec['src_mesh']]
+        obs_mesh = self.mesh_provider.get_src_mesh(mass_spec)
         return Op(self.evaluator.mass(obs_mesh), mass_spec, True)
 
 class BIE(object):
