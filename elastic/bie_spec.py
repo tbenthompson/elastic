@@ -1,5 +1,20 @@
 import numpy as np
 
+"""
+    Defines various information concerning the names of meshes, the fields defined on 
+    those meshes and the boundary integral equations that are evaluated on the meshes.
+    The "continuous" mesh has displacement continuity from one side to the other while
+    the "discontinuous" mesh has a displacement jump from one side to the other.
+    "traction" and "displacement" are defined on the continuous mesh and 
+    "crack_traction" and "slip" are defined on the discontinuous mesh.
+    
+    Boundary integral equations are defined as the sum of a bunch of terms
+    which look like:
+    \int_{S_{obs}} \int_{S_{src}} K(x, y) f(y) dy dx
+    The term specifications provide a obs_mesh, a src_mesh, a kernel function, 
+    the function f(y), and a constant multiplier.
+"""
+
 mesh_types = [
     'continuous',
     'discontinuous'
