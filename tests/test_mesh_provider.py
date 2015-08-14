@@ -42,13 +42,15 @@ def test_distribute_zeros():
         obs_mesh = 'continuous',
         unknown_field = 'traction'
     ))
-    A = np.random.rand(2 * mesh.n_dofs(), 2 * mesh.n_dofs())
+    A_np = np.random.rand(2 * mesh.n_dofs(), 2 * mesh.n_dofs())
+    A = tbempy.TwoD.DenseOperator(A_np.shape[0], A_np.shape[1], A_np.reshape(A_np.size))
     B = mp.distribute_zeros(dict(
         obs_mesh = 'continuous',
         unknown_field = 'traction'
     ), A)
+    B_np = B.data().reshape((B.n_rows(), B.n_cols()))
     for obs_dof in [0, 1, 8, 9]:
-        np.testing.assert_almost_equal(B[obs_dof, :], 0)
+        np.testing.assert_almost_equal(B_np[obs_dof, :], 0)
 
 def test_skip_with_matrix_construction():
     mp, executor = data(2)

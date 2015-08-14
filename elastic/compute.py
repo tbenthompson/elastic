@@ -88,12 +88,9 @@ class IntegralDispatcher(object):
         src_mesh = self.mesh_provider.get_src_mesh(op_spec)
         kernel = self.kernels[op_spec['kernel']]
         result = self.evaluator.boundary(obs_mesh, src_mesh, kernel)
-        np_result = result.data().reshape((result.n_rows(), result.n_cols()))
-        final_op = self.mesh_provider.distribute_zeros(op_spec, np_result)
-        final_op = tbempy.TwoD.DenseOperator(final_op.shape[0], final_op.shape[1],
-            final_op.reshape(final_op.size)
-        )
-        return Op(final_op, op_spec, False)
+        final_op = self.mesh_provider.distribute_zeros(op_spec, result)
+        out = Op(final_op, op_spec, False)
+        return out
 
     def compute_interior(self, op_spec, pts, normals):
         src_mesh = self.mesh_provider[op_spec['src_mesh']]
