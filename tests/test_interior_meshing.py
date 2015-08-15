@@ -42,12 +42,21 @@ def test_adjacent_tris():
     tris = np.array([
         [0, 1, 2], [2, 1, 3], [1, 5, 4], [1, 4, 3]
     ])
+    pts_to_tris_map = build_pt_to_tri_map(tris)
 
-    tri_indices = find_adjacent_tris_indices(tris, [1, 3, 4])
+    tri_indices = find_adjacent_tris_indices(tris, [1, 3, 4], pts_to_tris_map)
     assert(tri_indices == [1, 2])
 
-    tri_indices = find_adjacent_tris_indices(tris, [0, 1, 2])
+    tri_indices = find_adjacent_tris_indices(tris, [0, 1, 2], pts_to_tris_map)
     assert(tri_indices == [1])
+
+def test_build_pt_to_tri_map():
+    tris = np.array([
+        [0, 1, 2], [2, 1, 3], [1, 5, 4], [1, 4, 3]
+    ])
+    map = build_pt_to_tri_map(tris)
+    assert(map[1] == [0, 1, 2, 3])
+    assert(map[2] == [0, 1])
 
 def make_pretty_region_plots():
     facets = np.array([

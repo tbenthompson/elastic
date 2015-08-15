@@ -51,10 +51,14 @@ class InteriorMesh(object):
         plt.show()
 
     def identify_regions(self):
+        #TODO: Once this is too slow, maybe build connectivity in c++ layer?
         n_tris = self.tris.shape[0]
         connectivity = scipy.sparse.dok_matrix((n_tris, n_tris))
+        pts_to_tris_map = build_pt_to_tri_map(self.tris)
         for t_idx in range(n_tris):
-            adjacent_indices = find_adjacent_tris_indices(self.tris, self.tris[t_idx])
+            adjacent_indices = find_adjacent_tris_indices(
+                self.tris, self.tris[t_idx], pts_to_tris_map
+            )
             for adj_idx in adjacent_indices:
                 if self.are_across_an_input_facet(t_idx, adj_idx):
                     continue
@@ -70,7 +74,7 @@ class InteriorMesh(object):
             self.tris[tri_A_idx], self.tris[tri_B_idx]
         )
         pt_indices = [self.tris[tri_A_idx, o] for o in overlap]
-        #TODO: Once this is too slow, build an index for fast searching
+
         for f in self.boundary_facets:
             if (f[0] == pt_indices[0] and f[1] == pt_indices[1]) or \
                 (f[1] == pt_indices[0] and f[0] == pt_indices[1]):
@@ -101,16 +105,29 @@ def extents_to_box_2d(min_corner, max_corner):
         [pts[3], pts[0]]
     ])
 
-def add_extent_surface(input_facets):
+def add_extent_surface(input_facets, expand_factor = 2.0):
     extents_box = extents_to_box_2d(
-        *expand_extents(*determine_extents(input_facets))
+        *expand_extents(*determine_extents(input_facets), factor = expand_factor)
     )
     return np.concatenate((input_facets, extents_box))
 
 
-def find_adjacent_tris_indices(tris, query_tri):
-    #TODO: Once this is too slow, build an index for fast searching
-    return [i for i, t in enumerate(tris) if are_adjacent_tris(t, query_tri)]
+def build_pt_to_tri_map(tris):
+    pts_to_tris_map = dict()
+    for t_idx, t in enumerate(tris):
+        for d in range(3):
+            pts_to_tris_map.setdefault(t[d], []).append(t_idx)
+    return pts_to_tris_map
+
+def find_adjacent_tris_indices(tris, query_tri, pts_to_tris_map):
+    adjacent_tris = []
+    for d in range(3):
+        for touching_tri_idx in pts_to_tris_map[query_tri[d]]:
+            if touching_tri_idx in adjacent_tris:
+                continue
+            if are_adjacent_tris(tris[touching_tri_idx], query_tri):
+                adjacent_tris.append(touching_tri_idx)
+    return adjacent_tris
 
 def get_tri_pair_vertex_overlap(tri_A, tri_B):
     return [d for d in range(3) if tri_A[d] in tri_B]
