@@ -1,5 +1,5 @@
 import bie_spec
-from exceptions import log_exceptions
+from log_tools import log_exceptions
 from interface import Executor
 import constraints
 import system
