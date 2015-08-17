@@ -19,8 +19,7 @@ def test_gravity():
         shear_modulus = 30e9,
         poisson_ratio = 0.25,
         gravity = True,
-        gravity_vector = [0.0, -9.8 * 2700],
-        # dense = True
+        gravity_vector = [0.0, -9.8 * 2700]
     )
     result = execute(2, es, params)
 
