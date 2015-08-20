@@ -21,30 +21,9 @@ class InteriorMeshBuilder(object):
             (facets.shape[0], facets.shape[1])
         )
 
-        #TODO: Clean this up!
-        equivalence_map = []
-        n_verts = meshpy_vs.shape[0]
-        next = 0
-        for v_idx1 in range(n_verts):
-            equivalence_map.append(next)
-            next += 1
-            for v_idx2 in range(v_idx1):
-                sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
-                dist = np.sum(sep_vec ** 2)
-                if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
-                    equivalence_map[v_idx1] = equivalence_map[v_idx2]
-                    next -= 1
-                    break
-
-        new_vs = np.empty((next, 2))
-        for v_idx1 in range(n_verts):
-            new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
-
-        new_facets = np.array(equivalence_map)[meshpy_facets]
-
-        meshpy_facets = new_facets
-        meshpy_vs = new_vs
-
+        meshpy_vs, meshpy_facets = self.remove_duplicate_vertices(
+            meshpy_vs, meshpy_facets
+        )
         meshpy_vs[:, 0] *= mesh_gen_scale_x_factor
 
         info = triangle.MeshInfo()
@@ -57,10 +36,39 @@ class InteriorMeshBuilder(object):
         mesh = triangle.build(info, **params)
 
         self.pts = np.array(mesh.points)
-        print(self.pts.shape)
         self.pts[:, 0] /= mesh_gen_scale_x_factor
         self.tris = np.array(mesh.elements)
         self.boundary_facets = np.array(mesh.facets)
+
+    #TODO: This should probably already be done on the 3bem side, meshes
+    # should be stored as vertex and cross-referenced triangle lists
+    def remove_duplicate_vertices(self, meshpy_vs, meshpy_facets):
+        equivalence_map = self.build_equivalence_map(meshpy_vs)
+        new_vs = self.create_new_vertex_list(meshpy_vs, equivalence_map)
+        new_facets = np.array(equivalence_map)[meshpy_facets]
+        return new_vs, new_facets
+
+    def build_equivalence_map(self, meshpy_vs):
+        equivalence_map = []
+        next = 0
+        for v_idx1 in range(meshpy_vs.shape[0]):
+            equivalence_map.append(next)
+            next += 1
+            for v_idx2 in range(v_idx1):
+                sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
+                dist = np.sum(sep_vec ** 2)
+                if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
+                    equivalence_map[v_idx1] = equivalence_map[v_idx2]
+                    next -= 1
+                    break
+        return equivalence_map
+
+    def create_new_vertex_list(self, meshpy_vs, equivalence_map):
+        out_vertices = np.max(equivalence_map) + 1
+        new_vs = np.empty((out_vertices, 2))
+        for v_idx1 in range(meshpy_vs.shape[0]):
+            new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
+        return new_vs
 
     def plot(self, show = True):
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris)
