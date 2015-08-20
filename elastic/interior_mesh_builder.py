@@ -8,14 +8,45 @@ This module takes a boundary mesh and using the MeshPy package, creates
 a mesh of the interior and immediate surroundings of that boundary. The
 interior mesh is subdivided into regions depending on which side of a
 boundary the cells are.
+
+The 'mesh_gen_scale_x_factor' allows the x dimension to be scaled in case
+desired meshing should be well-proportioned in a different coordinate
+scale than the input coordinates. For example, if the mesh will be used
+for plotting and the x and y axes on the plot are not identical.
 """
-class InteriorMesh(object):
+class InteriorMeshBuilder(object):
     def __init__(self, facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
         meshpy_vs = facets.reshape((facets.shape[0] * facets.shape[1], facets.shape[2]))
         meshpy_facets = np.arange(meshpy_vs.shape[0]).reshape(
             (facets.shape[0], facets.shape[1])
         )
+
+        #TODO: Clean this up!
+        equivalence_map = []
+        n_verts = meshpy_vs.shape[0]
+        next = 0
+        for v_idx1 in range(n_verts):
+            equivalence_map.append(next)
+            next += 1
+            for v_idx2 in range(v_idx1):
+                sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
+                dist = np.sum(sep_vec ** 2)
+                if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
+                    equivalence_map[v_idx1] = equivalence_map[v_idx2]
+                    next -= 1
+                    break
+
+        new_vs = np.empty((next, 2))
+        for v_idx1 in range(n_verts):
+            new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
+
+        new_facets = np.array(equivalence_map)[meshpy_facets]
+
+        meshpy_facets = new_facets
+        meshpy_vs = new_vs
+
         meshpy_vs[:, 0] *= mesh_gen_scale_x_factor
+
         info = triangle.MeshInfo()
         info.set_points(meshpy_vs)
         info.set_facets(meshpy_facets)
@@ -26,15 +57,17 @@ class InteriorMesh(object):
         mesh = triangle.build(info, **params)
 
         self.pts = np.array(mesh.points)
+        print(self.pts.shape)
         self.pts[:, 0] /= mesh_gen_scale_x_factor
         self.tris = np.array(mesh.elements)
         self.boundary_facets = np.array(mesh.facets)
 
-    def plot(self):
+    def plot(self, show = True):
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris)
-        plt.show()
+        if show:
+            plt.show()
 
-    def region_plot(self):
+    def region_plot(self, show = True):
         plt.tripcolor(
             self.pts[:, 0], self.pts[:, 1], self.tris,
             self.identify_regions()
@@ -48,7 +81,8 @@ class InteriorMesh(object):
         )
         plt.xlim(extents[0][0], extents[1][0])
         plt.ylim(extents[0][1], extents[1][1])
-        plt.show()
+        if show:
+            plt.show()
 
     def identify_regions(self):
         #TODO: Once this is too slow, maybe build connectivity in c++ layer?

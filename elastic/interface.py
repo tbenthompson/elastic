@@ -30,7 +30,7 @@ def log_begin(n_elements, input_params):
     logger.info(
         'Beginning elastic calculation for ' +
         str(n_elements) +
-        ' with params: ' +
+        ' elements with params: ' +
         str(input_params)
     )
 
@@ -55,10 +55,11 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, self.arguments[1], self.meshes
         )
-        ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
-        self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(
-            self.meshes, self.dof_map, ignored_dofs
-        )
+        self.mesh_provider = mesh_provider.SimpleMeshProvider(self.meshes)
+        # ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
+        # self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(
+        #     self.meshes, self.dof_map, ignored_dofs
+        # )
 
     def check_input_params(self, params):
         if 'obs_order' in params:
@@ -126,6 +127,18 @@ class Result(object):
     @log_exceptions(logger)
     def interior_traction(self, pts, normals):
         return self._interior_eval(pts, normals, 'traction')
+
+    """
+    Compute interior stresses at the specified points.
+    """
+    @log_exceptions(logger)
+    def interior_stress(self, pts):
+        stress_rows = []
+        for d in range(self.tbem.dim):
+            normals = np.zeros((pts.shape[0], self.tbem.dim))
+            normals[:, d] = 1
+            stress_rows.append(self._interior_eval(pts, normals, 'traction'))
+        return stress_rows
 
     @log_elapsed_time(logger, lambda self, args: 'interior evaluation of '
         + str(args[2]) + 's at ' + str(len(args[0])) + ' points')

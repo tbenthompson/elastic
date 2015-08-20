@@ -1,4 +1,4 @@
-from elastic.interior_meshing import *
+from elastic.interior_mesh_builder import *
 import numpy as np
 
 def box_mesh():
@@ -28,17 +28,16 @@ def test_extents_to_box():
     result = extents_to_box_2d(*determine_extents(box_mesh()))
     np.testing.assert_almost_equal(result, box_mesh())
 
-#TODO: Figure out why meshpy consistently causes segfaults!
-# def test_interior_meshing():
-#     facets = add_extent_surface(box_mesh())
-#     mesh = InteriorMesh(facets)
-#     assert(len(mesh.tris) == 14)
-#     assert(not mesh.are_across_an_input_facet(4, 11))
-#     assert(mesh.are_across_an_input_facet(11, 9))
-#     regions = mesh.identify_regions()
-#
-#     assert(np.max(regions) == 1)
-#     assert(np.all(regions == [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0]))
+def test_interior_meshing():
+    facets = add_extent_surface(box_mesh())
+    mesh = InteriorMeshBuilder(facets)
+    assert(len(mesh.tris) == 14)
+    assert(not mesh.are_across_an_input_facet(4, 11))
+    assert(mesh.are_across_an_input_facet(11, 9))
+    regions = mesh.identify_regions()
+
+    assert(np.max(regions) == 1)
+    assert(np.all(regions == [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0]))
 
 def test_adjacent_tris():
     tris = np.array([
