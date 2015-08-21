@@ -9,66 +9,13 @@ a mesh of the interior and immediate surroundings of that boundary. The
 interior mesh is subdivided into regions depending on which side of a
 boundary the cells are.
 
-The 'mesh_gen_scale_x_factor' allows the x dimension to be scaled in case
-desired meshing should be well-proportioned in a different coordinate
-scale than the input coordinates. For example, if the mesh will be used
-for plotting and the x and y axes on the plot are not identical.
 """
-class InteriorMeshBuilder(object):
-    def __init__(self, facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
-        meshpy_vs = facets.reshape((facets.shape[0] * facets.shape[1], facets.shape[2]))
-        meshpy_facets = np.arange(meshpy_vs.shape[0]).reshape(
-            (facets.shape[0], facets.shape[1])
-        )
-
-        meshpy_vs, meshpy_facets = self.remove_duplicate_vertices(
-            meshpy_vs, meshpy_facets
-        )
-        meshpy_vs[:, 0] *= mesh_gen_scale_x_factor
-
-        info = triangle.MeshInfo()
-        info.set_points(meshpy_vs)
-        info.set_facets(meshpy_facets)
-
-        params = dict()
-        if max_tri_area is not None:
-            params['max_volume'] = max_tri_area
-        mesh = triangle.build(info, **params)
-
-        self.pts = np.array(mesh.points)
-        self.pts[:, 0] /= mesh_gen_scale_x_factor
-        self.tris = np.array(mesh.elements)
-        self.boundary_facets = np.array(mesh.facets)
-
-    #TODO: This should probably already be done on the 3bem side, meshes
-    # should be stored as vertex and cross-referenced triangle lists
-    def remove_duplicate_vertices(self, meshpy_vs, meshpy_facets):
-        equivalence_map = self.build_equivalence_map(meshpy_vs)
-        new_vs = self.create_new_vertex_list(meshpy_vs, equivalence_map)
-        new_facets = np.array(equivalence_map)[meshpy_facets]
-        return new_vs, new_facets
-
-    def build_equivalence_map(self, meshpy_vs):
-        equivalence_map = []
-        next = 0
-        for v_idx1 in range(meshpy_vs.shape[0]):
-            equivalence_map.append(next)
-            next += 1
-            for v_idx2 in range(v_idx1):
-                sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
-                dist = np.sum(sep_vec ** 2)
-                if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
-                    equivalence_map[v_idx1] = equivalence_map[v_idx2]
-                    next -= 1
-                    break
-        return equivalence_map
-
-    def create_new_vertex_list(self, meshpy_vs, equivalence_map):
-        out_vertices = np.max(equivalence_map) + 1
-        new_vs = np.empty((out_vertices, 2))
-        for v_idx1 in range(meshpy_vs.shape[0]):
-            new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
-        return new_vs
+class InteriorMesh(object):
+    def __init__(self, pts, tris, boundary_facets):
+        self.pts = pts
+        self.tris = tris
+        self.boundary_facets = boundary_facets
+        self.tri_region_map = self.identify_regions()
 
     def plot(self, show = True):
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris)
@@ -78,7 +25,7 @@ class InteriorMeshBuilder(object):
     def region_plot(self, show = True):
         plt.tripcolor(
             self.pts[:, 0], self.pts[:, 1], self.tris,
-            self.identify_regions()
+            self.tri_region_map
         )
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris, 'r-')
         for f in self.boundary_facets:
@@ -122,6 +69,99 @@ class InteriorMeshBuilder(object):
                 (f[1] == pt_indices[0] and f[0] == pt_indices[1]):
                 return True
         return False
+
+    def get_region(self, region_id):
+        #TODO: Clean this up!
+        region_tris = self.tris[self.tri_region_map == region_id]
+        out_pt_indices = np.unique(region_tris)
+
+        tri_old_idx_to_new_idx_map = dict()
+        for new_idx, old_idx in enumerate(out_pt_indices):
+            tri_old_idx_to_new_idx_map[old_idx] = new_idx
+
+        out_pts = np.empty((out_pt_indices.shape[0], 2))
+        for old_idx in out_pt_indices:
+            out_pts[tri_old_idx_to_new_idx_map[old_idx], :] = self.pts[old_idx]
+
+        out_tris = np.empty(region_tris.shape)
+        for i in range(region_tris.shape[0]):
+            for d in range(region_tris.shape[1]):
+                out_tris[i, d] = tri_old_idx_to_new_idx_map[region_tris[i, d]]
+
+        out_boundary_facets = []
+        for f_idx in range(self.boundary_facets.shape[0]):
+            on_region_bdry = self.boundary_facets[f_idx, 0] in out_pt_indices and\
+                self.boundary_facets[f_idx, 1] in out_pt_indices
+            if on_region_bdry:
+                out_facet = [
+                    tri_old_idx_to_new_idx_map[old_idx] for old_idx in
+                    self.boundary_facets[f_idx, :]
+                ]
+                out_boundary_facets.append(out_facet)
+
+        return InteriorMesh(out_pts, out_tris, np.array(out_boundary_facets))
+
+
+"""
+The 'mesh_gen_scale_x_factor' allows the x dimension to be scaled in case
+desired meshing should be well-proportioned in a different coordinate
+scale than the input coordinates. For example, if the mesh will be used
+for plotting and the x and y axes on the plot are not identical.
+"""
+def build_interior_mesh(facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
+    meshpy_vs = facets.reshape((facets.shape[0] * facets.shape[1], facets.shape[2]))
+    meshpy_facets = np.arange(meshpy_vs.shape[0]).reshape(
+        (facets.shape[0], facets.shape[1])
+    )
+
+    meshpy_vs, meshpy_facets = remove_duplicate_vertices(meshpy_vs, meshpy_facets)
+    meshpy_vs[:, 0] *= mesh_gen_scale_x_factor
+
+    info = triangle.MeshInfo()
+    info.set_points(meshpy_vs)
+    info.set_facets(meshpy_facets)
+
+    params = dict()
+    if max_tri_area is not None:
+        params['max_volume'] = max_tri_area
+    mesh = triangle.build(info, **params)
+
+    pts = np.array(mesh.points)
+    pts[:, 0] /= mesh_gen_scale_x_factor
+    tris = np.array(mesh.elements)
+    boundary_facets = np.array(mesh.facets)
+
+    return InteriorMesh(pts, tris, boundary_facets)
+
+#TODO: This should probably already be done on the 3bem side, meshes
+# should be stored as vertex and cross-referenced triangle lists
+def remove_duplicate_vertices(meshpy_vs, meshpy_facets):
+    equivalence_map = build_equivalence_map(meshpy_vs)
+    new_vs = create_new_vertex_list(meshpy_vs, equivalence_map)
+    new_facets = np.array(equivalence_map)[meshpy_facets]
+    return new_vs, new_facets
+
+def build_equivalence_map(meshpy_vs):
+    equivalence_map = []
+    next = 0
+    for v_idx1 in range(meshpy_vs.shape[0]):
+        equivalence_map.append(next)
+        next += 1
+        for v_idx2 in range(v_idx1):
+            sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
+            dist = np.sum(sep_vec ** 2)
+            if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
+                equivalence_map[v_idx1] = equivalence_map[v_idx2]
+                next -= 1
+                break
+    return equivalence_map
+
+def create_new_vertex_list(meshpy_vs, equivalence_map):
+    out_vertices = np.max(equivalence_map) + 1
+    new_vs = np.empty((out_vertices, 2))
+    for v_idx1 in range(meshpy_vs.shape[0]):
+        new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
+    return new_vs
 
 def determine_extents(facets):
     min_corner = np.min(np.min(facets, axis = 0), axis = 0)

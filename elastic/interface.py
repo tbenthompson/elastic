@@ -55,11 +55,10 @@ class Executor(object):
         self.constraint_matrix = constraints.build_constraint_matrix(
             self.tbem, self.dof_map, self.arguments[1], self.meshes
         )
-        self.mesh_provider = mesh_provider.SimpleMeshProvider(self.meshes)
-        # ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
-        # self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(
-        #     self.meshes, self.dof_map, ignored_dofs
-        # )
+        ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
+        self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(
+            self.meshes, self.dof_map, ignored_dofs
+        )
 
     def check_input_params(self, params):
         if 'obs_order' in params:
