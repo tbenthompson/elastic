@@ -29,12 +29,8 @@ def test_log_exceptions():
 
     assert('Exception: WHOA' in extract_log_text(str_buffer))
 
-def timing_test(do_timing):
+def test_log_elapsed_time():
     str_logger, str_buffer = capture_logs()
-
-    @log_elapsed_time(str_logger, 'HI')
-    def function(self):
-        return 5
 
     class FakeTimer(object):
         def __init__(self):
@@ -43,22 +39,13 @@ def timing_test(do_timing):
             out = self.t
             self.t += 1
             return out
-    class A: pass
 
-    a = A()
-    a.params = dict()
-    a.params['timing'] = do_timing
-    a.params['timer'] = FakeTimer()
-    result = function(a)
+    @log_elapsed_time(str_logger, 'HI', timer = FakeTimer())
+    def function():
+        return 5
+
+    result = function()
     assert(result == 5)
 
     log_text = extract_log_text(str_buffer)
-    return log_text
-
-def test_dont_log_elapsed_time():
-    log_text = timing_test(False)
-    assert(log_text == 'Starting HI\nFinished HI\n')
-
-def test_log_elapsed_time():
-    log_text = timing_test(True)
     assert(log_text == 'Starting HI\nFinished HI. Took 1\n')

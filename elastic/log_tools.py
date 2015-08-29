@@ -1,4 +1,5 @@
 import traceback
+import time
 
 def log_exceptions(logger):
     def wrapper(f):
@@ -15,25 +16,24 @@ def log_exceptions(logger):
         return wrapped
     return wrapper
 
-def log_elapsed_time(logger, text):
+def log_elapsed_time(logger, text, timer = time):
     if type(text) is str:
-        text_fnc = lambda self, args: text
+        def text_fnc(*args, **kwargs):
+            return text
     else:
         text_fnc = text
 
     def wrapper(f):
-        def wrapped(self, *args):
-            base_msg = text_fnc(self, args)
+        def wrapped(*args, **kwargs):
+            base_msg = text_fnc(*args, **kwargs)
             start_msg = 'Starting ' + base_msg
             logger.info(start_msg)
-            if self.params['timing']:
-                start_time = self.params['timer'].time()
-            result = f(self, *args)
+            start_time = timer.time()
+            result = f(*args, **kwargs)
             finish_msg = 'Finished ' + base_msg
-            if self.params['timing']:
-                end_time = self.params['timer'].time()
-                elapsed_time = end_time - start_time
-                finish_msg += '. Took ' + str(elapsed_time)
+            end_time = timer.time()
+            elapsed_time = end_time - start_time
+            finish_msg += '. Took ' + str(elapsed_time)
             logger.info(finish_msg)
             return result
         return wrapped

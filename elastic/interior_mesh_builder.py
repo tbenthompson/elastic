@@ -1,7 +1,13 @@
+from elastic.log_tools import log_elapsed_time
+import tbempy.TwoD
+
 import meshpy.triangle as triangle
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.sparse
+import time
+import logging
+logger = logging.getLogger(__name__)
 
 """
 This module takes a boundary mesh and using the MeshPy package, creates
@@ -11,11 +17,14 @@ boundary the cells are.
 
 """
 class InteriorMesh(object):
-    def __init__(self, pts, tris, boundary_facets):
+    def __init__(self, pts, tris, boundary_facets, tri_region_map = None):
         self.pts = pts
         self.tris = tris
         self.boundary_facets = boundary_facets
-        self.tri_region_map = self.identify_regions()
+        self.times = 0
+        self.tri_region_map = tri_region_map
+        if self.tri_region_map is None:
+            self.tri_region_map = self.identify_regions()
 
     def plot(self, show = True):
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris)
@@ -39,7 +48,11 @@ class InteriorMesh(object):
         if show:
             plt.show()
 
+    @log_elapsed_time(logger, 'identification of volumetric regions')
     def identify_regions(self):
+        self.times += 1
+        if self.times > 1:
+            raise Exception()
         #TODO: Once this is too slow, maybe build connectivity in c++ layer?
         n_tris = self.tris.shape[0]
         connectivity = scipy.sparse.dok_matrix((n_tris, n_tris))
@@ -70,8 +83,10 @@ class InteriorMesh(object):
                 return True
         return False
 
+    @log_elapsed_time(logger, 'retrieval of a specific subregion')
     def get_region(self, region_id):
         #TODO: Clean this up!
+        #TODO: Grab multiple regions
         region_tris = self.tris[self.tri_region_map == region_id]
         out_pt_indices = np.unique(region_tris)
 
@@ -108,23 +123,22 @@ desired meshing should be well-proportioned in a different coordinate
 scale than the input coordinates. For example, if the mesh will be used
 for plotting and the x and y axes on the plot are not identical.
 """
-def build_interior_mesh(facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
-    meshpy_vs = facets.reshape((facets.shape[0] * facets.shape[1], facets.shape[2]))
-    meshpy_facets = np.arange(meshpy_vs.shape[0]).reshape(
-        (facets.shape[0], facets.shape[1])
-    )
+@log_elapsed_time(logger, 'interior mesh construction')
+def build_interior_mesh(bdry_mesh, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
+    pt_index_mesh = tbempy.TwoD.convert_facet_to_pt_index(bdry_mesh)
 
-    meshpy_vs, meshpy_facets = remove_duplicate_vertices(meshpy_vs, meshpy_facets)
+    meshpy_vs = pt_index_mesh.points
+    meshpy_facets = pt_index_mesh.facets
     meshpy_vs[:, 0] *= mesh_gen_scale_x_factor
 
     info = triangle.MeshInfo()
     info.set_points(meshpy_vs)
-    info.set_facets(meshpy_facets)
+    info.set_facets(meshpy_facets.astype(np.int))
 
     params = dict()
     if max_tri_area is not None:
         params['max_volume'] = max_tri_area
-    mesh = triangle.build(info, **params)
+    mesh = exec_triangle(info, params)
 
     pts = np.array(mesh.points)
     pts[:, 0] /= mesh_gen_scale_x_factor
@@ -133,35 +147,9 @@ def build_interior_mesh(facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = No
 
     return InteriorMesh(pts, tris, boundary_facets)
 
-#TODO: This should probably already be done on the 3bem side, meshes
-# should be stored as vertex and cross-referenced triangle lists
-def remove_duplicate_vertices(meshpy_vs, meshpy_facets):
-    equivalence_map = build_equivalence_map(meshpy_vs)
-    new_vs = create_new_vertex_list(meshpy_vs, equivalence_map)
-    new_facets = np.array(equivalence_map)[meshpy_facets]
-    return new_vs, new_facets
-
-def build_equivalence_map(meshpy_vs):
-    equivalence_map = []
-    next = 0
-    for v_idx1 in range(meshpy_vs.shape[0]):
-        equivalence_map.append(next)
-        next += 1
-        for v_idx2 in range(v_idx1):
-            sep_vec = meshpy_vs[v_idx1, :] - meshpy_vs[v_idx2, :]
-            dist = np.sum(sep_vec ** 2)
-            if np.allclose(meshpy_vs[v_idx1, :], meshpy_vs[v_idx2, :]):
-                equivalence_map[v_idx1] = equivalence_map[v_idx2]
-                next -= 1
-                break
-    return equivalence_map
-
-def create_new_vertex_list(meshpy_vs, equivalence_map):
-    out_vertices = np.max(equivalence_map) + 1
-    new_vs = np.empty((out_vertices, 2))
-    for v_idx1 in range(meshpy_vs.shape[0]):
-        new_vs[equivalence_map[v_idx1], :] = meshpy_vs[v_idx1, :]
-    return new_vs
+@log_elapsed_time(logger, 'calling meshpy to construct interior mesh')
+def exec_triangle(info, params):
+    return triangle.build(info, **params)
 
 def determine_extents(facets):
     min_corner = np.min(np.min(facets, axis = 0), axis = 0)

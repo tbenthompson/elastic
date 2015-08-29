@@ -23,7 +23,6 @@ def default_params():
         gravity = False,
         gravity_vector = [0.0, -9.8 * 2700],
 
-        timing = False,
         timer = time,
     )
 
