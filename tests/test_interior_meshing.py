@@ -35,30 +35,8 @@ def test_interior_meshing():
     mesh = build_interior_mesh(bdry_mesh)
 
     assert(len(mesh.tris) == 14)
-    assert(not mesh.are_across_an_input_facet(4, 11))
-    assert(mesh.are_across_an_input_facet(11, 9))
     assert(np.max(mesh.tri_region_map) == 1)
     assert(np.all(mesh.tri_region_map == [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0]))
-
-def test_adjacent_tris():
-    tris = np.array([
-        [0, 1, 2], [2, 1, 3], [1, 5, 4], [1, 4, 3]
-    ])
-    pts_to_tris_map = build_pt_to_tri_map(tris)
-
-    tri_indices = find_adjacent_tris_indices(tris, [1, 3, 4], pts_to_tris_map)
-    assert(tri_indices == [1, 2])
-
-    tri_indices = find_adjacent_tris_indices(tris, [0, 1, 2], pts_to_tris_map)
-    assert(tri_indices == [1])
-
-def test_build_pt_to_tri_map():
-    tris = np.array([
-        [0, 1, 2], [2, 1, 3], [1, 5, 4], [1, 4, 3]
-    ])
-    map = build_pt_to_tri_map(tris)
-    assert(map[1] == [0, 1, 2, 3])
-    assert(map[2] == [0, 1])
 
 def test_get_region():
     facets = add_extent_surface(box_mesh())
@@ -81,12 +59,12 @@ def test_get_region_harder():
     mesh = build_interior_mesh(bdry_mesh)
 
     region = mesh.get_region(0)
-    np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 0], [1, 1]])
-    np.testing.assert_almost_equal(region.tris, [[0, 1, 2]])
-
-    region = mesh.get_region(1)
     np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 1], [0, 1]])
     np.testing.assert_almost_equal(region.tris, [[1, 2, 0]])
+
+    region = mesh.get_region(1)
+    np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 0], [1, 1]])
+    np.testing.assert_almost_equal(region.tris, [[0, 1, 2]])
 
 
 def make_pretty_region_plots():

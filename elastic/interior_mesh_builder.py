@@ -17,14 +17,13 @@ boundary the cells are.
 
 """
 class InteriorMesh(object):
-    def __init__(self, pts, tris, boundary_facets, tri_region_map = None):
+    def __init__(self, pts, tris, boundary_facets):
         self.pts = pts
         self.tris = tris
         self.boundary_facets = boundary_facets
-        self.times = 0
-        self.tri_region_map = tri_region_map
-        if self.tri_region_map is None:
-            self.tri_region_map = self.identify_regions()
+        self.tri_region_map = tbempy.TwoD.identify_regions(
+            self.tris.astype(np.uint64), self.boundary_facets.astype(np.uint64)
+        )
 
     def plot(self, show = True):
         plt.triplot(self.pts[:, 0], self.pts[:, 1], self.tris)
@@ -47,41 +46,6 @@ class InteriorMesh(object):
         plt.ylim(extents[0][1], extents[1][1])
         if show:
             plt.show()
-
-    @log_elapsed_time(logger, 'identification of volumetric regions')
-    def identify_regions(self):
-        self.times += 1
-        if self.times > 1:
-            raise Exception()
-        #TODO: Once this is too slow, maybe build connectivity in c++ layer?
-        n_tris = self.tris.shape[0]
-        connectivity = scipy.sparse.dok_matrix((n_tris, n_tris))
-        pts_to_tris_map = build_pt_to_tri_map(self.tris)
-        for t_idx in range(n_tris):
-            adjacent_indices = find_adjacent_tris_indices(
-                self.tris, self.tris[t_idx], pts_to_tris_map
-            )
-            for adj_idx in adjacent_indices:
-                if self.are_across_an_input_facet(t_idx, adj_idx):
-                    continue
-                connectivity[t_idx, adj_idx] = 1
-
-        n_components, components = scipy.sparse.csgraph.connected_components(
-            connectivity, directed = False, return_labels = True
-        )
-        return components
-
-    def are_across_an_input_facet(self, tri_A_idx, tri_B_idx):
-        overlap = get_tri_pair_vertex_overlap(
-            self.tris[tri_A_idx], self.tris[tri_B_idx]
-        )
-        pt_indices = [self.tris[tri_A_idx, o] for o in overlap]
-
-        for f in self.boundary_facets:
-            if (f[0] == pt_indices[0] and f[1] == pt_indices[1]) or \
-                (f[1] == pt_indices[0] and f[0] == pt_indices[1]):
-                return True
-        return False
 
     @log_elapsed_time(logger, 'retrieval of a specific subregion')
     def get_region(self, region_id):
@@ -180,27 +144,3 @@ def add_extent_surface(input_facets, expand_factor = 2.0):
         *expand_extents(*determine_extents(input_facets), factor = expand_factor)
     )
     return np.concatenate((input_facets, extents_box))
-
-
-def build_pt_to_tri_map(tris):
-    pts_to_tris_map = dict()
-    for t_idx, t in enumerate(tris):
-        for d in range(3):
-            pts_to_tris_map.setdefault(t[d], []).append(t_idx)
-    return pts_to_tris_map
-
-def find_adjacent_tris_indices(tris, query_tri, pts_to_tris_map):
-    adjacent_tris = []
-    for d in range(3):
-        for touching_tri_idx in pts_to_tris_map[query_tri[d]]:
-            if touching_tri_idx in adjacent_tris:
-                continue
-            if are_adjacent_tris(tris[touching_tri_idx], query_tri):
-                adjacent_tris.append(touching_tri_idx)
-    return adjacent_tris
-
-def get_tri_pair_vertex_overlap(tri_A, tri_B):
-    return [d for d in range(3) if tri_A[d] in tri_B]
-
-def are_adjacent_tris(tri_A, tri_B):
-    return len(get_tri_pair_vertex_overlap(tri_A, tri_B)) == 2
