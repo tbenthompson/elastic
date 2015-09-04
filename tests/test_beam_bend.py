@@ -75,7 +75,6 @@ def create_problem(refine):
         obs_near_order = 5,
         src_far_order = 4,
         sinh_order = 7,
-        timing = True,
         dense = True,
         check_condition_number = False
     )

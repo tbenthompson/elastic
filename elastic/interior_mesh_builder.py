@@ -47,8 +47,22 @@ class InteriorMesh(object):
         if show:
             plt.show()
 
+    def refine(self, max_tri_area):
+        #TODO: build_interior_mesh should take facets not mesh
+        return build_interior_mesh(
+            tbempy.TwoD.Mesh(self.pts[self.boundary_facets]),
+            max_tri_area = max_tri_area
+        )
+
+    def get_region_id_from_pt(self, pt):
+        result = tbempy.TwoD.find_containing_tri_idx(pt, self.tris, self.pts)
+        if result.first is False:
+            return None
+        return self.tri_region_map[result.second]
+
     @log_elapsed_time(logger, 'retrieval of a specific subregion')
     def get_region(self, region_id):
+        #TODO: Grab region via query point!
         #TODO: Clean this up!
         #TODO: Grab multiple regions
         region_tris = self.tris[self.tri_region_map == region_id]
@@ -106,7 +120,7 @@ def build_interior_mesh(bdry_mesh, mesh_gen_scale_x_factor = 1.0, max_tri_area =
 
     pts = np.array(mesh.points)
     pts[:, 0] /= mesh_gen_scale_x_factor
-    tris = np.array(mesh.elements)
+    tris = np.array(mesh.elements).astype(np.uint64)
     boundary_facets = np.array(mesh.facets)
 
     return InteriorMesh(pts, tris, boundary_facets)

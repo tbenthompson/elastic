@@ -139,8 +139,9 @@ class Result(object):
             stress_rows.append(self._interior_eval(pts, normals, 'traction'))
         return stress_rows
 
-    @log_elapsed_time(logger, lambda self, args: 'interior evaluation of '
-        + str(args[2]) + 's at ' + str(len(args[0])) + ' points')
+    @log_elapsed_time(logger, lambda self, pts, normals, which_bie:
+            'interior evaluation of ' + str(which_bie) + 's at ' +
+            str(pts.shape[0]) + ' points')
     def _interior_eval(self, pts, normals, which_bie):
         gravity = self.params['gravity']
         bie = bie_spec.bie_from_field_name(
