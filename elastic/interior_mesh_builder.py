@@ -61,11 +61,14 @@ class InteriorMesh(object):
         return self.tri_region_map[result.second]
 
     @log_elapsed_time(logger, 'retrieval of a specific subregion')
-    def get_region(self, region_id):
-        #TODO: Grab region via query point!
+    def get_regions(self, region_ids):
         #TODO: Clean this up!
         #TODO: Grab multiple regions
-        region_tris = self.tris[self.tri_region_map == region_id]
+        which_tris = np.zeros(self.tris.shape[0], dtype=bool)
+        for r_id in region_ids:
+            which_tris = np.logical_or(which_tris, self.tri_region_map == r_id)
+
+        region_tris = self.tris[which_tris]
         out_pt_indices = np.unique(region_tris)
 
         tri_old_idx_to_new_idx_map = dict()

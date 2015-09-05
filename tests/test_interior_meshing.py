@@ -42,7 +42,7 @@ def test_get_region():
     facets = add_extent_surface(box_mesh())
     bdry_mesh = tbempy.TwoD.Mesh(facets)
     mesh = build_interior_mesh(bdry_mesh)
-    region = mesh.get_region(1)
+    region = mesh.get_regions([1])
     assert(region.pts.shape[0] == 4)
     assert(region.tris.shape[0] == 2)
     assert(np.max(region.tri_region_map) == 0)
@@ -58,13 +58,17 @@ def test_get_region_harder():
     bdry_mesh = tbempy.TwoD.Mesh(facets)
     mesh = build_interior_mesh(bdry_mesh)
 
-    region = mesh.get_region(0)
+    region = mesh.get_regions([0])
     np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 1], [0, 1]])
     np.testing.assert_almost_equal(region.tris, [[1, 2, 0]])
 
-    region = mesh.get_region(1)
+    region = mesh.get_regions([1])
     np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 0], [1, 1]])
     np.testing.assert_almost_equal(region.tris, [[0, 1, 2]])
+
+    region = mesh.get_regions([0, 1])
+    assert(region.tris.shape[0] == mesh.tris.shape[0])
+    assert(region.pts.shape[0] == mesh.pts.shape[0])
 
 
 def make_pretty_region_plots():
