@@ -1,5 +1,4 @@
 from elastic.interior_mesh_builder import *
-import tbempy.TwoD
 import numpy as np
 
 def box_mesh():
@@ -31,8 +30,7 @@ def test_extents_to_box():
 
 def test_interior_meshing():
     facets = add_extent_surface(box_mesh())
-    bdry_mesh = tbempy.TwoD.Mesh(facets)
-    mesh = build_interior_mesh(bdry_mesh)
+    mesh = build_interior_mesh(facets)
 
     assert(len(mesh.tris) == 14)
     assert(np.max(mesh.tri_region_map) == 1)
@@ -40,8 +38,7 @@ def test_interior_meshing():
 
 def test_get_region():
     facets = add_extent_surface(box_mesh())
-    bdry_mesh = tbempy.TwoD.Mesh(facets)
-    mesh = build_interior_mesh(bdry_mesh)
+    mesh = build_interior_mesh(facets)
     region = mesh.get_regions([1])
     assert(region.pts.shape[0] == 4)
     assert(region.tris.shape[0] == 2)
@@ -55,8 +52,7 @@ def test_get_region_harder():
         [[0, 1], [0, 0]],
         [[0, 0], [1, 1]]
     ])
-    bdry_mesh = tbempy.TwoD.Mesh(facets)
-    mesh = build_interior_mesh(bdry_mesh)
+    mesh = build_interior_mesh(facets)
 
     region = mesh.get_regions([0])
     np.testing.assert_almost_equal(region.pts, [[0, 0], [1, 1], [0, 1]])

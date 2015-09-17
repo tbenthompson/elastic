@@ -17,10 +17,11 @@ boundary the cells are.
 
 """
 class InteriorMesh(object):
-    def __init__(self, pts, tris, boundary_facets):
+    def __init__(self, pts, tris, boundary_facets, mesh_gen_scale_x_factor):
         self.pts = pts
         self.tris = tris
         self.boundary_facets = boundary_facets
+        self.mesh_gen_scale_x_factor = mesh_gen_scale_x_factor
         self.tri_region_map = tbempy.TwoD.identify_regions(
             self.tris.astype(np.uint64), self.boundary_facets.astype(np.uint64)
         )
@@ -48,9 +49,9 @@ class InteriorMesh(object):
             plt.show()
 
     def refine(self, max_tri_area):
-        #TODO: build_interior_mesh should take facets not mesh
         return build_interior_mesh(
-            tbempy.TwoD.Mesh(self.pts[self.boundary_facets]),
+            self.pts[self.boundary_facets],
+            mesh_gen_scale_x_factor = self.mesh_gen_scale_x_factor,
             max_tri_area = max_tri_area
         )
 
@@ -95,7 +96,10 @@ class InteriorMesh(object):
                 ]
                 out_boundary_facets.append(out_facet)
 
-        return InteriorMesh(out_pts, out_tris, np.array(out_boundary_facets))
+        return InteriorMesh(
+            out_pts, out_tris, np.array(out_boundary_facets),
+            self.mesh_gen_scale_x_factor
+        )
 
 
 """
@@ -105,8 +109,8 @@ scale than the input coordinates. For example, if the mesh will be used
 for plotting and the x and y axes on the plot are not identical.
 """
 @log_elapsed_time(logger, 'interior mesh construction')
-def build_interior_mesh(bdry_mesh, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
-    pt_index_mesh = tbempy.TwoD.convert_facet_to_pt_index(bdry_mesh)
+def build_interior_mesh(bdry_facets, mesh_gen_scale_x_factor = 1.0, max_tri_area = None):
+    pt_index_mesh = tbempy.TwoD.convert_facet_to_pt_index(bdry_facets)
 
     meshpy_vs = pt_index_mesh.points
     meshpy_facets = pt_index_mesh.facets
@@ -126,7 +130,7 @@ def build_interior_mesh(bdry_mesh, mesh_gen_scale_x_factor = 1.0, max_tri_area =
     tris = np.array(mesh.elements).astype(np.uint64)
     boundary_facets = np.array(mesh.facets)
 
-    return InteriorMesh(pts, tris, boundary_facets)
+    return InteriorMesh(pts, tris, boundary_facets, mesh_gen_scale_x_factor)
 
 @log_elapsed_time(logger, 'calling meshpy to construct interior mesh')
 def exec_triangle(info, params):

@@ -66,11 +66,6 @@ class Executor(object):
                 'obs_order parameter has been removed in ' +
                 'favor of obs_near_order and obs_far_order'
             )
-        if params['obs_far_order'] == params['src_far_order']:
-            raise Exception(
-                'obs_far_order and src_far_order can\'t be equal. ' +
-                ' Please change one.'
-            )
 
     def run(self):
         return self.solve(self.assemble(bie_spec.get_BIEs(self.params)))
