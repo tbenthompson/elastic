@@ -33,23 +33,40 @@ def split_into_components(dim, field):
 
 def evaluate_interior(dispatcher, soln, pts, normals, bie):
     dim = pts.shape[1]
-    result = np.zeros(pts.shape[0] * dim)
-    for t in bie['terms']:
-        op = dispatcher.compute_interior(t, pts, normals)
-        f = op.select_input_field(soln)
-        if f is None:
-            return None
-        # Negate to shift to the RHS.
-        # The integral equation is set up like u(x) + Integrals = 0.
-        # We want u(x) = -Integrals
-        result -= op.apply(f)
+    result = np.zeros((dim, pts.shape[0]))
+
+    #TODO: This chunking is only necessary because dense matrices are being used
+    # move to using FMM.
+    chunk_size = 1000
+    chunks = int(np.ceil(pts.shape[0] / float(chunk_size)))
+    for i in range(chunks):
+        start_idx = i * chunk_size
+        past_end_idx = start_idx + min(pts.shape[0] - start_idx + 1, chunk_size)
+        chunk_pts = pts[start_idx:past_end_idx]
+        chunk_normals = normals[start_idx:past_end_idx]
+        for t in bie['terms']:
+            op = dispatcher.compute_interior(t, chunk_pts, chunk_normals)
+            f = op.select_input_field(soln)
+            if f is None:
+                return None
+            # Negate to shift to the RHS.
+            # The integral equation is set up like u(x) + Integrals = 0.
+            # We want u(x) = -Integrals
+            chunk_result = -op.apply(f)
+            for d in range(dim):
+                dim_start_idx = d * chunk_pts.shape[0]
+                dim_end_idx = (d + 1) * chunk_pts.shape[0]
+                result[d, start_idx:past_end_idx] -=\
+                    chunk_result[dim_start_idx:dim_end_idx]
+
     result *= bie['mass_term']['multiplier']
+
+    #TODO: Is this necessary? Just leave it as a big numpy array.
     out = []
     for d in range(dim):
-        start_idx = d * pts.shape[0]
-        end_idx = (d + 1) * pts.shape[0]
-        out.append(result[start_idx:end_idx])
+        out.append(result[d, :])
     return out
+
 
 def scale(unknowns, scalings, params, inverse):
     for u, values in unknowns.iteritems():
