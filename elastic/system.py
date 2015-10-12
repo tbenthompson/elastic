@@ -56,7 +56,7 @@ def evaluate_interior(dispatcher, soln, pts, normals, bie):
             for d in range(dim):
                 dim_start_idx = d * chunk_pts.shape[0]
                 dim_end_idx = (d + 1) * chunk_pts.shape[0]
-                result[d, start_idx:past_end_idx] -=\
+                result[d, start_idx:past_end_idx] +=\
                     chunk_result[dim_start_idx:dim_end_idx]
 
     result *= bie['mass_term']['multiplier']
