@@ -52,8 +52,9 @@ class Executor(object):
         self.dof_map = dof_handling.DOFMap.build(
             self.tbem.dim, bie_spec.field_types, self.meshes
         )
-        self.constraint_matrix = constraints.build_constraint_matrix(
-            self.tbem, self.dof_map, self.arguments[1], self.meshes
+
+        self.constraint_matrix = constraints.form_constraint_matrix(
+            self.tbem, self.dof_map, self.meshes, self.arguments[1], self.params
         )
         ignored_dofs = self.tbem.identify_ignored_dofs(self.constraint_matrix)
         self.mesh_provider = mesh_provider.SkipUselessEntriesMeshProvider(

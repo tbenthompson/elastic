@@ -1,3 +1,5 @@
+import mesh_provider as mesh_provider
+import compute as compute
 from collections import namedtuple
 import numpy as np
 
@@ -101,40 +103,64 @@ def normal_vector(pts):
     ])
     return vector / np.linalg.norm(vector)
 
-def make_zero_avg_displacement(tbem, dof_map, meshes, elements):
-    if any_displacement_constraints(elements):
-        return []
+def make_zero_avg_displacement(tbem, dof_map, meshes, elements, params):
+    simple_mesh_provider = mesh_provider.SimpleMeshProvider(meshes)
+    evaluator = compute.DenseIntegralEvaluator(
+        tbem, params, meshes['all_mesh']
+    )
+    dispatcher = compute.IntegralDispatcher(simple_mesh_provider, [], evaluator)
+    n_dofs = meshes['continuous'].n_dofs()
+    mass_op = dispatcher.compute_mass(dict(
+        src_mesh = 'continuous',
+        function = 'displacement',
+        multiplier = 1.0
+    ))
+    translations = mass_op.apply(np.ones((2, n_dofs)))
+    fs = meshes['continuous'].facets
+    xs = fs.reshape((fs.shape[0] * fs.shape[1], fs.shape[2]))
+    rotations = mass_op.apply(np.array([-xs[:, 1], xs[:, 0]]))
+    #TODO: Figure out how to constrain rigid body rotations here
+
     cs = []
+    start_dof = dof_map.get('continuous', 'displacement', 0)
+    rotation_terms = []
     for d in range(tbem.dim):
         terms = []
         component_start = dof_map.get('continuous', 'displacement', d)
         for i in range(meshes['continuous'].n_facets()):
-            f = meshes['continuous'].facets[i, :, :]
-            length = np.sqrt(np.sum((f[0, :] - f[1, :]) ** 2))
             for basis_idx in range(tbem.dim):
                 dof = component_start + tbem.dim * i + basis_idx
-                terms.append(tbem.LinearTerm(dof, length))
+                weight_index = dof - start_dof
+                terms.append(tbem.LinearTerm(dof, translations[weight_index]))
+                rotation_terms.append(tbem.LinearTerm(dof, rotations[weight_index]))
         cs.append(tbem.ConstraintEQ(terms, 0))
+    cs.append(tbem.ConstraintEQ(rotation_terms, 0))
+    # cs.append(tbem.ConstraintEQ([tbem.LinearTerm(start_dof, 1)], 0))
     return cs
 
-def any_displacement_constraints(elements):
+def is_entirely_neumann(elements):
     for e in elements:
         for c in e['constraints']:
             if type(c) is BCConstraint and c.field == 'displacement':
-                return True
+                return False
             elif type(c) is Constraint:
                 for t in c.terms:
                     if t.field == 'displacement':
-                        return True
-    return False
+                        return False
+    return True
 
-def build_constraint_matrix(tbem, dof_map, elements, meshes):
+def form_constraint_matrix(tbem, dof_map, meshes, elements, params):
     bc_constraints = gather_bc_constraints(tbem, dof_map, elements)
     continuity_constraints = gather_continuity_constraints(tbem, dof_map, meshes)
-    zero_avg_displacement = make_zero_avg_displacement(tbem, dof_map, meshes, elements)
-    all = bc_constraints + continuity_constraints + zero_avg_displacement
-    constraint_matrix = tbem.from_constraints(all)
-    return constraint_matrix
+    all_constraints = bc_constraints + continuity_constraints
+
+    if is_entirely_neumann(elements):
+        zero_avg_displacement = make_zero_avg_displacement(
+            tbem, dof_map, meshes, elements, params
+        )
+        all_constraints += zero_avg_displacement;
+        # TODO: In this circumstance, check the compatibility conditions...
+    return tbem.from_constraints(all_constraints)
 
 def distribute(tbem, constraint_matrix, n_total_dofs, vec):
     distributed = tbem.distribute_vector(constraint_matrix, vec, n_total_dofs)

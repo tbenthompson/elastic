@@ -13,15 +13,26 @@ class DenseSolver(object):
         self.params = params
 
     def solve(self, dof_map, constraint_matrix, systems):
-        rhs = iterative_solver.calculate_rhs(
-            self.tbem, self.params, dof_map, constraint_matrix, systems
+        soln = self.numpy_solve(
+            self.get_A(dof_map, constraint_matrix, systems),
+            self.get_b(dof_map, constraint_matrix, systems)
         )
+        return self.handle_soln(dof_map, constraint_matrix, soln)
 
+    def get_A(self, dof_map, constraint_matrix, systems):
         homogenized_cm = self.tbem.homogenize_constraints(constraint_matrix)
         uncondensed_matrix = self.form_dense_matrix(dof_map, systems)
         matrix = self.condense_matrix(uncondensed_matrix, constraint_matrix)
-        soln = self.numpy_solve(matrix, rhs)
+        return matrix
 
+    def get_b(self, dof_map, constraint_matrix, systems):
+        rhs = iterative_solver.calculate_rhs(
+            self.tbem, self.params, dof_map, constraint_matrix, systems
+        )
+        return rhs
+
+    def handle_soln(self, dof_map, constraint_matrix, soln):
+        homogenized_cm = self.tbem.homogenize_constraints(constraint_matrix)
         unknowns = iterative_solver.handle_solution(
             self.tbem, homogenized_cm, dof_map, self.params, soln
         )
