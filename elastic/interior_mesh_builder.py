@@ -48,10 +48,12 @@ class InteriorMesh(object):
         if show:
             plt.show()
 
-    def refine(self, max_tri_area):
+    def refine(self, max_tri_area, mesh_gen_scale_x_factor = None):
+        if mesh_gen_scale_x_factor is None:
+            mesh_gen_scale_x_factor = self.mesh_gen_scale_x_factor
         return build_interior_mesh(
             self.pts[self.boundary_facets],
-            mesh_gen_scale_x_factor = self.mesh_gen_scale_x_factor,
+            mesh_gen_scale_x_factor = mesh_gen_scale_x_factor,
             max_tri_area = max_tri_area
         )
 
@@ -80,7 +82,7 @@ class InteriorMesh(object):
         for old_idx in out_pt_indices:
             out_pts[tri_old_idx_to_new_idx_map[old_idx], :] = self.pts[old_idx]
 
-        out_tris = np.empty(region_tris.shape)
+        out_tris = np.empty(region_tris.shape, dtype = np.uint64)
         for i in range(region_tris.shape[0]):
             for d in range(region_tris.shape[1]):
                 out_tris[i, d] = tri_old_idx_to_new_idx_map[region_tris[i, d]]

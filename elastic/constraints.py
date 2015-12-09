@@ -8,7 +8,8 @@ def form_traction_constraints(tbem, dof_map, meshes):
 
 def form_slip_constraints(tbem, dof_map, meshes):
     #TODO: Need to work on what to do for fault intersections.
-    # Just ignore them?
+    # Just ignore them? Need to start using some kind of penalty method...
+    return []
     continuity = tbem.mesh_continuity(meshes['discontinuous'].begin())
     one_component = tbem.convert_to_constraints(continuity)
     all_components = []
@@ -45,8 +46,6 @@ def gather_bc_constraints(tbem, dof_map, es):
     tbempy_constraints = []
     counts = dict(discontinuous = 0, continuous = 0)
     for e in es:
-        #TODO: Handle the bad input instead of failing
-        assert(len(e['constraints']) == 2)
         for basis_idx in range(tbem.dim):
             for c in e['constraints']:
                 tbempy_constraints.append(convert_helper(
